@@ -10,3 +10,5 @@ shader_parameter/layer_density = PackedFloat32Array(0.45, 0.22, 0.07)
 shader_parameter/layer_brightness = PackedFloat32Array(0.35, 0.6, 1)
 shader_parameter/big_star_chance = 0.15
 shader_parameter/layer_scroll = PackedVector2Array(0, 0, 0, 0, 0, 0)
+shader_parameter/max_tint = 0.18
+shader_parameter/layer_washout = PackedFloat32Array(0.95, 0.7, 0.2)

@@ -2,8 +2,11 @@
 // From DESIGN.md, "Art direction" (space is shaders and code, generated from a seed).
 //
 // Uses integer hashing rather than the usual sin() trick, so every GPU draws the
-// same stars for the same seed. Pixels with no star stay transparent, which lets
-// the very dark clear color show through.
+// same stars for the same seed.
+//
+// With the star tint on (see star_light.gd), this also paints the background in the
+// star's color, and the star's glare washes out faint stars. With it off, pixels
+// with no star stay transparent and the very dark clear color shows through.
 shader_type canvas_item;
 
 const int CELL_PIXELS = 32;
@@ -19,6 +22,15 @@ uniform float layer_brightness[3];
 uniform float big_star_chance = 0.15;
 // Whole-pixel scroll per layer, set by starfield.gd.
 uniform vec2 layer_scroll[3];
+
+// Set by starfield.gd while the star tint is on.
+uniform bool tint_enabled = false;
+uniform vec3 star_color : source_color = vec3(1.0);
+uniform float light_level = 0.0;
+// Brightness of the background at full light. Keep it low: this is a slight tint.
+uniform float max_tint = 0.18;
+// How much of each layer the glare hides at full light, farthest first.
+uniform float layer_washout[3];
 
 varying vec2 pixel;
 
@@ -65,11 +77,13 @@ void vertex() {
 
 
 void fragment() {
-	COLOR = vec4(0.0);
+	vec3 background = star_color * light_level * max_tint;
+	COLOR = tint_enabled ? vec4(background, 1.0) : vec4(0.0);
 	for (int layer = 0; layer < 3; layer++) {
 		vec4 star = star_at(layer, ivec2(floor(pixel + layer_scroll[layer])));
 		if (star.a > 0.0) {
-			COLOR = star;
+			float visible = 1.0 - layer_washout[layer] * light_level;
+			COLOR = vec4(mix(background, star.rgb, visible), 1.0);
 		}
 	}
 }

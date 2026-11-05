@@ -47,3 +47,11 @@ Files: `export_presets.cfg`, `project.godot`, `.gitignore`, `docs/DESIGN.md`
 - export presets and templates
 - debug signing with a keystore
 - Android `configChanges` and why folding doesn't restart the app
+
+## 2026-11-05: Star tint prototype
+
+Files: `scripts/feature_flags.gd`, `scripts/star_data.gd`, `scripts/star_light.gd`, `scripts/starfield.gd`, `shaders/starfield.gdshader`, `data/test_star.tres`, `data/starfield.tres`, `scenes/main.tscn`, `docs/DESIGN.md`
+
+- custom `Resource` classes for data
+- feature flags with `class_name` constants
+- inverse-square light falloff

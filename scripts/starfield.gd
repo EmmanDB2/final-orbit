@@ -23,3 +23,9 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 				fposmod(floorf(x * factor), TILE_PIXELS),
 				fposmod(floorf(y * factor), TILE_PIXELS)))
 	_material.set_shader_parameter("layer_scroll", scroll)
+
+
+func _on_star_light_changed(color: Color, level: float) -> void:
+	_material.set_shader_parameter("tint_enabled", true)
+	_material.set_shader_parameter("star_color", color)
+	_material.set_shader_parameter("light_level", level)

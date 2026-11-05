@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="StarData" format=3]
+
+[ext_resource type="Script" path="res://scripts/star_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+color = Color(0.62, 0.72, 1, 1)
+world_y = -6000.0
+falloff_distance = 4000.0
