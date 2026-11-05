@@ -10,17 +10,23 @@
 [ext_resource type="Script" uid="uid://drw8htpqo2g5a" path="res://scripts/main.gd" id="8_main"]
 [ext_resource type="Resource" path="res://data/home_planet.tres" id="9_planet"]
 [ext_resource type="Script" uid="uid://vwk3lefks25q" path="res://scripts/flight_view.gd" id="10_view"]
-[ext_resource type="Script" uid="uid://cionpf5rm6ml5" path="res://scripts/planet_view.gd" id="11_planet"]
+[ext_resource type="Script" uid="uid://cionpf5rm6ml5" path="res://scripts/body_view.gd" id="11_planet"]
 [ext_resource type="Shader" uid="uid://cxukt7rvnnhc4" path="res://shaders/planet.gdshader" id="12_shader"]
 [ext_resource type="Script" uid="uid://c2uyi1y81rp83" path="res://scripts/trajectory_preview.gd" id="13_path"]
 [ext_resource type="Script" uid="uid://feyq2g6nhvi8" path="res://scripts/rough_touch_controls.gd" id="14_touch"]
+[ext_resource type="Resource" path="res://data/moon.tres" id="15_moon"]
+[ext_resource type="Script" uid="uid://dgnu0r1ib3jsn" path="res://scripts/body_guides.gd" id="16_guides"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_planet"]
+shader = ExtResource("12_shader")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_moon"]
 shader = ExtResource("12_shader")
 
 [node name="Main" type="Node2D" unique_id=1515308371]
 script = ExtResource("8_main")
 planet = ExtResource("9_planet")
+moon = ExtResource("15_moon")
 
 [node name="Background" type="CanvasLayer" parent="." unique_id=734120958]
 layer = -1
@@ -45,9 +51,22 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("11_planet")
 
+[node name="Moon" type="ColorRect" parent="Background" unique_id=1630894517]
+material = SubResource("ShaderMaterial_moon")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("11_planet")
+
 [node name="StarLight" type="Node" parent="." unique_id=1503377264]
 script = ExtResource("6_light")
 star = ExtResource("7_star")
+
+[node name="BodyGuides" type="Node2D" parent="." unique_id=1076224389]
+script = ExtResource("16_guides")
 
 [node name="Trajectory" type="Node2D" parent="." unique_id=1942087613]
 script = ExtResource("13_path")
@@ -72,6 +91,8 @@ script = ExtResource("14_touch")
 [connection signal="world_position_changed" from="Ship" to="Camera2D" method="_on_ship_world_position_changed"]
 [connection signal="view_changed" from="Camera2D" to="Background/Starfield" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Background/Planet" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Background/Moon" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="BodyGuides" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Ship" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Trajectory" method="_on_view_changed"]
 [connection signal="orbit_changed" from="Ship" to="Trajectory" method="_on_ship_orbit_changed"]

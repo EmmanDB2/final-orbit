@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Moon on Kepler rails and sphere of influence switching work. Gravity interface gains body queries and `find_encounter`, because the view and preview need them and every model will have bodies. Orbit view now centers on the dominant body. Preview now also refreshes while coasting and draws encounters around the moon's future position \[Leaning\]. Moon set up in `data/moon.tres` so a burn right at the start reaches it \[Leaning\] |
 | 2026-11-05 | Throwaway touch controls added for testing on the phone. The touch controls and UI question stays open |
 | 2026-11-05 | Trajectory preview added for the ship's current path, updating only on burns. The background thread waits for maneuver planning \[Leaning\] |
 | 2026-11-05 | First orbit works, with the physics core in C++. Gravity interface changed to take 64-bit x and y, because Godot's Vector2 is 32-bit. Tier 0 planet set far below 1/10 scale so a low orbit takes under 4 minutes without time warp \[Leaning\]. Four of the six zoom tiers built, with far tiers centered on the planet \[Leaning\] |
@@ -163,6 +164,8 @@ Gravity model interface: \[Locked\]
 - `GravityModel.get_acceleration(x, y, time)`
 - `GravityModel.propagate(ship_state, dt)`
 - `GravityModel.predict_trajectory(ship_state, duration, samples)`
+- `GravityModel.find_encounter(ship_state, duration)`: when the coast next falls under another body's gravity.
+- Body queries: `get_body_count`, `get_body_position(index, time)`, `get_body_radius`, `get_dominant_body(x, y, time)`, `get_sphere_of_influence`, `get_body_orbit_path`. Body 0 is the center of the system, fixed at the world origin.
 - Positions are separate 64-bit x and y, in `ShipState` or as plain floats, because Godot's Vector2 is 32-bit.
 - `PatchedConicsModel` ships first; `NBodyModel` (ship feels every body, planets stay on rails) plugs in later. Nothing else in the game knows which is running.
 
@@ -197,7 +200,9 @@ Scale and precision: \[Leaning\]
 
 Trajectory preview: computed on a background thread, in chunks, and cached while the player drags a maneuver. \[Leaning\]
 
-Tier 0's preview draws the ship's current path as a 1 px telemetry cyan line: one full lap on a closed orbit, otherwise up to an hour ahead or until it hits a surface. Closed-form paths are cheap, so it runs on the main thread and only updates on a burn. The background thread can wait until maneuvers exist. \[Leaning\]
+Tier 0's preview draws the ship's current path as a 1 px telemetry cyan line: one full lap on a closed orbit, otherwise up to an hour ahead or until it hits a surface. Closed-form paths are cheap, so it runs on the main thread. It updates on a burn, on a change of dominant body, every tick while orbiting a moving body, and otherwise twice a second to catch encounters as the moon moves. The background thread can wait until maneuvers exist. \[Leaning\]
+
+Around a moon, the line is drawn around the moon as it is now. An upcoming encounter is drawn around the moon as it will be on arrival, with a ring showing where that is, so the line has a kink where it enters the moon's frame. The line ends on leaving the moon's sphere; the path after that shows once you get there. \[Leaning\]
 
 Black holes are faked convincingly, not simulated with relativity: stronger close-range gravity, time dilation on the mission clock, tidal stress, visual lensing. \[Leaning\]
 
@@ -260,7 +265,8 @@ One continuous top-down camera with six zoom tiers. Landing is just zooming in: 
 | 6 | Surface | Flat ground, terrain, pads, the pilot through the canopy |
 
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
-- Tier 0 builds tiers 3 to 6. Orbit and Planet center on the planet, so you watch the ship go around it; Approach and Surface center on the ship. \[Leaning\]
+- Tier 0 builds tiers 3 to 6. Planet centers on the middle of the system, Orbit centers on whichever body you're orbiting, and Approach and Surface center on the ship. \[Leaning\]
+- The far tiers draw each moon's rails and sphere of influence in dark canopy glass from the agency palette. \[Leaning\]
 - Until landing is built, a ship that reaches a surface just stops there, with no damage. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
 - Terrain detail is generated only when you zoom in close. \[Leaning\]

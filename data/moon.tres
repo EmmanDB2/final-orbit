@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BodyData" format=3]
+
+[ext_resource type="Script" path="res://scripts/body_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Moon"
+radius = 30000.0
+surface_gravity = 60.0
+surface_colors = PackedColorArray(0.2, 0.2, 0.24, 1, 0.3, 0.29, 0.32, 1, 0.4, 0.38, 0.39, 1, 0.5, 0.47, 0.45, 1, 0.6, 0.57, 0.52, 1, 0.74, 0.71, 0.65, 1)
+terrain_seed = 23
+orbit_semi_major_axis = 600000.0
+orbit_eccentricity = 0.03
+orbit_start_angle = 0.07

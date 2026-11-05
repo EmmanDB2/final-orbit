@@ -87,3 +87,11 @@ Files: `scripts/rough_touch_controls.gd`, `scenes/main.tscn`, `docs/DESIGN.md`
 - multi-touch: tracking fingers by index
 - pressing input actions from code, with analog strength
 - `_input` compared with `_physics_process`
+
+## 2026-11-05: Ticket 7, moon on rails and sphere of influence
+
+Files: `native/src/patched_conics_model.cpp`, `native/src/patched_conics_model.h`, `native/src/gravity_model.cpp`, `native/src/gravity_model.h`, `tests/test_gravity_model.gd`, `scripts/body_view.gd`, `scripts/body_guides.gd`, `scripts/body_data.gd`, `scripts/flight_view.gd`, `scripts/main.gd`, `scripts/trajectory_preview.gd`, `scenes/main.tscn`, `data/moon.tres`, `docs/DESIGN.md`
+
+- what a sphere of influence is and why the frame switches there
+- computing a moon's position from time instead of simulating it
+- reusing one shader and script for several bodies

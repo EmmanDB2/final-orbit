@@ -2,28 +2,37 @@
 # From DESIGN.md, "Physics" (trajectory preview) and "Art direction" (telemetry cyan
 # belongs to trajectories).
 #
-# The path is only worked out again when the orbit changes, so a steady orbit costs
-# nothing. It's kept relative to the world origin, so when the view moves it's enough
-# to move this node.
+# The path is worked out again on a burn, on a change of dominant body, every tick while
+# orbiting a moving body, and otherwise only a couple of times a second. It's kept
+# relative to the world origin, so when the view moves it's enough to move this node.
+#
+# If the path reaches another body, this also rings that body where it will be at that
+# moment, because the flyby on the line is drawn around that future position.
 extends Node2D
 
 ## Telemetry cyan from the agency palette.
 @export var line_color: Color = Color("7FE3D6")
-## How far ahead a path that doesn't close is shown, in seconds. Closed orbits show one lap.
+## How far ahead a path is shown, in seconds. Closed orbits show one lap.
 @export var horizon_seconds: float = 3600.0
 ## Points along the path.
 @export var sample_count: int = 512
-## How often, in physics ticks, a path that doesn't close gets worked out again, so the
-## part the ship has already flown clears away.
-@export var open_path_refresh_ticks: int = 30
+## How often, in physics ticks, a coasting path gets worked out again, to clear the part
+## already flown and to catch encounters as the moon moves.
+@export var refresh_ticks: int = 30
+## How many points are in the ring around a future encounter.
+@export var ring_points: int = 64
 
 var _gravity_model: GravityModel
 var _state: ShipState
 var _world_points: PackedFloat64Array = PackedFloat64Array()
 var _screen_points: PackedVector2Array = PackedVector2Array()
 var _pixels_per_unit: float = 0.0
-var _path_is_closed: bool = false
 var _ticks_since_update: int = 0
+var _dominant_body: int = 0
+var _has_encounter: bool = false
+var _encounter_body: int = 0
+var _encounter_x: float = 0.0
+var _encounter_y: float = 0.0
 
 
 ## Starts drawing the path of this ship state.
@@ -37,9 +46,12 @@ func _on_ship_orbit_changed() -> void:
 	_update_path()
 
 
-func _on_ship_world_position_changed(_x: float, _y: float) -> void:
+func _on_ship_world_position_changed(x: float, y: float) -> void:
 	_ticks_since_update += 1
-	if not _path_is_closed and _ticks_since_update >= open_path_refresh_ticks:
+	var dominant: int = _gravity_model.get_dominant_body(x, y, _state.time)
+	# Around a moon the line is drawn around where the moon is now, so it has to keep up.
+	if dominant != 0 or dominant != _dominant_body or _ticks_since_update >= refresh_ticks:
+		_dominant_body = dominant
 		_update_path()
 
 
@@ -54,11 +66,13 @@ func _update_path() -> void:
 	_ticks_since_update = 0
 	_world_points = _gravity_model.predict_trajectory(_state, horizon_seconds, sample_count)
 
-	# A closed orbit comes back to where it started, so it stays right until the next burn.
-	var last: int = _world_points.size() - 2
-	var gap_x: float = _world_points[last] - _world_points[0]
-	var gap_y: float = _world_points[last + 1] - _world_points[1]
-	_path_is_closed = _world_points.size() == sample_count * 2 and gap_x * gap_x + gap_y * gap_y < 1.0
+	var encounter: PackedFloat64Array = _gravity_model.find_encounter(_state, horizon_seconds)
+	_has_encounter = encounter.size() == 2
+	if _has_encounter:
+		_encounter_body = int(encounter[1])
+		var position_then: PackedFloat64Array = _gravity_model.get_body_position(_encounter_body, _state.time + encounter[0])
+		_encounter_x = position_then[0]
+		_encounter_y = position_then[1]
 
 	_rebuild_screen_points()
 
@@ -75,3 +89,8 @@ func _draw() -> void:
 	if _screen_points.size() >= 2:
 		# A width of -1 draws a true one-pixel line, which stays on the pixel grid.
 		draw_polyline(_screen_points, line_color, -1.0)
+
+	if _has_encounter:
+		var center := Vector2(_encounter_x * _pixels_per_unit, _encounter_y * _pixels_per_unit)
+		var surface: float = _gravity_model.get_body_radius(_encounter_body) * _pixels_per_unit
+		draw_arc(center, surface, 0.0, TAU, ring_points, line_color, -1.0)

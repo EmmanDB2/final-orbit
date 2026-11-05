@@ -14,6 +14,16 @@ extends Resource
 ## Seed for the surface pattern. The same seed always draws the same planet.
 @export var terrain_seed: int = 1
 
+@export_group("Rails")
+## Average distance from the center of the system. Zero for the body at the center.
+@export var orbit_semi_major_axis: float = 0.0
+## How stretched the orbit is: 0 is a circle, close to 1 is a long ellipse.
+@export var orbit_eccentricity: float = 0.0
+## Direction of the orbit's closest point, in radians.
+@export var orbit_argument_of_periapsis: float = 0.0
+## How far along its orbit the body starts, as a mean anomaly in radians.
+@export var orbit_start_angle: float = 0.0
+
 
 ## Gravitational parameter: how strongly the body pulls at any distance.
 func get_mu() -> float:
