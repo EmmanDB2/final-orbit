@@ -12,6 +12,7 @@
 [ext_resource type="Script" uid="uid://vwk3lefks25q" path="res://scripts/flight_view.gd" id="10_view"]
 [ext_resource type="Script" uid="uid://cionpf5rm6ml5" path="res://scripts/planet_view.gd" id="11_planet"]
 [ext_resource type="Shader" uid="uid://cxukt7rvnnhc4" path="res://shaders/planet.gdshader" id="12_shader"]
+[ext_resource type="Script" uid="uid://c2uyi1y81rp83" path="res://scripts/trajectory_preview.gd" id="13_path"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_planet"]
 shader = ExtResource("12_shader")
@@ -47,6 +48,9 @@ script = ExtResource("11_planet")
 script = ExtResource("6_light")
 star = ExtResource("7_star")
 
+[node name="Trajectory" type="Node2D" parent="." unique_id=1942087613]
+script = ExtResource("13_path")
+
 [node name="Ship" parent="." unique_id=606153027 instance=ExtResource("1_o5qli")]
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=421907663]
@@ -65,6 +69,9 @@ script = ExtResource("5_mode")
 [connection signal="view_changed" from="Camera2D" to="Background/Starfield" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Background/Planet" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Ship" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Trajectory" method="_on_view_changed"]
+[connection signal="orbit_changed" from="Ship" to="Trajectory" method="_on_ship_orbit_changed"]
+[connection signal="world_position_changed" from="Ship" to="Trajectory" method="_on_ship_world_position_changed"]
 [connection signal="assist_changed" from="Ship" to="Hud/AssistIndicator" method="_on_ship_assist_changed"]
 [connection signal="world_position_changed" from="Ship" to="StarLight" method="_on_ship_world_position_changed"]
 [connection signal="star_light_changed" from="StarLight" to="Background/Starfield" method="_on_star_light_changed"]

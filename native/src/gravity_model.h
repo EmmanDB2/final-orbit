@@ -22,7 +22,8 @@ public:
 	virtual void propagate(const godot::Ref<ShipState> &p_state, double p_dt) const = 0;
 
 	// Where the ship will coast over the next p_duration seconds, without changing it.
-	// Flat [x0, y0, x1, y1, ...], and it stops early if the path hits a surface.
+	// Flat [x0, y0, x1, y1, ...]. It stops early if the path hits a surface, ending exactly
+	// on it, or once a closed orbit has come all the way around.
 	virtual godot::PackedFloat64Array predict_trajectory(const godot::Ref<ShipState> &p_state, double p_duration, int p_samples) const = 0;
 
 protected:

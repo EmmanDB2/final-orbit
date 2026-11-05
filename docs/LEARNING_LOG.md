@@ -71,3 +71,11 @@ Files: `project.godot`, `scenes/main.tscn`, `scenes/ship.tscn`, `scripts/main.gd
 - thrust as small velocity changes on top of an exact orbit
 - drawing a planet with a shader instead of a sprite
 - one script that sets up the others and hands them what they need
+
+## 2026-11-05: Ticket 6, trajectory preview
+
+Files: `scripts/trajectory_preview.gd`, `scripts/ship.gd`, `scripts/main.gd`, `scenes/main.tscn`, `native/src/patched_conics_model.cpp`, `native/src/patched_conics_model.h`, `native/src/gravity_model.h`, `tests/test_gravity_model.gd`, `docs/DESIGN.md`
+
+- caching: only redoing work when something has changed
+- custom drawing with `_draw` and `queue_redraw`
+- moving a node instead of recalculating what it draws

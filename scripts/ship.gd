@@ -16,6 +16,8 @@ extends Node2D
 signal world_position_changed(x: float, y: float)
 ## Emitted when the flight mode changes: true for ASS, false for RAW.
 signal assist_changed(enabled: bool)
+## Emitted when the ship's path has changed, from a burn or from touching a surface.
+signal orbit_changed
 
 ## How quickly A and D change the ship's spin, in radians per second squared.
 ## @export makes this value editable in the Inspector panel.
@@ -38,6 +40,7 @@ var state: ShipState
 
 var _gravity_model: GravityModel
 var _thrusting: bool = false
+var _was_on_surface: bool = false
 var _show_full_sprite: bool = true
 var _flame_time: float = 0.0
 
@@ -83,6 +86,10 @@ func _physics_process(delta: float) -> void:
 		state.velocity_x += sin(heading) * thrust_acceleration * delta
 		state.velocity_y -= cos(heading) * thrust_acceleration * delta
 	_gravity_model.propagate(state, delta)
+
+	if _thrusting or state.is_on_surface() != _was_on_surface:
+		orbit_changed.emit()
+	_was_on_surface = state.is_on_surface()
 
 	world_position_changed.emit(state.x, state.y)
 

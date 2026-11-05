@@ -28,6 +28,10 @@ func _initialize() -> void:
 	_test_big_step_does_not_tunnel()
 	_test_takeoff_from_surface()
 	_test_predict_trajectory()
+	_test_prediction_matches_real_flight()
+	_test_prediction_stops_after_one_lap()
+	_test_prediction_follows_the_curve()
+	_test_prediction_of_open_path()
 	_test_repeatable()
 	_test_precision_far_from_body()
 
@@ -201,6 +205,63 @@ func _test_predict_trajectory() -> void:
 	var last_x: float = impact[impact.size() - 2]
 	var last_y: float = impact[impact.size() - 1]
 	_check("prediction ends on the surface", sqrt(last_x * last_x + last_y * last_y), RADIUS, 1e-6)
+
+
+# The whole point of a preview: fly the ship for real, and every point it passes through
+# should sit on the line that was predicted before it set off.
+func _test_prediction_matches_real_flight() -> void:
+	var flown := _state(0.0, -LOW_ORBIT, 5900.0, 600.0)
+	var semi_major_axis: float = 1.0 / (2.0 / _radius_of(flown) - _speed_of(flown) * _speed_of(flown) / MU)
+	var points: PackedFloat64Array = _model.predict_trajectory(flown, 100000.0, 512)
+	var worst: float = 0.0
+	for tick in range(roundi(_period(semi_major_axis) * 60.0)):
+		_model.propagate(flown, 1.0 / 60.0)
+		if tick % 120 == 0:
+			worst = maxf(worst, _distance_to_path(flown.x, flown.y, points))
+	_check("flown path stays on the predicted line", worst, 0.0, 15.0)
+
+
+func _test_prediction_stops_after_one_lap() -> void:
+	var state := _state(0.0, -LOW_ORBIT, 5600.0, 400.0)
+	var points: PackedFloat64Array = _model.predict_trajectory(state, 100000.0, 512)
+	_check("a long horizon still gets every sample", points.size(), 1024, 0.0)
+	_check("and shows one lap, ending at the start x", points[1022], state.x, 1e-3)
+	_check("and shows one lap, ending at the start y", points[1023], state.y, 1e-3)
+
+
+func _test_prediction_follows_the_curve() -> void:
+	# Very stretched ellipse: periapsis 160000, apoapsis 1600000.
+	var periapsis: float = 160000.0
+	var semi_major_axis: float = (periapsis + 1600000.0) / 2.0
+	var speed: float = sqrt(MU * (2.0 / periapsis - 1.0 / semi_major_axis))
+	var state := _state(0.0, -periapsis, speed, 0.0)
+	var points: PackedFloat64Array = _model.predict_trajectory(state, 100000.0, 512)
+	var longest: float = 0.0
+	for i in range(0, points.size() - 2, 2):
+		longest = maxf(longest, Vector2(points[i + 2] - points[i], points[i + 3] - points[i + 1]).length())
+	# With even time steps the segments at periapsis would be about 30000 long here.
+	_check("no long straight segments on a stretched orbit", 1.0 if longest < 15000.0 else 0.0, 1.0, 0.0)
+
+
+func _test_prediction_of_open_path() -> void:
+	var escape_speed: float = sqrt(2.0 * MU / LOW_ORBIT)
+	var state := _state(0.0, -LOW_ORBIT, escape_speed * 1.2, 0.0)
+	var points: PackedFloat64Array = _model.predict_trajectory(state, 3600.0, 512)
+	var flown := _state(0.0, -LOW_ORBIT, escape_speed * 1.2, 0.0)
+	_model.propagate(flown, 3600.0)
+	_check("escape path has every sample", points.size(), 1024, 0.0)
+	_check("escape path ends where the ship will be, x", points[1022], flown.x, 1e-2)
+	_check("escape path ends where the ship will be, y", points[1023], flown.y, 1e-2)
+
+
+func _distance_to_path(x: float, y: float, points: PackedFloat64Array) -> float:
+	var best: float = INF
+	var point := Vector2(x, y)
+	for i in range(0, points.size() - 2, 2):
+		var closest: Vector2 = Geometry2D.get_closest_point_to_segment(
+				point, Vector2(points[i], points[i + 1]), Vector2(points[i + 2], points[i + 3]))
+		best = minf(best, point.distance_to(closest))
+	return best
 
 
 func _test_repeatable() -> void:

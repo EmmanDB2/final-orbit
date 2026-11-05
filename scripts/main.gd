@@ -19,4 +19,5 @@ func _ready() -> void:
 	state.velocity_x = sqrt(planet.get_mu() / start_radius)
 
 	$Background/Planet.set_body(planet)
+	$Trajectory.start_preview(gravity_model, state)
 	$Ship.start_flight(gravity_model, state, PI / 2.0)

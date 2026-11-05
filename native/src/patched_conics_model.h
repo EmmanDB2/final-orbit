@@ -37,6 +37,23 @@ private:
 		double vy = 0.0;
 	};
 
+	// The conic a coasting ship is on, set up from one state. Every point on it can be
+	// found from a single number, chi, the "universal anomaly".
+	struct Conic {
+		State2D start;
+		double r0 = 0.0;
+		double sqrt_mu = 0.0;
+		double alpha = 0.0; // One over the semi-major axis: + ellipse, 0 parabola, - hyperbola.
+		double sigma0 = 0.0;
+	};
+
+	Conic make_conic(const State2D &p_state) const;
+	// The chi reached after p_dt seconds. This is the part that takes iterating.
+	double solve_chi(const Conic &p_conic, double p_dt) const;
+	// The seconds taken to reach chi. Going this way around needs no iterating.
+	double time_at(const Conic &p_conic, double p_chi) const;
+	void position_at(const Conic &p_conic, double p_chi, double p_dt, double &r_x, double &r_y) const;
+
 	// Exact coast along the conic, with no surface check.
 	State2D coast(const State2D &p_state, double p_dt) const;
 	// Coast that stops at the surface. Returns true if the ship hit it.

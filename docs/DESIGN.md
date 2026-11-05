@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Trajectory preview added for the ship's current path, updating only on burns. The background thread waits for maneuver planning \[Leaning\] |
 | 2026-11-05 | First orbit works, with the physics core in C++. Gravity interface changed to take 64-bit x and y, because Godot's Vector2 is 32-bit. Tier 0 planet set far below 1/10 scale so a low orbit takes under 4 minutes without time warp \[Leaning\]. Four of the six zoom tiers built, with far tiers centered on the planet \[Leaning\] |
 | 2026-11-05 | Star tint kept and moved out of the parking lot \[Leaning\]. Never-pure-black rule changed to match: pure black now only happens far from any star \[Leaning\] |
 | 2026-11-05 | Star tint prototyped behind a feature flag, with a fake star and faint stars washing out in the glare |
@@ -194,6 +195,8 @@ Scale and precision: \[Leaning\]
 - Physics math in 64-bit, either in native code or a double-precision engine build.
 
 Trajectory preview: computed on a background thread, in chunks, and cached while the player drags a maneuver. \[Leaning\]
+
+Tier 0's preview draws the ship's current path as a 1 px telemetry cyan line: one full lap on a closed orbit, otherwise up to an hour ahead or until it hits a surface. Closed-form paths are cheap, so it runs on the main thread and only updates on a burn. The background thread can wait until maneuvers exist. \[Leaning\]
 
 Black holes are faked convincingly, not simulated with relativity: stronger close-range gravity, time dilation on the mission clock, tidal stress, visual lensing. \[Leaning\]
 
