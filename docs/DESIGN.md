@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Two moon capture aids added to the parking lot, not built: Manny likes the difficulty as it is |
 | 2026-11-05 | Landing works in Tier 0, with no damage yet \[Leaning\]. Zoom goes to seven tiers: a Descent tier at 1/8 sits between Surface and Approach, because the 128x jump was too big to land with. Landing line built, moved out of the parking lot \[Leaning\]. Rough altitude and speed readout added \[Leaning\]. Gravity interface gains `predict_entry_heights`, `get_altitude`, and `get_surface_velocity`, the one place ground speed comes from |
 | 2026-11-05 | Rotating planets and atmospheres added for Tier 1 \[Leaning\]. Landing line idea added to the parking lot |
 | 2026-11-05 | Moon on Kepler rails and sphere of influence switching work. Gravity interface gains body queries and `find_encounter`, because the view and preview need them and every model will have bodies. Orbit view now centers on the dominant body. Preview now also refreshes while coasting and draws encounters around the moon's future position \[Leaning\]. Moon set up in `data/moon.tres` so a burn right at the start reaches it \[Leaning\] |
@@ -394,3 +395,5 @@ Parking lot:
 - Half-folded Mission Control console \[Cut: no Flex Mode on Fold 8; revisit for Fold 8 Ultra or later\]
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
+- Dim line past a moon's sphere of influence: the rest of the orbit keeps drawing faintly beyond the ring, so you can watch it shrink during a capture burn \[Not built: capture is meant to take some skill\]
+- Direction of travel marker: a small tick by the ship showing its direction relative to the body it's orbiting \[Not built: capture is meant to take some skill\]
