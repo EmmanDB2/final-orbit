@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | SAS staying spin-only is now \[Locked\], after flight testing |
 | 2026-11-05 | Two flight modes added, RAW and SAS (Ship Assist Systems), with SAS cancelling spin only \[Leaning\]. All-rounder archetype added; the Tier 0 lander is that ship, with thrust tuned to 300 px/s² \[Leaning\] |
 | 2026-11-05 | Tier 0 turning changed to angular momentum, replacing the fixed turn rate \[Leaning\] |
 | 2026-11-05 | Background stars set to a seeded shader with three parallax layers \[Leaning\] |
@@ -173,7 +174,7 @@ Flight modes: \[Leaning\]
 
 - RAW: your inputs only. Spin and drift last until you counter them yourself.
 - SAS (Ship Assist Systems): when you let go of the turn keys, the RCS fires against the spin until the ship stops turning.
-- SAS never brakes velocity, because cutting velocity would break orbits.
+- SAS never brakes velocity, because cutting velocity would break orbits. \[Locked\]
 - SAS uses the same thrusters as manual turning, at the same strength, so from Tier 1 it should burn the same fuel.
 - The ship starts in SAS. T switches modes for now; the touch control is part of the touch controls question.
 
