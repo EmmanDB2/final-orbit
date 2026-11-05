@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Tier 0 turning set to a fixed turn rate, no angular momentum \[Leaning\] |
 | 2026-11-05 | Tier 0 started. Engine set to Godot 4.7.2 with the Compatibility renderer \[Leaning\]. C# re-checked: Godot 4.7 docs still call Android support experimental, so the physics core stays C++. Published Fold 8 screen sizes added to the resolution question, with a 3x placeholder |
 | 2026-11-05 | Named Final Orbit. Pixel scale locked: pilot about 35 x 40 px (concept art at native scale), canopy 40-48 px, modules about 64 x 64 px, small craft about 100 x 200 px |
 | 2026-11-04 | First draft from brainstorm |
@@ -160,6 +161,7 @@ Ship: \[Locked\]
 - Coasting orbits are closed-form ellipses, so time warp and fold-to-coast cost almost nothing.
 - Thrust, collisions, and torque use the ship's live mass and center of mass.
 - Ship mass does not change its orbit, only how it responds to pushes.
+- Tier 0 turning is a fixed turn rate with no angular momentum; torque arrives with modular ships. \[Leaning\]
 
 Scale and precision: \[Leaning\]
 
