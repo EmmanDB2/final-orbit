@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | First Android build runs on the Fold. Screen sizes confirmed on the device. Android export approach added under Tech \[Leaning\] |
 | 2026-11-05 | SAS renamed ASS, for Attitude Stabilization System \[Locked\] |
 | 2026-11-05 | SAS staying spin-only is now \[Locked\], after flight testing |
 | 2026-11-05 | Two flight modes added, RAW and SAS (Ship Assist Systems), with SAS cancelling spin only \[Leaning\]. All-rounder archetype added; the Tier 0 lander is that ship, with thrust tuned to 300 px/s² \[Leaning\] |
@@ -299,6 +300,8 @@ Godot 4, with GDScript for gameplay and the physics core in C++ through GDExtens
 
 Godot 4.7.2 with the Compatibility renderer, since the game is 2D and needs no compute shaders. Changing renderer is a one-line project setting. \[Leaning\]
 
+Android builds use Godot's prebuilt template rather than a Gradle build, arm64 only, as a debug build for now. Package name: `com.emmanuelwalters.finalorbit`. \[Leaning\]
+
 Engine options:
 
 | Option | For | Against | Verdict |
@@ -340,7 +343,7 @@ Open questions:
 - [ ] Name of the game: decided, Final Orbit
 - [ ] Destroy gigs: real combat with armed ships and AI pilots, or only non-combat targets (dead satellites, derelicts, rogue asteroids)?
 - [ ] Pilot identity: named character, customizable, or anonymous?
-- [ ] Exact internal pixel resolutions for the inner and cover screens. Published specs: inner 2448 x 1848 (4:3, not near-square), cover 1972 x 1248 (16:10); confirm on the device. Placeholder: 3x, so 816 x 616 inner. A fixed base size drops the cover screen to 2x with black bars, so each screen needs its size set at runtime.
+- [ ] Exact internal pixel resolutions for the inner and cover screens. Confirmed on the device 2026-11-05: inner 2448 x 1848 (4:3, not near-square), cover 1972 x 1248 (16:10). Placeholder: 3x, so 816 x 616 inner. The fixed base size draws the cover screen at 2x as 973 x 616, leaving black bars of 13 px on the sides and 8 px top and bottom, so each screen needs its size set at runtime.
 - [ ] Module grid size (64 x 64 px is a starting guess)
 - [ ] Touch controls for burns, rotation, and maneuver planning
 - [ ] Economy numbers: gig pay, ship prices, repair costs, tow cost

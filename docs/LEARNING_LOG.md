@@ -39,3 +39,11 @@ Files: `project.godot`, `scenes/main.tscn`, `scripts/ship.gd`, `scripts/assist_i
 - `move_toward` for stopping exactly at a target
 - signals that update the UI
 - sprite sheets with `hframes`
+
+## 2026-11-05: Ticket 4, first Android build on the Fold
+
+Files: `export_presets.cfg`, `project.godot`, `.gitignore`, `docs/DESIGN.md`
+
+- export presets and templates
+- debug signing with a keystore
+- Android `configChanges` and why folding doesn't restart the app
