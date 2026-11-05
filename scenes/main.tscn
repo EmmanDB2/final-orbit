@@ -1,8 +1,26 @@
 [gd_scene format=3 uid="uid://d1lx65bonov4a"]
 
 [ext_resource type="PackedScene" uid="uid://cfrgkaawf6jcy" path="res://scenes/ship.tscn" id="1_o5qli"]
+[ext_resource type="Material" path="res://data/starfield.tres" id="2_stars"]
+[ext_resource type="Script" uid="uid://ss85tsat2knn" path="res://scripts/starfield.gd" id="3_stars"]
 
 [node name="Main" type="Node2D" unique_id=1515308371]
 
+[node name="Background" type="CanvasLayer" parent="." unique_id=734120958]
+layer = -1
+
+[node name="Starfield" type="ColorRect" parent="Background" unique_id=1192846075]
+material = ExtResource("2_stars")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_stars")
+
 [node name="Ship" parent="." unique_id=606153027 instance=ExtResource("1_o5qli")]
-position = Vector2(408, 308)
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=421907663]
+
+[connection signal="world_position_changed" from="Ship" to="Background/Starfield" method="_on_ship_world_position_changed"]

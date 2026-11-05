@@ -17,3 +17,11 @@ Files: `project.godot`, `scenes/ship.tscn`, `scripts/ship.gd`, `art/flame_main.p
 - velocity and momentum
 - forward vector from sin and cos
 - `_physics_process` and fixed time steps
+
+## 2026-11-05: Ticket 3, camera follows the ship, starfield shader
+
+Files: `scenes/main.tscn`, `scripts/starfield.gd`, `shaders/starfield.gdshader`, `data/starfield.tres`
+
+- floating origin
+- signals connected in a scene
+- fragment shaders and uniforms

@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Background stars set to a seeded shader with three parallax layers \[Leaning\] |
 | 2026-11-05 | Tier 0 turning set to a fixed turn rate, no angular momentum \[Leaning\] |
 | 2026-11-05 | Tier 0 started. Engine set to Godot 4.7.2 with the Compatibility renderer \[Leaning\]. C# re-checked: Godot 4.7 docs still call Android support experimental, so the physics core stays C++. Published Fold 8 screen sizes added to the resolution question, with a 3x placeholder |
 | 2026-11-05 | Named Final Orbit. Pixel scale locked: pilot about 35 x 40 px (concept art at native scale), canopy 40-48 px, modules about 64 x 64 px, small craft about 100 x 200 px |
@@ -260,6 +261,7 @@ Space palette (generated per system): \[Locked\]
 - Each system rolls a small palette from its seed; each planet uses about 6 colors from it.
 - Star colors come from real temperature; anomaly systems may roll colors that make no physical sense.
 - Backgrounds are always very dark, never pure black.
+- Background stars are a seeded shader with three parallax layers. Real stars would barely shift; the parallax is there so motion reads in empty space. \[Leaning\]
 
 Readability rules: \[Locked\]
 
