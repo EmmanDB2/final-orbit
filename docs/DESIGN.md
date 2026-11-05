@@ -217,7 +217,7 @@ Scale and precision: \[Leaning\]
 
 Trajectory preview: computed on a background thread, in chunks, and cached while the player drags a maneuver. \[Leaning\]
 
-Tier 0's preview draws the ship's current path as a 1 px telemetry cyan line: one full lap on a closed orbit, otherwise up to an hour ahead or until it hits a surface. Closed-form paths are cheap, so it runs on the main thread. It updates on a burn, on a change of dominant body, every tick while orbiting a moving body, and otherwise twice a second to catch encounters as the moon moves. The background thread can wait until maneuvers exist. \[Leaning\]
+Tier 0's preview draws the ship's current path as a 1 px telemetry cyan line: one full lap on a closed orbit, otherwise up to an hour ahead or until it hits a surface. Closed-form paths are cheap, so it runs on the main thread. It updates on a burn, on a change of dominant body, and every tick while orbiting a moving body or on a path that doesn't close, so no flown part lingers behind the ship. A closed orbit updates twice a second, to catch encounters as the moon moves. The background thread can wait until maneuvers exist. \[Leaning\]
 
 Around a moon, the line is drawn around the moon as it is now. An upcoming encounter is drawn around the moon as it will be on arrival, with a ring showing where that is, so the line has a kink where it enters the moon's frame. The line ends on leaving the moon's sphere; the path after that shows once you get there. \[Leaning\]
 

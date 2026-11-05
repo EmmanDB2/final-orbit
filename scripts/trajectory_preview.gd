@@ -2,10 +2,11 @@
 # From DESIGN.md, "Physics" (trajectory preview) and "Art direction" (telemetry cyan
 # belongs to trajectories).
 #
-# The path is worked out again on a burn, on a change of dominant body, every tick while
-# orbiting a moving body or heading into a landing zone, and otherwise only a couple of
-# times a second. It's kept relative to the world origin, so when the view moves it's
-# enough to move this node.
+# The path is worked out again on a burn, on a change of dominant body, and every tick
+# while orbiting a moving body or on a path that doesn't close, so no flown part lingers
+# behind the ship. A closed orbit's line loops back over itself, so it only needs a
+# couple of updates a second. The path is kept relative to the world origin, so when the
+# view moves it's enough to move this node.
 #
 # If the path reaches another body, this also rings that body where it will be at that
 # moment, because the flyby on the line is drawn around that future position.
@@ -36,6 +37,7 @@ var _entry_heights: PackedFloat64Array = PackedFloat64Array()
 var _landing_runs: Array[PackedVector2Array] = []
 var _pixels_per_unit: float = 0.0
 var _ticks_since_update: int = 0
+var _path_is_open: bool = true
 var _dominant_body: int = 0
 var _has_encounter: bool = false
 var _encounter_body: int = 0
@@ -58,8 +60,7 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 	_ticks_since_update += 1
 	var dominant: int = _gravity_model.get_dominant_body(x, y, _state.time)
 	# Around a moon the line is drawn around where the moon is now, so it has to keep up.
-	# Near the ground the view is close enough to see any part of the line left behind.
-	if dominant != 0 or dominant != _dominant_body or not _landing_runs.is_empty() or _ticks_since_update >= refresh_ticks:
+	if dominant != 0 or dominant != _dominant_body or _path_is_open or _ticks_since_update >= refresh_ticks:
 		_dominant_body = dominant
 		_update_path()
 
@@ -75,6 +76,10 @@ func _update_path() -> void:
 	_ticks_since_update = 0
 	_world_points = _gravity_model.predict_trajectory(_state, horizon_seconds, sample_count)
 	_entry_heights = _gravity_model.predict_entry_heights(_state, horizon_seconds, sample_count)
+
+	var gap_x: float = _world_points[_world_points.size() - 2] - _world_points[0]
+	var gap_y: float = _world_points[_world_points.size() - 1] - _world_points[1]
+	_path_is_open = gap_x * gap_x + gap_y * gap_y > 1.0
 
 	var encounter: PackedFloat64Array = _gravity_model.find_encounter(_state, horizon_seconds)
 	_has_encounter = encounter.size() == 2
