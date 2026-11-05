@@ -2,6 +2,7 @@
 
 #include <godot_cpp/core/class_db.hpp>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace godot;
@@ -13,10 +14,16 @@ namespace {
 // Longest piece of a coast between surface checks, in seconds. Only used on paths
 // that can actually reach the surface, so normal orbits stay one exact step.
 constexpr double MAX_IMPACT_CHECK_STEP = 0.25;
+// Shortest jump between sphere of influence checks, in seconds.
+constexpr double MIN_SOI_CHECK_STEP = 0.25;
+// Extra caution on how fast a sphere of influence could be coming up.
+constexpr double SOI_STEP_MARGIN = 1.2;
+constexpr int MAX_WALK_STEPS = 20000;
 constexpr int MAX_SOLVER_ITERATIONS = 64;
 constexpr double SOLVER_TOLERANCE = 1e-12;
-constexpr int MAX_IMPACT_BISECTIONS = 48;
+constexpr int MAX_BISECTIONS = 48;
 constexpr double FULL_CIRCLE = 6.283185307179586476925286766559;
+constexpr double HALF_CIRCLE = FULL_CIRCLE / 2.0;
 
 // The Stumpff functions C(z) and S(z) from the universal variable equations. Close to
 // zero the closed forms divide by almost nothing, so a short series takes over.
@@ -39,34 +46,114 @@ void stumpff(double p_z, double &r_c, double &r_s) {
 
 void PatchedConicsModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_central_body", "mu", "radius"), &PatchedConicsModel::set_central_body);
+	ClassDB::bind_method(D_METHOD("add_moon", "mu", "radius", "semi_major_axis", "eccentricity", "argument_of_periapsis", "mean_anomaly_at_start"), &PatchedConicsModel::add_moon);
 }
 
 void PatchedConicsModel::set_central_body(double p_mu, double p_radius) {
-	mu = p_mu;
-	radius = p_radius;
+	bodies[0].mu = p_mu;
+	bodies[0].radius = p_radius;
+}
+
+void PatchedConicsModel::add_moon(double p_mu, double p_radius, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start) {
+	Body moon;
+	moon.mu = p_mu;
+	moon.radius = p_radius;
+	moon.semi_major_axis = p_semi_major_axis;
+	moon.eccentricity = p_eccentricity;
+	moon.argument_of_periapsis = p_argument_of_periapsis;
+	moon.mean_anomaly_at_start = p_mean_anomaly_at_start;
+	moon.mean_motion = std::sqrt(bodies[0].mu / (p_semi_major_axis * p_semi_major_axis * p_semi_major_axis));
+	moon.sphere_of_influence = p_semi_major_axis * std::pow(p_mu / bodies[0].mu, 0.4);
+	bodies.push_back(moon);
+}
+
+PatchedConicsModel::State2D PatchedConicsModel::body_state(int p_index, double p_time) const {
+	State2D result;
+	if (p_index <= 0 || p_index >= static_cast<int>(bodies.size())) {
+		return result;
+	}
+
+	const Body &body = bodies[p_index];
+	double mean_anomaly = std::fmod(body.mean_anomaly_at_start + body.mean_motion * p_time, FULL_CIRCLE);
+	if (mean_anomaly > HALF_CIRCLE) {
+		mean_anomaly -= FULL_CIRCLE;
+	} else if (mean_anomaly < -HALF_CIRCLE) {
+		mean_anomaly += FULL_CIRCLE;
+	}
+
+	// Kepler's equation for an ellipse. Moons are close to circular, so this settles fast.
+	const double e = body.eccentricity;
+	double eccentric_anomaly = mean_anomaly;
+	for (int i = 0; i < 16; i++) {
+		const double step = (eccentric_anomaly - e * std::sin(eccentric_anomaly) - mean_anomaly) / (1.0 - e * std::cos(eccentric_anomaly));
+		eccentric_anomaly -= step;
+		if (std::abs(step) < 1e-14) {
+			break;
+		}
+	}
+
+	const double cos_e = std::cos(eccentric_anomaly);
+	const double sin_e = std::sin(eccentric_anomaly);
+	const double squeeze = std::sqrt(1.0 - e * e);
+	const double a = body.semi_major_axis;
+	const double along = a * (cos_e - e);
+	const double across = a * squeeze * sin_e;
+	const double r = a * (1.0 - e * cos_e);
+	const double rate = std::sqrt(bodies[0].mu * a) / r;
+	const double speed_along = -rate * sin_e;
+	const double speed_across = rate * squeeze * cos_e;
+
+	const double cos_w = std::cos(body.argument_of_periapsis);
+	const double sin_w = std::sin(body.argument_of_periapsis);
+	result.x = along * cos_w - across * sin_w;
+	result.y = along * sin_w + across * cos_w;
+	result.vx = speed_along * cos_w - speed_across * sin_w;
+	result.vy = speed_along * sin_w + speed_across * cos_w;
+	return result;
+}
+
+int PatchedConicsModel::dominant_body(double p_x, double p_y, double p_time) const {
+	for (int i = 1; i < static_cast<int>(bodies.size()); i++) {
+		const State2D moon = body_state(i, p_time);
+		const double dx = p_x - moon.x;
+		const double dy = p_y - moon.y;
+		const double soi = bodies[i].sphere_of_influence;
+		if (dx * dx + dy * dy < soi * soi) {
+			return i;
+		}
+	}
+	return 0;
 }
 
 PackedFloat64Array PatchedConicsModel::get_acceleration(double p_x, double p_y, double p_time) const {
 	PackedFloat64Array result;
 	result.resize(2);
-	const double r_squared = p_x * p_x + p_y * p_y;
+	result.set(0, 0.0);
+	result.set(1, 0.0);
+
+	const int index = dominant_body(p_x, p_y, p_time);
+	const State2D body = body_state(index, p_time);
+	const double dx = p_x - body.x;
+	const double dy = p_y - body.y;
+	const double r_squared = dx * dx + dy * dy;
 	if (r_squared > 0.0) {
 		const double r = std::sqrt(r_squared);
-		const double scale = -mu / (r_squared * r);
-		result.set(0, p_x * scale);
-		result.set(1, p_y * scale);
+		const double scale = -bodies[index].mu / (r_squared * r);
+		result.set(0, dx * scale);
+		result.set(1, dy * scale);
 	}
 	return result;
 }
 
-PatchedConicsModel::Conic PatchedConicsModel::make_conic(const State2D &p_state) const {
+PatchedConicsModel::Conic PatchedConicsModel::make_conic(const State2D &p_state, double p_mu) const {
 	Conic conic;
 	conic.start = p_state;
+	conic.mu = p_mu;
 	conic.r0 = std::sqrt(p_state.x * p_state.x + p_state.y * p_state.y);
-	conic.sqrt_mu = std::sqrt(mu);
+	conic.sqrt_mu = std::sqrt(p_mu);
 	if (conic.r0 > 0.0) {
 		const double speed_squared = p_state.vx * p_state.vx + p_state.vy * p_state.vy;
-		conic.alpha = 2.0 / conic.r0 - speed_squared / mu;
+		conic.alpha = 2.0 / conic.r0 - speed_squared / p_mu;
 		conic.sigma0 = (p_state.x * p_state.vx + p_state.y * p_state.vy) / conic.sqrt_mu;
 	}
 	return conic;
@@ -84,7 +171,7 @@ double PatchedConicsModel::solve_chi(const Conic &p_conic, double p_dt) const {
 	} else if (alpha < -1e-12) {
 		const double a = 1.0 / alpha;
 		const double sign = p_dt > 0.0 ? 1.0 : -1.0;
-		const double inner = -2.0 * mu * alpha * p_dt / (sigma0 * sqrt_mu + sign * std::sqrt(-mu * a) * (1.0 - r0 * alpha));
+		const double inner = -2.0 * p_conic.mu * alpha * p_dt / (sigma0 * sqrt_mu + sign * std::sqrt(-p_conic.mu * a) * (1.0 - r0 * alpha));
 		chi = sign * std::sqrt(-a) * std::log(std::abs(inner));
 		if (!std::isfinite(chi)) {
 			chi = sqrt_mu * p_dt / r0;
@@ -133,8 +220,8 @@ void PatchedConicsModel::position_at(const Conic &p_conic, double p_chi, double 
 	r_y = lagrange_f * p_conic.start.y + lagrange_g * p_conic.start.vy;
 }
 
-PatchedConicsModel::State2D PatchedConicsModel::coast(const State2D &p_state, double p_dt) const {
-	const Conic conic = make_conic(p_state);
+PatchedConicsModel::State2D PatchedConicsModel::coast(const State2D &p_state, double p_dt, double p_mu) const {
+	const Conic conic = make_conic(p_state, p_mu);
 	if (p_dt == 0.0 || conic.r0 == 0.0) {
 		return p_state;
 	}
@@ -156,32 +243,43 @@ PatchedConicsModel::State2D PatchedConicsModel::coast(const State2D &p_state, do
 	return result;
 }
 
-double PatchedConicsModel::periapsis_radius(const State2D &p_state) const {
+double PatchedConicsModel::periapsis_radius(const State2D &p_state, double p_mu) const {
 	const double r = std::sqrt(p_state.x * p_state.x + p_state.y * p_state.y);
 	if (r == 0.0) {
 		return 0.0;
 	}
 	const double h = p_state.x * p_state.vy - p_state.y * p_state.vx;
-	const double energy = 0.5 * (p_state.vx * p_state.vx + p_state.vy * p_state.vy) - mu / r;
-	const double eccentricity = std::sqrt(std::max(0.0, 1.0 + 2.0 * energy * h * h / (mu * mu)));
-	return (h * h / mu) / (1.0 + eccentricity);
+	const double energy = 0.5 * (p_state.vx * p_state.vx + p_state.vy * p_state.vy) - p_mu / r;
+	const double eccentricity = std::sqrt(std::max(0.0, 1.0 + 2.0 * energy * h * h / (p_mu * p_mu)));
+	return (h * h / p_mu) / (1.0 + eccentricity);
 }
 
-bool PatchedConicsModel::coast_to_surface(State2D &r_state, double p_dt) const {
+double PatchedConicsModel::peak_speed(const State2D &p_state, const Body &p_body) const {
+	const double r = std::sqrt(p_state.x * p_state.x + p_state.y * p_state.y);
+	if (r == 0.0) {
+		return 0.0;
+	}
+	const double speed_squared = p_state.vx * p_state.vx + p_state.vy * p_state.vy;
+	const double alpha = 2.0 / r - speed_squared / p_body.mu;
+	const double lowest = std::max(std::max(periapsis_radius(p_state, p_body.mu), p_body.radius), 1.0);
+	return std::sqrt(std::max(0.0, p_body.mu * (2.0 / lowest - alpha)));
+}
+
+bool PatchedConicsModel::coast_to_surface(State2D &r_state, double p_dt, const Body &p_body) const {
 	int pieces = 1;
-	if (radius > 0.0 && periapsis_radius(r_state) < radius) {
+	if (p_body.radius > 0.0 && periapsis_radius(r_state, p_body.mu) < p_body.radius) {
 		pieces = std::max(1, static_cast<int>(std::ceil(std::abs(p_dt) / MAX_IMPACT_CHECK_STEP)));
 	}
 	const double piece_dt = p_dt / pieces;
 	for (int i = 0; i < pieces; i++) {
-		r_state = coast(r_state, piece_dt);
+		r_state = coast(r_state, piece_dt, p_body.mu);
 		const double r = std::sqrt(r_state.x * r_state.x + r_state.y * r_state.y);
-		if (r < radius) {
+		if (r < p_body.radius) {
 			if (r > 0.0) {
-				r_state.x *= radius / r;
-				r_state.y *= radius / r;
+				r_state.x *= p_body.radius / r;
+				r_state.y *= p_body.radius / r;
 			} else {
-				r_state.y = -radius;
+				r_state.y = -p_body.radius;
 			}
 			r_state.vx = 0.0;
 			r_state.vy = 0.0;
@@ -191,21 +289,198 @@ bool PatchedConicsModel::coast_to_surface(State2D &r_state, double p_dt) const {
 	return false;
 }
 
+double PatchedConicsModel::safe_step(const State2D &p_world, double p_time, int p_body) const {
+	const int count = static_cast<int>(bodies.size());
+	if (count <= 1) {
+		return INFINITY;
+	}
+
+	const State2D origin = body_state(p_body, p_time);
+	State2D relative;
+	relative.x = p_world.x - origin.x;
+	relative.y = p_world.y - origin.y;
+	relative.vx = p_world.vx - origin.vx;
+	relative.vy = p_world.vy - origin.vy;
+	const double peak = peak_speed(relative, bodies[p_body]);
+
+	double step = INFINITY;
+	if (p_body == 0) {
+		for (int i = 1; i < count; i++) {
+			const State2D moon = body_state(i, p_time);
+			const double gap = std::sqrt((p_world.x - moon.x) * (p_world.x - moon.x) + (p_world.y - moon.y) * (p_world.y - moon.y)) - bodies[i].sphere_of_influence;
+			const double closing = peak + std::sqrt(moon.vx * moon.vx + moon.vy * moon.vy);
+			if (closing > 0.0) {
+				step = std::min(step, gap / (closing * SOI_STEP_MARGIN));
+			}
+		}
+	} else if (peak > 0.0) {
+		const double r = std::sqrt(relative.x * relative.x + relative.y * relative.y);
+		step = (bodies[p_body].sphere_of_influence - r) / (peak * SOI_STEP_MARGIN);
+	}
+	return std::max(step, MIN_SOI_CHECK_STEP);
+}
+
 void PatchedConicsModel::propagate(const Ref<ShipState> &p_state, double p_dt) const {
 	ERR_FAIL_COND(p_state.is_null());
 
-	State2D state;
-	state.x = p_state->x;
-	state.y = p_state->y;
-	state.vx = p_state->velocity_x;
-	state.vy = p_state->velocity_y;
+	State2D world;
+	world.x = p_state->x;
+	world.y = p_state->y;
+	world.vx = p_state->velocity_x;
+	world.vy = p_state->velocity_y;
 
-	p_state->on_surface = coast_to_surface(state, p_dt);
-	p_state->x = state.x;
-	p_state->y = state.y;
-	p_state->velocity_x = state.vx;
-	p_state->velocity_y = state.vy;
-	p_state->time += p_dt;
+	const double direction = p_dt < 0.0 ? -1.0 : 1.0;
+	double remaining = std::abs(p_dt);
+	double time = p_state->time;
+	bool on_surface = false;
+
+	for (int step = 0; remaining > 0.0 && step < MAX_WALK_STEPS; step++) {
+		const int index = dominant_body(world.x, world.y, time);
+		const double h = std::min(remaining, safe_step(world, time, index));
+
+		const State2D origin = body_state(index, time);
+		State2D relative;
+		relative.x = world.x - origin.x;
+		relative.y = world.y - origin.y;
+		relative.vx = world.vx - origin.vx;
+		relative.vy = world.vy - origin.vy;
+
+		on_surface = coast_to_surface(relative, direction * h, bodies[index]);
+		time += direction * h;
+		remaining -= h;
+
+		// A ship on the surface rides along with the body for the rest of the step.
+		if (on_surface && remaining > 0.0) {
+			time += direction * remaining;
+			remaining = 0.0;
+		}
+
+		const State2D new_origin = body_state(index, time);
+		world.x = relative.x + new_origin.x;
+		world.y = relative.y + new_origin.y;
+		world.vx = relative.vx + new_origin.vx;
+		world.vy = relative.vy + new_origin.vy;
+	}
+
+	p_state->on_surface = on_surface;
+	p_state->x = world.x;
+	p_state->y = world.y;
+	p_state->velocity_x = world.vx;
+	p_state->velocity_y = world.vy;
+	p_state->time = p_state->time + p_dt;
+}
+
+bool PatchedConicsModel::segment_event(const State2D &p_relative, int p_body, double p_time, SegmentEnd &r_end) const {
+	const Body &body = bodies[p_body];
+	const double r_squared = p_relative.x * p_relative.x + p_relative.y * p_relative.y;
+
+	if (r_squared < body.radius * body.radius) {
+		r_end.reason = SegmentEndReason::IMPACT;
+		return true;
+	}
+	if (p_body != 0) {
+		if (r_squared > body.sphere_of_influence * body.sphere_of_influence) {
+			r_end.reason = SegmentEndReason::LEFT_BODY;
+			r_end.next_body = 0;
+			return true;
+		}
+		return false;
+	}
+
+	const State2D origin = body_state(p_body, p_time);
+	const int next = dominant_body(p_relative.x + origin.x, p_relative.y + origin.y, p_time);
+	if (next != p_body) {
+		r_end.reason = SegmentEndReason::ENCOUNTER;
+		r_end.next_body = next;
+		return true;
+	}
+	return false;
+}
+
+PatchedConicsModel::SegmentEnd PatchedConicsModel::walk_segment(const State2D &p_relative, int p_body, double p_start_time, double p_horizon) const {
+	const Body &body = bodies[p_body];
+	const Conic conic = make_conic(p_relative, body.mu);
+
+	SegmentEnd end;
+	double limit = p_horizon;
+	if (conic.alpha > 1e-12) {
+		const double lap = time_at(conic, FULL_CIRCLE / std::sqrt(conic.alpha));
+		if (lap <= limit) {
+			limit = lap;
+			end.reason = SegmentEndReason::LAP;
+		}
+	}
+
+	const bool can_hit_surface = body.radius > 0.0 && periapsis_radius(p_relative, body.mu) < body.radius;
+	double elapsed = 0.0;
+	for (int step = 0; step < MAX_WALK_STEPS && elapsed < limit; step++) {
+		const State2D here = coast(p_relative, elapsed, body.mu);
+		const State2D origin = body_state(p_body, p_start_time + elapsed);
+		State2D world;
+		world.x = here.x + origin.x;
+		world.y = here.y + origin.y;
+		world.vx = here.vx + origin.vx;
+		world.vy = here.vy + origin.vy;
+
+		double h = std::min(limit - elapsed, safe_step(world, p_start_time + elapsed, p_body));
+		if (can_hit_surface) {
+			h = std::min(h, 1.0);
+		}
+
+		const double next = elapsed + h;
+		SegmentEnd event = end;
+		if (segment_event(coast(p_relative, next, body.mu), p_body, p_start_time + next, event)) {
+			// Something changed during this jump, so narrow down when.
+			double before = elapsed;
+			double after = next;
+			for (int i = 0; i < MAX_BISECTIONS; i++) {
+				const double middle = 0.5 * (before + after);
+				SegmentEnd probe = end;
+				if (segment_event(coast(p_relative, middle, body.mu), p_body, p_start_time + middle, probe)) {
+					after = middle;
+				} else {
+					before = middle;
+				}
+			}
+			event.duration = after;
+			return event;
+		}
+		elapsed = next;
+	}
+
+	end.duration = elapsed;
+	return end;
+}
+
+void PatchedConicsModel::sample_segment(PackedFloat64Array &r_points, const State2D &p_relative, int p_body, const SegmentEnd &p_end, double p_origin_x, double p_origin_y, int p_count) const {
+	const Body &body = bodies[p_body];
+	const Conic conic = make_conic(p_relative, body.mu);
+	if (conic.r0 == 0.0) {
+		return;
+	}
+
+	// Samples are even in chi rather than in time. A ship crawls through the far end of
+	// an ellipse and rushes through the near end, so even time steps would bunch up
+	// where it's straightest and spread out where it curves hardest.
+	const double end_chi = p_end.reason == SegmentEndReason::LAP ? FULL_CIRCLE / std::sqrt(conic.alpha) : solve_chi(conic, p_end.duration);
+
+	for (int i = 0; i < p_count; i++) {
+		const double chi = p_count > 1 ? end_chi * i / (p_count - 1) : 0.0;
+		double x;
+		double y;
+		position_at(conic, chi, time_at(conic, chi), x, y);
+
+		// Land exactly on the surface.
+		if (i == p_count - 1 && p_end.reason == SegmentEndReason::IMPACT) {
+			const double r = std::sqrt(x * x + y * y);
+			if (r > 0.0) {
+				x *= body.radius / r;
+				y *= body.radius / r;
+			}
+		}
+		r_points.push_back(x + p_origin_x);
+		r_points.push_back(y + p_origin_y);
+	}
 }
 
 PackedFloat64Array PatchedConicsModel::predict_trajectory(const Ref<ShipState> &p_state, double p_duration, int p_samples) const {
@@ -213,65 +488,109 @@ PackedFloat64Array PatchedConicsModel::predict_trajectory(const Ref<ShipState> &
 	ERR_FAIL_COND_V(p_state.is_null(), points);
 	ERR_FAIL_COND_V(p_samples < 2, points);
 
-	State2D start;
-	start.x = p_state->x;
-	start.y = p_state->y;
-	start.vx = p_state->velocity_x;
-	start.vy = p_state->velocity_y;
-
-	points.push_back(start.x);
-	points.push_back(start.y);
-	const Conic conic = make_conic(start);
-	if (p_duration <= 0.0 || conic.r0 == 0.0) {
+	if (p_duration <= 0.0) {
+		points.push_back(p_state->x);
+		points.push_back(p_state->y);
 		return points;
 	}
 
-	// Samples are even in chi rather than in time. A ship crawls through the far end of
-	// an ellipse and rushes through the near end, so even time steps would bunch up
-	// where it's straightest and spread out where it curves hardest.
-	double end_chi;
-	const bool is_ellipse = conic.alpha > 1e-12;
-	const double lap_chi = is_ellipse ? FULL_CIRCLE / std::sqrt(conic.alpha) : 0.0;
-	if (is_ellipse && time_at(conic, lap_chi) <= p_duration) {
-		end_chi = lap_chi;
-	} else {
-		end_chi = solve_chi(conic, p_duration);
+	const double now = p_state->time;
+	const int index = dominant_body(p_state->x, p_state->y, now);
+	const State2D origin = body_state(index, now);
+	State2D relative;
+	relative.x = p_state->x - origin.x;
+	relative.y = p_state->y - origin.y;
+	relative.vx = p_state->velocity_x - origin.vx;
+	relative.vy = p_state->velocity_y - origin.vy;
+
+	const SegmentEnd first = walk_segment(relative, index, now, p_duration);
+	if (first.reason != SegmentEndReason::ENCOUNTER) {
+		sample_segment(points, relative, index, first, origin.x, origin.y, p_samples);
+		return points;
 	}
 
-	double previous_chi = 0.0;
-	for (int i = 1; i < p_samples; i++) {
-		const double chi = end_chi * i / (p_samples - 1);
-		double x;
-		double y;
-		position_at(conic, chi, time_at(conic, chi), x, y);
+	// Two thirds of the line for the way there, and the rest for the flyby, drawn around
+	// the moon as it will be at the moment the ship arrives.
+	const int first_count = std::max(2, p_samples * 2 / 3);
+	sample_segment(points, relative, index, first, origin.x, origin.y, first_count);
 
-		if (x * x + y * y < radius * radius) {
-			// Went under the surface since the last sample, so narrow down where it crossed.
-			double outside = previous_chi;
-			double inside = chi;
-			for (int step = 0; step < MAX_IMPACT_BISECTIONS; step++) {
-				const double middle = 0.5 * (outside + inside);
-				position_at(conic, middle, time_at(conic, middle), x, y);
-				if (x * x + y * y < radius * radius) {
-					inside = middle;
-				} else {
-					outside = middle;
-				}
-			}
-			position_at(conic, inside, time_at(conic, inside), x, y);
-			const double r = std::sqrt(x * x + y * y);
-			if (r > 0.0) {
-				x *= radius / r;
-				y *= radius / r;
-			}
-			points.push_back(x);
-			points.push_back(y);
-			break;
-		}
+	const double arrival = now + first.duration;
+	const State2D at_arrival = coast(relative, first.duration, bodies[index].mu);
+	const State2D moon = body_state(first.next_body, arrival);
+	State2D around_moon;
+	around_moon.x = at_arrival.x + origin.x - moon.x;
+	around_moon.y = at_arrival.y + origin.y - moon.y;
+	around_moon.vx = at_arrival.vx + origin.vx - moon.vx;
+	around_moon.vy = at_arrival.vy + origin.vy - moon.vy;
 
-		points.push_back(x);
-		points.push_back(y);
-		previous_chi = chi;
+	const SegmentEnd second = walk_segment(around_moon, first.next_body, arrival, std::max(p_duration - first.duration, 1.0));
+	sample_segment(points, around_moon, first.next_body, second, moon.x, moon.y, std::max(2, p_samples - first_count));
+	return points;
+}
+
+PackedFloat64Array PatchedConicsModel::find_encounter(const Ref<ShipState> &p_state, double p_duration) const {
+	PackedFloat64Array result;
+	ERR_FAIL_COND_V(p_state.is_null(), result);
+
+	const double now = p_state->time;
+	const int index = dominant_body(p_state->x, p_state->y, now);
+	if (index != 0 || p_duration <= 0.0) {
+		return result;
+	}
+
+	State2D relative;
+	relative.x = p_state->x;
+	relative.y = p_state->y;
+	relative.vx = p_state->velocity_x;
+	relative.vy = p_state->velocity_y;
+
+	const SegmentEnd end = walk_segment(relative, 0, now, p_duration);
+	if (end.reason == SegmentEndReason::ENCOUNTER) {
+		result.push_back(end.duration);
+		result.push_back(end.next_body);
+	}
+	return result;
+}
+
+int PatchedConicsModel::get_body_count() const {
+	return static_cast<int>(bodies.size());
+}
+
+PackedFloat64Array PatchedConicsModel::get_body_position(int p_index, double p_time) const {
+	PackedFloat64Array result;
+	const State2D state = body_state(p_index, p_time);
+	result.push_back(state.x);
+	result.push_back(state.y);
+	return result;
+}
+
+double PatchedConicsModel::get_body_radius(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(bodies.size()), 0.0);
+	return bodies[p_index].radius;
+}
+
+int PatchedConicsModel::get_dominant_body(double p_x, double p_y, double p_time) const {
+	return dominant_body(p_x, p_y, p_time);
+}
+
+double PatchedConicsModel::get_sphere_of_influence(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(bodies.size()), 0.0);
+	return bodies[p_index].sphere_of_influence;
+}
+
+PackedFloat64Array PatchedConicsModel::get_body_orbit_path(int p_index, int p_samples) const {
+	PackedFloat64Array points;
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(bodies.size()), points);
+	ERR_FAIL_COND_V(p_samples < 2, points);
+	if (p_index == 0) {
+		return points;
+	}
+
+	const double period = FULL_CIRCLE / bodies[p_index].mean_motion;
+	for (int i = 0; i < p_samples; i++) {
+		const State2D state = body_state(p_index, period * i / (p_samples - 1));
+		points.push_back(state.x);
+		points.push_back(state.y);
 	}
 	return points;
 }

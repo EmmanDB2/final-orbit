@@ -6,6 +6,10 @@ extends SceneTree
 const MU: float = 4.5e12
 const RADIUS: float = 150000.0
 const LOW_ORBIT: float = 180000.0
+const MOON_MU: float = 5.4e10
+const MOON_RADIUS: float = 30000.0
+const MOON_ORBIT: float = 600000.0
+const MOON_ECCENTRICITY: float = 0.04
 
 var _checks: int = 0
 var _failures: int = 0
@@ -34,6 +38,22 @@ func _initialize() -> void:
 	_test_prediction_of_open_path()
 	_test_repeatable()
 	_test_precision_far_from_body()
+	_test_no_moon_means_no_encounters()
+
+	var with_moon := PatchedConicsModel.new()
+	with_moon.set_central_body(MU, RADIUS)
+	with_moon.add_moon(MOON_MU, MOON_RADIUS, MOON_ORBIT, MOON_ECCENTRICITY, 0.5, 0.3)
+	_model = with_moon
+
+	_test_rails()
+	_test_dominant_body()
+	_test_gravity_inside_soi()
+	_test_orbit_around_moon()
+	_test_flyby()
+	_test_big_step_through_soi()
+	_test_landing_on_moon()
+	_test_encounter_prediction()
+	_test_prediction_inside_soi()
 
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -201,7 +221,10 @@ func _test_predict_trajectory() -> void:
 	_check("prediction leaves the clock alone", state.time, 0.0, 0.0)
 	var falling := _state(0.0, -LOW_ORBIT, 500.0, 0.0)
 	var impact: PackedFloat64Array = _model.predict_trajectory(falling, 100000.0)
-	_check("prediction stops early at impact", 1.0 if impact.size() < 512 else 0.0, 1.0, 0.0)
+	var lowest: float = INF
+	for i in range(0, impact.size(), 2):
+		lowest = minf(lowest, Vector2(impact[i], impact[i + 1]).length())
+	_check("prediction never goes under the surface", lowest, RADIUS, 1e-6)
 	var last_x: float = impact[impact.size() - 2]
 	var last_y: float = impact[impact.size() - 1]
 	_check("prediction ends on the surface", sqrt(last_x * last_x + last_y * last_y), RADIUS, 1e-6)
@@ -252,6 +275,232 @@ func _test_prediction_of_open_path() -> void:
 	_check("escape path has every sample", points.size(), 1024, 0.0)
 	_check("escape path ends where the ship will be, x", points[1022], flown.x, 1e-2)
 	_check("escape path ends where the ship will be, y", points[1023], flown.y, 1e-2)
+
+
+func _test_no_moon_means_no_encounters() -> void:
+	_check("one body when there's no moon", _model.get_body_count(), 1, 0.0)
+	_check("that body is dominant", _model.get_dominant_body(1.0e9, 0.0, 0.0), 0, 0.0)
+	_check("nothing to encounter", _model.find_encounter(_circular_state(LOW_ORBIT), 100000.0).size(), 0, 0.0)
+	_check("body 0 has no limit", _model.get_sphere_of_influence(0), 0.0, 0.0)
+	_check("body 0 has no rails to draw", _model.get_body_orbit_path(0, 16).size(), 0, 0.0)
+
+
+func _moon_position(time: float) -> Vector2:
+	var p: PackedFloat64Array = _model.get_body_position(1, time)
+	return Vector2(p[0], p[1])
+
+
+func _moon_x(time: float) -> float:
+	return _model.get_body_position(1, time)[0]
+
+
+func _moon_y(time: float) -> float:
+	return _model.get_body_position(1, time)[1]
+
+
+func _moon_velocity(time: float) -> PackedFloat64Array:
+	var h: float = 0.01
+	return PackedFloat64Array([
+			(_moon_x(time + h) - _moon_x(time - h)) / (2.0 * h),
+			(_moon_y(time + h) - _moon_y(time - h)) / (2.0 * h)])
+
+
+func _soi() -> float:
+	return MOON_ORBIT * pow(MOON_MU / MU, 0.4)
+
+
+# A ship placed relative to the moon, in world position and velocity.
+func _state_around_moon(time: float, offset_x: float, offset_y: float, velocity_x: float, velocity_y: float) -> ShipState:
+	var moon_velocity: PackedFloat64Array = _moon_velocity(time)
+	var state := _state(_moon_x(time) + offset_x, _moon_y(time) + offset_y, moon_velocity[0] + velocity_x, moon_velocity[1] + velocity_y)
+	state.time = time
+	return state
+
+
+func _distance_from_moon(state: ShipState) -> float:
+	return sqrt(pow(state.x - _moon_x(state.time), 2.0) + pow(state.y - _moon_y(state.time), 2.0))
+
+
+func _speed_relative_to_moon(state: ShipState) -> float:
+	var moon_velocity: PackedFloat64Array = _moon_velocity(state.time)
+	return sqrt(pow(state.velocity_x - moon_velocity[0], 2.0) + pow(state.velocity_y - moon_velocity[1], 2.0))
+
+
+func _test_rails() -> void:
+	var period: float = TAU * sqrt(pow(MOON_ORBIT, 3.0) / MU)
+	_check("two bodies", _model.get_body_count(), 2, 0.0)
+	_check("body 0 stays at the origin", _model.get_body_position(0, 500.0)[0], 0.0, 0.0)
+	_check("a moon lap closes x", _moon_x(period), _moon_x(0.0), 1e-5)
+	_check("a moon lap closes y", _moon_y(period), _moon_y(0.0), 1e-5)
+	_check("rails work far in the future", _moon_x(period * 100000.0), _moon_x(0.0), 1e-1)
+
+	var mean_motion: float = TAU / period
+	var at_periapsis: float = -0.3 / mean_motion
+	_check("moon's closest point", _moon_position(at_periapsis).length(), MOON_ORBIT * (1.0 - MOON_ECCENTRICITY), 1e-5)
+	_check("moon's farthest point", _moon_position(at_periapsis + period / 2.0).length(), MOON_ORBIT * (1.0 + MOON_ECCENTRICITY), 1e-5)
+
+	var r: float = _moon_position(123.0).length()
+	var velocity: PackedFloat64Array = _moon_velocity(123.0)
+	_check("moon's speed fits its orbit", Vector2(velocity[0], velocity[1]).length(), sqrt(MU * (2.0 / r - 1.0 / MOON_ORBIT)), 1e-3)
+
+	var a: Vector2 = _moon_position(0.0)
+	var b: Vector2 = _moon_position(1.0)
+	_check("moon goes the same way as the ship", 1.0 if a.x * b.y - a.y * b.x > 0.0 else 0.0, 1.0, 0.0)
+
+	_check("sphere of influence comes from the masses", _model.get_sphere_of_influence(1), _soi(), 1e-6)
+	_check("moon radius", _model.get_body_radius(1), MOON_RADIUS, 0.0)
+
+	var path: PackedFloat64Array = _model.get_body_orbit_path(1, 65)
+	_check("moon's rails path has every sample", path.size(), 130, 0.0)
+	_check("moon's rails path closes", path[128], path[0], 1e-5)
+
+
+func _test_dominant_body() -> void:
+	var moon: Vector2 = _moon_position(50.0)
+	_check("inside the sphere: the moon", _model.get_dominant_body(moon.x + _soi() * 0.9, moon.y, 50.0), 1, 0.0)
+	_check("outside the sphere: the planet", _model.get_dominant_body(moon.x + _soi() * 1.1, moon.y, 50.0), 0, 0.0)
+	_check("near the planet: the planet", _model.get_dominant_body(0.0, -LOW_ORBIT, 50.0), 0, 0.0)
+	var later: Vector2 = _moon_position(500.0)
+	_check("the sphere moves with the moon", _model.get_dominant_body(later.x, later.y, 50.0), 0, 0.0)
+
+
+func _test_gravity_inside_soi() -> void:
+	var pull: PackedFloat64Array = _model.get_acceleration(_moon_x(50.0) + 60000.0, _moon_y(50.0), 50.0)
+	_check("gravity pulls toward the moon", pull[0], -MOON_MU / (60000.0 * 60000.0), 1e-9)
+	_check("and only the moon", pull[1], 0.0, 1e-9)
+
+
+func _test_orbit_around_moon() -> void:
+	var r: float = 60000.0
+	var state := _state_around_moon(0.0, r, 0.0, 0.0, sqrt(MOON_MU / r))
+	var period: float = TAU * sqrt(pow(r, 3.0) / MOON_MU)
+	var worst: float = 0.0
+	var ticks: int = roundi(period * 60.0)
+	var left: bool = false
+	for i in range(ticks):
+		_model.propagate(state, 1.0 / 60.0)
+		worst = maxf(worst, absf(_distance_from_moon(state) - r))
+		left = left or _model.get_dominant_body(state.x, state.y, state.time) != 1
+	_check("stays in orbit around the moving moon", worst, 0.0, 2.0)
+	_check("and never leaves its sphere", 1.0 if left else 0.0, 0.0, 0.0)
+
+
+func _test_flyby() -> void:
+	# Coming in from outside the sphere, aimed to pass off to one side of the moon.
+	var start_gap: float = _soi() * 1.15
+	var state := _state_around_moon(0.0, -start_gap, 80000.0, 1500.0, 0.0)
+	var was_inside: bool = false
+	var entered: bool = false
+	var left: bool = false
+	var speed_in: float = 0.0
+	var speed_out: float = 0.0
+	var closest: float = INF
+	var largest_jump: float = 0.0
+	for i in range(30000):
+		var x: float = state.x
+		var y: float = state.y
+		var vx: float = state.velocity_x
+		var vy: float = state.velocity_y
+		_model.propagate(state, 1.0 / 60.0)
+		largest_jump = maxf(largest_jump, Vector2(state.x - x - vx / 60.0, state.y - y - vy / 60.0).length())
+		var inside: bool = _model.get_dominant_body(state.x, state.y, state.time) == 1
+		if inside and not was_inside:
+			entered = true
+			speed_in = _speed_relative_to_moon(state)
+		if was_inside and not inside:
+			left = true
+			speed_out = _speed_relative_to_moon(state)
+			break
+		was_inside = inside
+		if inside:
+			closest = minf(closest, _distance_from_moon(state))
+	_check("flyby enters the sphere", 1.0 if entered else 0.0, 1.0, 0.0)
+	_check("flyby leaves the sphere", 1.0 if left else 0.0, 1.0, 0.0)
+	_check("position and velocity carry across the switches", largest_jump, 0.0, 0.05)
+	_check("moon-relative speed out matches speed in (relative)", speed_out / speed_in, 1.0, 0.01)
+	_check("the moon bent the path inward", 1.0 if closest < 80000.0 else 0.0, 1.0, 0.0)
+	_check("and it missed the surface", 1.0 if closest > MOON_RADIUS else 0.0, 1.0, 0.0)
+
+
+func _test_big_step_through_soi() -> void:
+	var start_gap: float = _soi() * 1.15
+	var stepped := _state_around_moon(0.0, -start_gap, 80000.0, 1500.0, 0.0)
+	var jumped := _state_around_moon(0.0, -start_gap, 80000.0, 1500.0, 0.0)
+	for i in range(12000):
+		_model.propagate(stepped, 1.0 / 60.0)
+	_model.propagate(jumped, 200.0)
+	_check("a big jump can't skip the moon, x", jumped.x, stepped.x, 500.0)
+	_check("a big jump can't skip the moon, y", jumped.y, stepped.y, 500.0)
+	_check("clock agrees", jumped.time, stepped.time, 1e-6)
+
+
+func _test_landing_on_moon() -> void:
+	var state := _state_around_moon(0.0, 60000.0, 0.0, 0.0, 0.0)
+	for i in range(6000):
+		_model.propagate(state, 1.0 / 60.0)
+	_check("falls to the moon's surface", 1.0 if state.is_on_surface() else 0.0, 1.0, 0.0)
+	_check("stops on the moon's surface", _distance_from_moon(state), MOON_RADIUS, 1e-4)
+	_check("then moves with the moon", _speed_relative_to_moon(state), 0.0, 1e-2)
+	var start: Vector2 = _moon_position(state.time)
+	for i in range(3000):
+		_model.propagate(state, 1.0 / 60.0)
+	_check("the moon really moved", 1.0 if _moon_position(state.time).distance_to(start) > 50000.0 else 0.0, 1.0, 0.0)
+	_check("and the ship rode along", _distance_from_moon(state), MOON_RADIUS, 1e-4)
+	var away: Vector2 = (Vector2(state.x, state.y) - _moon_position(state.time)).normalized()
+	for i in range(120):
+		state.velocity_x += away.x * 300.0 / 60.0
+		state.velocity_y += away.y * 300.0 / 60.0
+		_model.propagate(state, 1.0 / 60.0)
+	_check("thrust lifts off the moon", 1.0 if _distance_from_moon(state) > MOON_RADIUS + 100.0 else 0.0, 1.0, 0.0)
+
+
+func _test_encounter_prediction() -> void:
+	var start_gap: float = _soi() * 1.5
+	var state := _state_around_moon(0.0, -start_gap, 80000.0, 1500.0, 0.0)
+	var points: PackedFloat64Array = _model.predict_trajectory(state, 3600.0, 600)
+	var encounter: PackedFloat64Array = _model.find_encounter(state, 3600.0)
+	_check("predicts the encounter", encounter.size(), 2, 0.0)
+	_check("with the moon", encounter[1], 1, 0.0)
+	_check("line has every sample", points.size(), 1200, 0.0)
+	_check("line starts at the ship", points[0], state.x, 1e-6)
+
+	var ghost: Vector2 = _moon_position(encounter[0])
+	var worst: float = 0.0
+	var arrived_at: float = -1.0
+	for i in range(30000):
+		_model.propagate(state, 1.0 / 60.0)
+		var inside: bool = _model.get_dominant_body(state.x, state.y, state.time) == 1
+		if inside and arrived_at < 0.0:
+			arrived_at = state.time
+		if arrived_at >= 0.0 and not inside:
+			break
+		if inside and i % 60 == 0:
+			var relative: Vector2 = Vector2(state.x, state.y) - _moon_position(state.time)
+			var drawn: Vector2 = ghost + relative
+			worst = maxf(worst, _distance_to_path(drawn.x, drawn.y, points))
+	_check("arrival time was right", arrived_at, encounter[0], 0.05)
+	_check("flyby stays on the line drawn around the future moon", worst, 0.0, 30.0)
+	var last: Vector2 = Vector2(points[1198], points[1199])
+	_check("line ends leaving the moon's sphere", last.distance_to(ghost), _soi(), 1.0)
+	_check("nothing to encounter while inside", _model.find_encounter(_state_around_moon(0.0, 60000.0, 0.0, 0.0, 900.0), 3600.0).size(), 0, 0.0)
+
+
+func _test_prediction_inside_soi() -> void:
+	var now: float = 40.0
+	var r: float = 60000.0
+	var state := _state_around_moon(now, r, 0.0, 0.0, sqrt(MOON_MU / r))
+	var points: PackedFloat64Array = _model.predict_trajectory(state, 3600.0, 256)
+	var moon: Vector2 = _moon_position(now)
+	_check("an orbit around the moon closes on the line", Vector2(points[510], points[511]).distance_to(Vector2(points[0], points[1])), 0.0, 1.0)
+	_check("and is drawn around the moon as it is now", Vector2(points[256], points[257]).distance_to(moon), r, 5.0)
+
+	var leaving := _state_around_moon(now, r, 0.0, 2500.0, 0.0)
+	var out: PackedFloat64Array = _model.predict_trajectory(leaving, 3600.0, 128)
+	_check("an escape stops at the sphere's edge", Vector2(out[254], out[255]).distance_to(moon), _soi(), 1.0)
+
+	var falling := _state_around_moon(now, r, 0.0, -400.0, 100.0)
+	var crash: PackedFloat64Array = _model.predict_trajectory(falling, 3600.0, 128)
+	_check("a crash stops on the moon's surface", sqrt(pow(crash[254] - _moon_x(now), 2.0) + pow(crash[255] - _moon_y(now), 2.0)), MOON_RADIUS, 1e-3)
 
 
 func _distance_to_path(x: float, y: float, points: PackedFloat64Array) -> float:
