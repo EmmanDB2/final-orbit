@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+# Builds Final Orbit's physics core into bin/, on top of godot-cpp.
+#   Mac:   scons -C native platform=macos arch=arm64 target=template_debug
+#   Phone: scons -C native platform=android arch=arm64 target=template_debug
+
+env = SConscript("godot-cpp/SConstruct", {"api_version": "4.7"})
+
+env.Append(CPPPATH=["src/"])
+
+library = env.SharedLibrary(
+    "../bin/libfinalorbit{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+    source=Glob("src/*.cpp"),
+)
+
+Default(library)

@@ -55,3 +55,11 @@ Files: `scripts/feature_flags.gd`, `scripts/star_data.gd`, `scripts/star_light.g
 - custom `Resource` classes for data
 - feature flags with `class_name` constants
 - inverse-square light falloff
+
+## 2026-11-05: Ticket 5, part 1: physics core (GDExtension, GravityModel, PatchedConicsModel)
+
+Files: `native/SConstruct`, `native/src/*`, `bin/final_orbit.gdextension`, `tests/test_gravity_model.gd`, `export_presets.cfg`, `.gitignore`, `.gitmodules`
+
+- GDExtension: C++ classes that GDScript can call
+- abstract interfaces and virtual methods
+- what a closed-form orbit is, used rather than derived
