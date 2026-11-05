@@ -31,3 +31,11 @@ Files: `scenes/main.tscn`, `scripts/starfield.gd`, `shaders/starfield.gdshader`,
 Files: `scripts/ship.gd`, `docs/DESIGN.md`
 
 - angular velocity and angular acceleration
+
+## 2026-11-05: RAW and SAS flight modes
+
+Files: `project.godot`, `scenes/main.tscn`, `scripts/ship.gd`, `scripts/assist_indicator.gd`, `art/hud_flight_mode.png`, `docs/DESIGN.md`
+
+- `move_toward` for stopping exactly at a target
+- signals that update the UI
+- sprite sheets with `hframes`

@@ -3,6 +3,8 @@
 [ext_resource type="PackedScene" uid="uid://cfrgkaawf6jcy" path="res://scenes/ship.tscn" id="1_o5qli"]
 [ext_resource type="Material" path="res://data/starfield.tres" id="2_stars"]
 [ext_resource type="Script" uid="uid://ss85tsat2knn" path="res://scripts/starfield.gd" id="3_stars"]
+[ext_resource type="Texture2D" uid="uid://c6id3n6qdxy86" path="res://art/hud_flight_mode.png" id="4_mode_art"]
+[ext_resource type="Script" uid="uid://dhkrg85j5v8fh" path="res://scripts/assist_indicator.gd" id="5_mode"]
 
 [node name="Main" type="Node2D" unique_id=1515308371]
 
@@ -23,4 +25,14 @@ script = ExtResource("3_stars")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=421907663]
 
+[node name="Hud" type="CanvasLayer" parent="." unique_id=1675204981]
+
+[node name="AssistIndicator" type="Sprite2D" parent="Hud" unique_id=298461730]
+position = Vector2(10, 10)
+texture = ExtResource("4_mode_art")
+centered = false
+hframes = 2
+script = ExtResource("5_mode")
+
 [connection signal="world_position_changed" from="Ship" to="Background/Starfield" method="_on_ship_world_position_changed"]
+[connection signal="assist_changed" from="Ship" to="Hud/AssistIndicator" method="_on_ship_assist_changed"]

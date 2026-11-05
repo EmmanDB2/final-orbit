@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Two flight modes added, RAW and SAS (Ship Assist Systems), with SAS cancelling spin only \[Leaning\]. All-rounder archetype added; the Tier 0 lander is that ship, with thrust tuned to 300 px/s² \[Leaning\] |
 | 2026-11-05 | Tier 0 turning changed to angular momentum, replacing the fixed turn rate \[Leaning\] |
 | 2026-11-05 | Background stars set to a seeded shader with three parallax layers \[Leaning\] |
 | 2026-11-05 | Tier 0 turning set to a fixed turn rate, no angular momentum \[Leaning\] |
@@ -134,10 +135,13 @@ Archetypes that emerge from the physics: \[Leaning\]
 
 | Archetype | Good at | Pays for it with |
 | --- | --- | --- |
+| All-rounder | Decent fuel and thrust; feels a bit heavy but still quick | A specialist beats it at any one job |
 | Light probe | Huge range, cheap burns | Fragile, can't land on heavy or hot worlds |
 | Moon hopper | Nimble, cheap | Low-gravity bodies only |
 | Heavy lander | Survives heat, high gravity, rough landings | Heavy, sluggish, short range |
 | Hauler | Big cargo capacity | Handles like a fridge, fuel-hungry |
+
+The Tier 0 lander is the all-rounder. Its 300 px/s² of thrust is the feel target for its Tier 1 mass and engine. \[Leaning\]
 
 Taking off from a world requires thrust greater than the ship's weight there (thrust-to-weight above 1). Owning several ships matters because gigs demand different ones.
 
@@ -164,6 +168,14 @@ Ship: \[Locked\]
 - Thrust, collisions, and torque use the ship's live mass and center of mass.
 - Ship mass does not change its orbit, only how it responds to pushes.
 - Tier 0 turning has angular momentum: A and D change the spin at a fixed rate, and the spin lasts until the opposite key cancels it. Torque from live mass arrives with modular ships. \[Leaning\]
+
+Flight modes: \[Leaning\]
+
+- RAW: your inputs only. Spin and drift last until you counter them yourself.
+- SAS (Ship Assist Systems): when you let go of the turn keys, the RCS fires against the spin until the ship stops turning.
+- SAS never brakes velocity, because cutting velocity would break orbits.
+- SAS uses the same thrusters as manual turning, at the same strength, so from Tier 1 it should burn the same fuel.
+- The ship starts in SAS. T switches modes for now; the touch control is part of the touch controls question.
 
 Scale and precision: \[Leaning\]
 
