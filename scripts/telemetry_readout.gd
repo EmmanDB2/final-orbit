@@ -22,7 +22,7 @@ const LINE_ADVANCE: int = 12
 @export var hard_touchdown_speed: float = 500.0
 ## How long the touchdown message stays up, in seconds.
 @export var message_seconds: float = 4.0
-## Where the readout goes, under the flight mode panel.
+## Where the readout goes, under the flight mode panel, within the safe area.
 @export var readout_position: Vector2 = Vector2(10.0, 40.0)
 ## How far below the top of the screen the touchdown message goes.
 @export var message_height: float = 60.0
@@ -80,7 +80,7 @@ func _draw() -> void:
 	_draw_text(_speed_text, readout_position + Vector2(0.0, 18.0), text_color)
 	if _message != "":
 		var width: float = _message.length() * LINE_ADVANCE
-		var left: float = floorf((get_viewport_rect().size.x - width) / 2.0)
+		var left: float = floorf(((get_parent() as Control).size.x - width) / 2.0)
 		_draw_text(_message, Vector2(left, message_height), _message_color)
 
 

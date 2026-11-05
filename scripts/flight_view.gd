@@ -21,11 +21,15 @@ signal view_changed(center_x: float, center_y: float, pixels_per_unit: float)
 @export var tier_scales: PackedFloat64Array = PackedFloat64Array([1.0, 1.0 / 8.0, 1.0 / 128.0, 1.0 / 800.0, 1.0 / 2400.0])
 ## What each tier keeps centered.
 @export var tier_focus: Array[Focus] = [Focus.SHIP, Focus.SHIP, Focus.SHIP, Focus.DOMINANT_BODY, Focus.SYSTEM_CENTER]
+## The screen height the far tiers are set for, in game pixels. On a shorter screen they
+## zoom out to match, so the same orbits still fit.
+@export var design_height: float = 616.0
 ## The tier the game starts in.
 @export var tier: int = 3
 
 var _gravity_model: GravityModel
 var _state: ShipState
+var _far_tier_fit: float = 1.0
 
 
 ## Starts following a flight.
@@ -34,11 +38,19 @@ func start_view(gravity_model: GravityModel, state: ShipState) -> void:
 	_state = state
 
 
+func _on_screen_fitted(view_size: Vector2, _inset_top_left: Vector2, _inset_bottom_right: Vector2) -> void:
+	_far_tier_fit = minf(view_size.y / design_height, 1.0)
+
+
 func _on_ship_world_position_changed(x: float, y: float) -> void:
 	if Input.is_action_just_pressed("zoom_in"):
 		tier = maxi(tier - 1, 0)
 	if Input.is_action_just_pressed("zoom_out"):
 		tier = mini(tier + 1, tier_scales.size() - 1)
+
+	var pixels_per_unit: float = tier_scales[tier]
+	if tier_focus[tier] != Focus.SHIP:
+		pixels_per_unit *= _far_tier_fit
 
 	var center_x: float = 0.0
 	var center_y: float = 0.0
@@ -51,4 +63,4 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 			var body_position: PackedFloat64Array = _gravity_model.get_body_position(body, _state.time)
 			center_x = body_position[0]
 			center_y = body_position[1]
-	view_changed.emit(center_x, center_y, tier_scales[tier])
+	view_changed.emit(center_x, center_y, pixels_per_unit)

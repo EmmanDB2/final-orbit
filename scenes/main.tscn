@@ -15,6 +15,8 @@
 [ext_resource type="Script" uid="uid://c2uyi1y81rp83" path="res://scripts/trajectory_preview.gd" id="13_path"]
 [ext_resource type="Script" uid="uid://feyq2g6nhvi8" path="res://scripts/rough_touch_controls.gd" id="14_touch"]
 [ext_resource type="Resource" path="res://data/moon.tres" id="15_moon"]
+[ext_resource type="Script" uid="uid://co4i4uj4wulek" path="res://scripts/screen_fit.gd" id="18_fit"]
+[ext_resource type="Script" uid="uid://ioh3iggb6omw" path="res://scripts/safe_area.gd" id="19_safe"]
 [ext_resource type="Script" uid="uid://q3hnub1kat2q" path="res://scripts/telemetry_readout.gd" id="17_readout"]
 [ext_resource type="Script" uid="uid://dgnu0r1ib3jsn" path="res://scripts/body_guides.gd" id="16_guides"]
 
@@ -28,6 +30,9 @@ shader = ExtResource("12_shader")
 script = ExtResource("8_main")
 planet = ExtResource("9_planet")
 moon = ExtResource("15_moon")
+
+[node name="ScreenFit" type="Node" parent="." unique_id=1357924680]
+script = ExtResource("18_fit")
 
 [node name="Background" type="CanvasLayer" parent="." unique_id=734120958]
 layer = -1
@@ -79,14 +84,24 @@ script = ExtResource("10_view")
 
 [node name="Hud" type="CanvasLayer" parent="." unique_id=1675204981]
 
-[node name="AssistIndicator" type="Sprite2D" parent="Hud" unique_id=298461730]
+[node name="SafeArea" type="Control" parent="Hud" unique_id=1751163094]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("19_safe")
+
+[node name="AssistIndicator" type="Sprite2D" parent="Hud/SafeArea" unique_id=298461730]
 position = Vector2(10, 10)
 texture = ExtResource("4_mode_art")
 centered = false
 hframes = 2
 script = ExtResource("5_mode")
 
-[node name="TelemetryReadout" type="Node2D" parent="Hud" unique_id=1469035722]
+[node name="TelemetryReadout" type="Node2D" parent="Hud/SafeArea" unique_id=1469035722]
 script = ExtResource("17_readout")
 
 [node name="RoughTouchControls" type="Node" parent="." unique_id=1288650417]
@@ -101,9 +116,12 @@ script = ExtResource("14_touch")
 [connection signal="view_changed" from="Camera2D" to="Trajectory" method="_on_view_changed"]
 [connection signal="orbit_changed" from="Ship" to="Trajectory" method="_on_ship_orbit_changed"]
 [connection signal="world_position_changed" from="Ship" to="Trajectory" method="_on_ship_world_position_changed"]
-[connection signal="assist_changed" from="Ship" to="Hud/AssistIndicator" method="_on_ship_assist_changed"]
-[connection signal="telemetry_changed" from="Ship" to="Hud/TelemetryReadout" method="_on_ship_telemetry_changed"]
-[connection signal="touched_down" from="Ship" to="Hud/TelemetryReadout" method="_on_ship_touched_down"]
-[connection signal="lifted_off" from="Ship" to="Hud/TelemetryReadout" method="_on_ship_lifted_off"]
+[connection signal="screen_fitted" from="ScreenFit" to="Hud/SafeArea" method="_on_screen_fitted"]
+[connection signal="screen_fitted" from="ScreenFit" to="Camera2D" method="_on_screen_fitted"]
+[connection signal="screen_fitted" from="ScreenFit" to="RoughTouchControls" method="_on_screen_fitted"]
+[connection signal="assist_changed" from="Ship" to="Hud/SafeArea/AssistIndicator" method="_on_ship_assist_changed"]
+[connection signal="telemetry_changed" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_telemetry_changed"]
+[connection signal="touched_down" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_touched_down"]
+[connection signal="lifted_off" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_lifted_off"]
 [connection signal="world_position_changed" from="Ship" to="StarLight" method="_on_ship_world_position_changed"]
 [connection signal="star_light_changed" from="StarLight" to="Background/Starfield" method="_on_star_light_changed"]

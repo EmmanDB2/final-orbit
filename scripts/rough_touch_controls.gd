@@ -11,7 +11,8 @@ extends Node
 
 const NO_FINGER: int = -1
 
-## Where a tap switches flight mode, in game pixels. Covers the panel, with room to miss.
+## Where a tap switches flight mode, in game pixels from the safe area's top-left corner.
+## Covers the panel, with room to miss.
 @export var mode_panel_area: Rect2 = Rect2(0.0, 0.0, 90.0, 60.0)
 ## How far a thumb slides sideways before the ship starts turning, in game pixels.
 @export var turn_dead_zone: float = 6.0
@@ -24,6 +25,7 @@ const NO_FINGER: int = -1
 ## How much the gap between pinching fingers changes to move one zoom tier.
 @export var pinch_step_ratio: float = 1.3
 
+var _safe_top_left: Vector2 = Vector2.ZERO
 var _finger_positions: Dictionary = {}
 var _finger_start_ticks: Dictionary = {}
 var _turn_finger: int = NO_FINGER
@@ -35,9 +37,10 @@ var _tapped_actions: Array[StringName] = []
 var _actions_to_release: Array[StringName] = []
 
 
-func _ready() -> void:
+func _on_screen_fitted(_view_size: Vector2, inset_top_left: Vector2, _inset_bottom_right: Vector2) -> void:
+	_safe_top_left = inset_top_left
 	# Folding or unfolding can drop a finger without saying so, which would stick the engine on.
-	get_viewport().size_changed.connect(_release_everything)
+	_release_everything()
 
 
 func _notification(what: int) -> void:
@@ -64,7 +67,7 @@ func _physics_process(_delta: float) -> void:
 
 
 func _on_finger_down(index: int, position: Vector2) -> void:
-	if mode_panel_area.has_point(position):
+	if mode_panel_area.has_point(position - _safe_top_left):
 		_tap(&"toggle_assist")
 		return
 

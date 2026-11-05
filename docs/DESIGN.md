@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Screen fitting rule replaces fixed sizes and settles the resolution question: the game fills any landscape screen on whole-number pixels \[Leaning\]. UI goes in a safe area that avoids cutouts \[Leaning\]. Still Android only, built for the Fold |
 | 2026-11-05 | Two moon capture aids added to the parking lot, not built: Manny likes the difficulty as it is |
 | 2026-11-05 | Landing works in Tier 0, with no damage yet \[Leaning\]. Zoom goes to seven tiers: a Descent tier at 1/8 sits between Surface and Approach, because the 128x jump was too big to land with. Landing line built, moved out of the parking lot \[Leaning\]. Rough altitude and speed readout added \[Leaning\]. Gravity interface gains `predict_entry_heights`, `get_altitude`, and `get_surface_velocity`, the one place ground speed comes from |
 | 2026-11-05 | Rotating planets and atmospheres added for Tier 1 \[Leaning\]. Landing line idea added to the parking lot |
@@ -73,6 +74,9 @@ Requirements:
 - Seamless fold and unfold with no app restart and no lost state. \[Locked\]
 - The unfold is diegetic: the porthole widens into the full viewport. \[Leaning\]
 - One internal pixel resolution per screen, each scaling by whole numbers. \[Locked\]
+- Screen fitting: the pixel scale is the screen's short side divided by 616, rounded to a whole number, and the game's size is the screen divided by that scale. It fills the screen, leaving at most a couple of pixels on an unusual size, so other screens don't look broken even though the Fold stays the target. Inner screen: 816 x 616 at 3x. Cover screen: 986 x 624 at 2x. \[Leaning\]
+- On a screen shorter than 616 game pixels, the Orbit and Planet zoom levels zoom out to match, so the same orbits still fit. \[Leaning\]
+- UI goes inside `Hud/SafeArea`, anchored to its corners and edges, so it follows every screen and fold and stays clear of cutouts and system bars. The cover screen's camera cutout takes 104 px on the left in landscape. \[Leaning\]
 
 The Fold 8 has no Flex Mode (the hinge only opens fully or closes fully), so the half-folded Mission Control console idea is \[Cut\]. The Fold 8 Ultra and later models may bring it back; see parking lot.
 
@@ -381,7 +385,7 @@ Open questions:
 - [ ] Name of the game: decided, Final Orbit
 - [ ] Destroy gigs: real combat with armed ships and AI pilots, or only non-combat targets (dead satellites, derelicts, rogue asteroids)?
 - [ ] Pilot identity: named character, customizable, or anonymous?
-- [ ] Exact internal pixel resolutions for the inner and cover screens. Confirmed on the device 2026-11-05: inner 2448 x 1848 (4:3, not near-square), cover 1972 x 1248 (16:10). Placeholder: 3x, so 816 x 616 inner, which fills the inner screen exactly. The fixed base size draws the cover screen at 2x as 973 x 616, leaving black bars of 13 px on the sides and 8 px top and bottom, so each screen needs its size set at runtime.
+- [x] Exact internal pixel resolutions for the inner and cover screens: 816 x 616 at 3x on the 2448 x 1848 inner screen and 986 x 624 at 2x on the 1972 x 1248 cover screen, from the screen fitting rule under Platform. Sizes confirmed on the device 2026-11-05.
 - [ ] Module grid size (64 x 64 px is a starting guess)
 - [ ] Touch controls for burns, rotation, and maneuver planning. A throwaway prototype lives in `scripts/rough_touch_controls.gd` so the game can be flown on the phone: slide a left thumb to turn, hold a right thumb to thrust, tap the mode panel, pinch to zoom. It isn't an answer to this question.
 - [ ] Economy numbers: gig pay, ship prices, repair costs, tow cost

@@ -103,3 +103,11 @@ Files: `native/src/patched_conics_model.cpp`, `native/src/patched_conics_model.h
 - speed relative to the ground versus speed relative to space
 - drawing text from a sprite sheet with `draw_texture_rect_region`
 - splitting a line where it crosses a threshold, with `lerp`
+
+## 2026-11-05: Ticket 9, fitting any screen
+
+Files: `scripts/screen_fit.gd`, `scripts/safe_area.gd`, `scripts/flight_view.gd`, `scripts/rough_touch_controls.gd`, `scripts/telemetry_readout.gd`, `scenes/main.tscn`, `docs/DESIGN.md`
+
+- stretch settings and whole-number pixel scaling
+- anchors and safe areas for reactive UI
+- when a signal doesn't fire, and checking the value yourself
