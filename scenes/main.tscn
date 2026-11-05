@@ -13,6 +13,7 @@
 [ext_resource type="Script" uid="uid://cionpf5rm6ml5" path="res://scripts/planet_view.gd" id="11_planet"]
 [ext_resource type="Shader" uid="uid://cxukt7rvnnhc4" path="res://shaders/planet.gdshader" id="12_shader"]
 [ext_resource type="Script" uid="uid://c2uyi1y81rp83" path="res://scripts/trajectory_preview.gd" id="13_path"]
+[ext_resource type="Script" uid="uid://feyq2g6nhvi8" path="res://scripts/rough_touch_controls.gd" id="14_touch"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_planet"]
 shader = ExtResource("12_shader")
@@ -64,6 +65,9 @@ texture = ExtResource("4_mode_art")
 centered = false
 hframes = 2
 script = ExtResource("5_mode")
+
+[node name="RoughTouchControls" type="Node" parent="." unique_id=1288650417]
+script = ExtResource("14_touch")
 
 [connection signal="world_position_changed" from="Ship" to="Camera2D" method="_on_ship_world_position_changed"]
 [connection signal="view_changed" from="Camera2D" to="Background/Starfield" method="_on_view_changed"]

@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Throwaway touch controls added for testing on the phone. The touch controls and UI question stays open |
 | 2026-11-05 | Trajectory preview added for the ship's current path, updating only on burns. The background thread waits for maneuver planning \[Leaning\] |
 | 2026-11-05 | First orbit works, with the physics core in C++. Gravity interface changed to take 64-bit x and y, because Godot's Vector2 is 32-bit. Tier 0 planet set far below 1/10 scale so a low orbit takes under 4 minutes without time warp \[Leaning\]. Four of the six zoom tiers built, with far tiers centered on the planet \[Leaning\] |
 | 2026-11-05 | Star tint kept and moved out of the parking lot \[Leaning\]. Never-pure-black rule changed to match: pure black now only happens far from any star \[Leaning\] |
@@ -357,7 +358,7 @@ Open questions:
 - [ ] Pilot identity: named character, customizable, or anonymous?
 - [ ] Exact internal pixel resolutions for the inner and cover screens. Confirmed on the device 2026-11-05: inner 2448 x 1848 (4:3, not near-square), cover 1972 x 1248 (16:10). Placeholder: 3x, so 816 x 616 inner, which fills the inner screen exactly. The fixed base size draws the cover screen at 2x as 973 x 616, leaving black bars of 13 px on the sides and 8 px top and bottom, so each screen needs its size set at runtime.
 - [ ] Module grid size (64 x 64 px is a starting guess)
-- [ ] Touch controls for burns, rotation, and maneuver planning
+- [ ] Touch controls for burns, rotation, and maneuver planning. A throwaway prototype lives in `scripts/rough_touch_controls.gd` so the game can be flown on the phone: slide a left thumb to turn, hold a right thumb to thrust, tap the mode panel, pinch to zoom. It isn't an answer to this question.
 - [ ] Economy numbers: gig pay, ship prices, repair costs, tow cost
 - [x] C# on Android stable yet, or stay with C++ GDExtension? Still experimental in Godot 4.7 (checked 2026-11-05); stay with C++
 - [ ] Starting conditions: first ship, starting money, home station

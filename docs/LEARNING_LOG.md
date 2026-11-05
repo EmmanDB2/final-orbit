@@ -79,3 +79,11 @@ Files: `scripts/trajectory_preview.gd`, `scripts/ship.gd`, `scripts/main.gd`, `s
 - caching: only redoing work when something has changed
 - custom drawing with `_draw` and `queue_redraw`
 - moving a node instead of recalculating what it draws
+
+## 2026-11-05: Rough touch controls
+
+Files: `scripts/rough_touch_controls.gd`, `scenes/main.tscn`, `docs/DESIGN.md`
+
+- multi-touch: tracking fingers by index
+- pressing input actions from code, with analog strength
+- `_input` compared with `_physics_process`
