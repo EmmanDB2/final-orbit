@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Rotating planets and atmospheres added for Tier 1 \[Leaning\]. Landing line idea added to the parking lot |
 | 2026-11-05 | Moon on Kepler rails and sphere of influence switching work. Gravity interface gains body queries and `find_encounter`, because the view and preview need them and every model will have bodies. Orbit view now centers on the dominant body. Preview now also refreshes while coasting and draws encounters around the moon's future position \[Leaning\]. Moon set up in `data/moon.tres` so a burn right at the start reaches it \[Leaning\] |
 | 2026-11-05 | Throwaway touch controls added for testing on the phone. The touch controls and UI question stays open |
 | 2026-11-05 | Trajectory preview added for the ship's current path, updating only on burns. The background thread waits for maneuver planning \[Leaning\] |
@@ -174,6 +175,16 @@ Celestial bodies: \[Locked\]
 - Planets and moons move on Kepler rails, computed from time, not simulated. Deterministic and time-warp friendly.
 - Each body's mass sets its gravity and its sphere of influence.
 - Planets never pull on each other.
+
+Rotating planets and atmospheres: \[Leaning, Tier 1\]
+
+- Planets spin, and their atmospheres rotate with them.
+- Inside an atmosphere, air resistance is computed relative to the moving air, so a hovering ship gets dragged along with the rotation.
+- Landing means matching the ground's rotational speed.
+- Launching in the direction of spin gives a free speed boost, like real rockets launching east.
+- Outside the atmosphere, momentum is conserved and the ship does not slow down.
+- Airless bodies have no moving air, so a hovering ship stays put while the ground slides past underneath.
+- Coasting stays closed-form above the atmosphere. Inside it the ship is simulated step by step, which limits time warp and fold-to-coast there and needs the preview's background thread.
 
 Ship: \[Locked\]
 
@@ -376,3 +387,4 @@ Parking lot:
 - Half-folded Mission Control console \[Cut: no Flex Mode on Fold 8; revisit for Fold 8 Ultra or later\]
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
+- Landing line: the part of the orbit line inside a planet's atmosphere, and everything below it, changes color, so you can see where a path starts coming down \[Not built; could arrive with the landing ticket, since it only needs the atmosphere's height as data\]
