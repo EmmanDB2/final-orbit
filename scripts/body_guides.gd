@@ -28,7 +28,8 @@ func start_guides(gravity_model: GravityModel, state: ShipState) -> void:
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
-	position = Vector2(-center_x * pixels_per_unit, -center_y * pixels_per_unit).round()
+	# This sits in the background layer, behind the bodies, where the origin is the screen's corner.
+	position = (get_viewport_rect().size / 2.0 + Vector2(-center_x * pixels_per_unit, -center_y * pixels_per_unit)).round()
 	visible = pixels_per_unit <= closest_zoom
 	if pixels_per_unit != _pixels_per_unit:
 		_pixels_per_unit = pixels_per_unit

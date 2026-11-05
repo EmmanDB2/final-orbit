@@ -26,6 +26,6 @@ func _ready() -> void:
 	$Background/Planet.show_body(0, planet, gravity_model, state)
 	$Background/Moon.show_body(1, moon, gravity_model, state)
 	$Camera2D.start_view(gravity_model, state)
-	$BodyGuides.start_guides(gravity_model, state)
+	$Background/BodyGuides.start_guides(gravity_model, state)
 	$Trajectory.start_preview(gravity_model, state)
 	$Ship.start_flight(gravity_model, state, PI / 2.0)

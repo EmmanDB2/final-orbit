@@ -47,6 +47,9 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("3_stars")
 
+[node name="BodyGuides" type="Node2D" parent="Background" unique_id=1076224389]
+script = ExtResource("16_guides")
+
 [node name="Planet" type="ColorRect" parent="Background" unique_id=860331742]
 material = SubResource("ShaderMaterial_planet")
 anchors_preset = 15
@@ -70,9 +73,6 @@ script = ExtResource("11_planet")
 [node name="StarLight" type="Node" parent="." unique_id=1503377264]
 script = ExtResource("6_light")
 star = ExtResource("7_star")
-
-[node name="BodyGuides" type="Node2D" parent="." unique_id=1076224389]
-script = ExtResource("16_guides")
 
 [node name="Trajectory" type="Node2D" parent="." unique_id=1942087613]
 script = ExtResource("13_path")
@@ -111,7 +111,7 @@ script = ExtResource("14_touch")
 [connection signal="view_changed" from="Camera2D" to="Background/Starfield" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Background/Planet" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Background/Moon" method="_on_view_changed"]
-[connection signal="view_changed" from="Camera2D" to="BodyGuides" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Background/BodyGuides" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Ship" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Trajectory" method="_on_view_changed"]
 [connection signal="orbit_changed" from="Ship" to="Trajectory" method="_on_ship_orbit_changed"]
