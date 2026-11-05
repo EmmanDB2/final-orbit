@@ -3,15 +3,21 @@
 # belongs to trajectories).
 #
 # The path is worked out again on a burn, on a change of dominant body, every tick while
-# orbiting a moving body, and otherwise only a couple of times a second. It's kept
-# relative to the world origin, so when the view moves it's enough to move this node.
+# orbiting a moving body or heading into a landing zone, and otherwise only a couple of
+# times a second. It's kept relative to the world origin, so when the view moves it's
+# enough to move this node.
 #
 # If the path reaches another body, this also rings that body where it will be at that
 # moment, because the flyby on the line is drawn around that future position.
+#
+# The stretches inside a body's landing zone are drawn over the line in amber, so you can
+# see where a path starts coming down. From the landing line idea in DESIGN.md.
 extends Node2D
 
 ## Telemetry cyan from the agency palette.
 @export var line_color: Color = Color("7FE3D6")
+## Telemetry amber from the agency palette, for the part inside a landing zone.
+@export var landing_color: Color = Color("F2B33A")
 ## How far ahead a path is shown, in seconds. Closed orbits show one lap.
 @export var horizon_seconds: float = 3600.0
 ## Points along the path.
@@ -26,6 +32,8 @@ var _gravity_model: GravityModel
 var _state: ShipState
 var _world_points: PackedFloat64Array = PackedFloat64Array()
 var _screen_points: PackedVector2Array = PackedVector2Array()
+var _entry_heights: PackedFloat64Array = PackedFloat64Array()
+var _landing_runs: Array[PackedVector2Array] = []
 var _pixels_per_unit: float = 0.0
 var _ticks_since_update: int = 0
 var _dominant_body: int = 0
@@ -50,7 +58,8 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 	_ticks_since_update += 1
 	var dominant: int = _gravity_model.get_dominant_body(x, y, _state.time)
 	# Around a moon the line is drawn around where the moon is now, so it has to keep up.
-	if dominant != 0 or dominant != _dominant_body or _ticks_since_update >= refresh_ticks:
+	# Near the ground the view is close enough to see any part of the line left behind.
+	if dominant != 0 or dominant != _dominant_body or not _landing_runs.is_empty() or _ticks_since_update >= refresh_ticks:
 		_dominant_body = dominant
 		_update_path()
 
@@ -65,6 +74,7 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 func _update_path() -> void:
 	_ticks_since_update = 0
 	_world_points = _gravity_model.predict_trajectory(_state, horizon_seconds, sample_count)
+	_entry_heights = _gravity_model.predict_entry_heights(_state, horizon_seconds, sample_count)
 
 	var encounter: PackedFloat64Array = _gravity_model.find_encounter(_state, horizon_seconds)
 	_has_encounter = encounter.size() == 2
@@ -82,13 +92,38 @@ func _rebuild_screen_points() -> void:
 	_screen_points.resize(count)
 	for i in range(count):
 		_screen_points[i] = Vector2(_world_points[i * 2] * _pixels_per_unit, _world_points[i * 2 + 1] * _pixels_per_unit)
+	_rebuild_landing_runs()
 	queue_redraw()
+
+
+# Splits out the stretches below the entry height, ending each exactly where the line crosses it.
+func _rebuild_landing_runs() -> void:
+	_landing_runs.clear()
+	var run := PackedVector2Array()
+	for i in range(_screen_points.size()):
+		if _entry_heights[i] < 0.0:
+			if run.is_empty() and i > 0:
+				run.append(_crossing_point(i - 1, i))
+			run.append(_screen_points[i])
+		elif not run.is_empty():
+			run.append(_crossing_point(i - 1, i))
+			_landing_runs.append(run)
+			run = PackedVector2Array()
+	if run.size() >= 2:
+		_landing_runs.append(run)
+
+
+func _crossing_point(from_index: int, to_index: int) -> Vector2:
+	var share: float = _entry_heights[from_index] / (_entry_heights[from_index] - _entry_heights[to_index])
+	return _screen_points[from_index].lerp(_screen_points[to_index], share)
 
 
 func _draw() -> void:
 	if _screen_points.size() >= 2:
 		# A width of -1 draws a true one-pixel line, which stays on the pixel grid.
 		draw_polyline(_screen_points, line_color, -1.0)
+	for run: PackedVector2Array in _landing_runs:
+		draw_polyline(run, landing_color, -1.0)
 
 	if _has_encounter:
 		var center := Vector2(_encounter_x * _pixels_per_unit, _encounter_y * _pixels_per_unit)

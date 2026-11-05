@@ -16,6 +16,14 @@ uniform vec4 surface_colors[6] : source_color;
 uniform int terrain_seed = 1;
 // Size of the largest land features, in world units.
 uniform float largest_feature = 90000.0;
+// Up close the big shapes are too large to show motion, so patches of the next color up
+// speckle the ground. This is their smallest size, in world units, and how wide they
+// stay on screen, in pixels, as you zoom out. Past the last zoom they switch off.
+uniform float speckle_size = 22.0;
+uniform float speckle_screen_size = 20.0;
+uniform float speckle_last_zoom_out = 40.0;
+// How much of the ground the speckles cover, from 0 to 1.
+uniform float speckle_amount = 0.3;
 
 varying vec2 pixel;
 
@@ -75,6 +83,13 @@ void fragment() {
 		float height = terrain_height(offset * units_per_px);
 		// Noise bunches up around the middle, so stretch it to reach all six colors.
 		int index = int(clamp((height - 0.25) * 2.0, 0.0, 0.999) * 6.0);
+		if (units_per_px < speckle_last_zoom_out) {
+			float size = max(speckle_size, units_per_px * speckle_screen_size);
+			float speckle = value_noise(offset * units_per_px / size, uint(terrain_seed) + 16u);
+			if (speckle < speckle_amount) {
+				index = min(index + 1, 5);
+			}
+		}
 		COLOR = vec4(surface_colors[index].rgb, 1.0);
 	}
 }

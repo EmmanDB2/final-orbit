@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Landing works in Tier 0, with no damage yet \[Leaning\]. Zoom goes to seven tiers: a Descent tier at 1/8 sits between Surface and Approach, because the 128x jump was too big to land with. Landing line built, moved out of the parking lot \[Leaning\]. Rough altitude and speed readout added \[Leaning\]. Gravity interface gains `predict_entry_heights`, `get_altitude`, and `get_surface_velocity`, the one place ground speed comes from |
 | 2026-11-05 | Rotating planets and atmospheres added for Tier 1 \[Leaning\]. Landing line idea added to the parking lot |
 | 2026-11-05 | Moon on Kepler rails and sphere of influence switching work. Gravity interface gains body queries and `find_encounter`, because the view and preview need them and every model will have bodies. Orbit view now centers on the dominant body. Preview now also refreshes while coasting and draws encounters around the moon's future position \[Leaning\]. Moon set up in `data/moon.tres` so a burn right at the start reaches it \[Leaning\] |
 | 2026-11-05 | Throwaway touch controls added for testing on the phone. The touch controls and UI question stays open |
@@ -215,6 +216,8 @@ Tier 0's preview draws the ship's current path as a 1 px telemetry cyan line: on
 
 Around a moon, the line is drawn around the moon as it is now. An upcoming encounter is drawn around the moon as it will be on arrival, with a ring showing where that is, so the line has a kink where it enters the moon's frame. The line ends on leaving the moon's sphere; the path after that shows once you get there. \[Leaning\]
 
+Landing line: the part of the line inside a body's landing zone, and everything below it, is drawn in telemetry amber, so you can see where a path starts coming down. The zone starts at the top of the atmosphere, or at a set height on an airless body, and both live in the body's data file. \[Leaning\]
+
 Black holes are faked convincingly, not simulated with relativity: stronger close-range gravity, time dilation on the mission clock, tidal stress, visual lensing. \[Leaning\]
 
 ## Universe generation
@@ -264,7 +267,7 @@ Every hazard is physical, visible, and predictable: you die because you were gre
 
 ## Camera, zoom, and landing
 
-One continuous top-down camera with six zoom tiers. Landing is just zooming in: there are no loading screens between space and a surface. \[Locked\]
+One continuous top-down camera with seven zoom tiers. Landing is just zooming in: there are no loading screens between space and a surface. \[Locked\]
 
 | Tier | View | Shows |
 | --- | --- | --- |
@@ -273,12 +276,16 @@ One continuous top-down camera with six zoom tiers. Landing is just zooming in: 
 | 3 | Planet and moons | Local orbits, spheres of influence |
 | 4 | Orbit | Your ship's orbit, maneuver planning |
 | 5 | Approach | Curved horizon, atmosphere glow, re-entry |
-| 6 | Surface | Flat ground, terrain, pads, the pilot through the canopy |
+| 6 | Descent | The ground coming up, as the ship icon, for judging a landing |
+| 7 | Surface | Flat ground, terrain, pads, the pilot through the canopy |
 
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
-- Tier 0 builds tiers 3 to 6. Planet centers on the middle of the system, Orbit centers on whichever body you're orbiting, and Approach and Surface center on the ship. \[Leaning\]
+- Tier 0 builds tiers 3 to 7. Planet centers on the middle of the system, Orbit centers on whichever body you're orbiting, and Approach, Descent, and Surface center on the ship. \[Leaning\]
 - The far tiers draw each moon's rails and sphere of influence in dark canopy glass from the agency palette. \[Leaning\]
-- Until landing is built, a ship that reaches a surface just stops there, with no damage. \[Leaning\]
+- A ship rests on its engine bell, and on the ground it settles upright and the turn keys do nothing, so thrust always lifts it straight off. \[Leaning\]
+- Tier 0 has no damage: a touchdown only reports LANDED (up to 150 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 500 units/s). \[Leaning\]
+- A rough readout shows altitude and speed relative to the ground, in world units. It's there so landing can be judged, and isn't the real UI. \[Leaning\]
+- Up close, patches of the next color speckle the ground so you can see drift. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
 - Terrain detail is generated only when you zoom in close. \[Leaning\]
 - Far zooms show ships as clean icons; close zooms show the pilot. \[Leaning\]
@@ -387,4 +394,3 @@ Parking lot:
 - Half-folded Mission Control console \[Cut: no Flex Mode on Fold 8; revisit for Fold 8 Ultra or later\]
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
-- Landing line: the part of the orbit line inside a planet's atmosphere, and everything below it, changes color, so you can see where a path starts coming down \[Not built; could arrive with the landing ticket, since it only needs the atmosphere's height as data\]

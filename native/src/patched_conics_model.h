@@ -22,17 +22,21 @@ class PatchedConicsModel : public GravityModel {
 
 public:
 	// Sets body 0, fixed at the world origin. p_mu is its gravitational parameter, which
-	// is surface gravity times radius squared.
-	void set_central_body(double p_mu, double p_radius);
+	// is surface gravity times radius squared. p_entry_altitude is the height where its
+	// landing zone starts.
+	void set_central_body(double p_mu, double p_radius, double p_entry_altitude = 0.0);
 
 	// Adds a moon on rails around body 0. Call set_central_body first. Angles are in
 	// radians, and the moon goes clockwise on screen, the same way the ship starts.
-	void add_moon(double p_mu, double p_radius, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start);
+	void add_moon(double p_mu, double p_radius, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start, double p_entry_altitude = 0.0);
 
 	godot::PackedFloat64Array get_acceleration(double p_x, double p_y, double p_time) const override;
 	void propagate(const godot::Ref<ShipState> &p_state, double p_dt) const override;
 	godot::PackedFloat64Array predict_trajectory(const godot::Ref<ShipState> &p_state, double p_duration, int p_samples) const override;
+	godot::PackedFloat64Array predict_entry_heights(const godot::Ref<ShipState> &p_state, double p_duration, int p_samples) const override;
 	godot::PackedFloat64Array find_encounter(const godot::Ref<ShipState> &p_state, double p_duration) const override;
+	double get_altitude(double p_x, double p_y, double p_time) const override;
+	godot::PackedFloat64Array get_surface_velocity(double p_x, double p_y, double p_time) const override;
 	int get_body_count() const override;
 	godot::PackedFloat64Array get_body_position(int p_index, double p_time) const override;
 	double get_body_radius(int p_index) const override;
@@ -54,6 +58,9 @@ private:
 	struct Body {
 		double mu = 1.0;
 		double radius = 0.0;
+		double entry_altitude = 0.0;
+		// Radians per second. Zero for now: spinning planets are Tier 1.
+		double spin_rate = 0.0;
 		// Rails around body 0. Body 0 itself doesn't use these.
 		double semi_major_axis = 0.0;
 		double eccentricity = 0.0;
@@ -97,8 +104,11 @@ private:
 
 	// Exact coast along the conic, with no surface check.
 	State2D coast(const State2D &p_state, double p_dt, double p_mu) const;
-	// Coast that stops at the body's surface. Returns true if the ship hit it.
-	bool coast_to_surface(State2D &r_state, double p_dt, const Body &p_body) const;
+	// Coast that stops at the body's surface. Returns true if the ship hit it, with its
+	// speed relative to the ground at that moment.
+	bool coast_to_surface(State2D &r_state, double p_dt, const Body &p_body, double p_clearance, double &r_touchdown_speed) const;
+	// How fast the ground moves in the body's own frame, at a point relative to the body.
+	void ground_velocity_on_body(const Body &p_body, double p_x, double p_y, double &r_vx, double &r_vy) const;
 	// Closest the current conic ever gets to the body.
 	double periapsis_radius(const State2D &p_state, double p_mu) const;
 	// Fastest the ship can go on this conic above the body's surface.
@@ -111,9 +121,11 @@ private:
 	double safe_step(const State2D &p_world, double p_time, int p_body) const;
 
 	// Follows a coast around one body until something changes.
-	SegmentEnd walk_segment(const State2D &p_relative, int p_body, double p_start_time, double p_horizon) const;
-	bool segment_event(const State2D &p_relative, int p_body, double p_time, SegmentEnd &r_end) const;
-	void sample_segment(godot::PackedFloat64Array &r_points, const State2D &p_relative, int p_body, const SegmentEnd &p_end, double p_origin_x, double p_origin_y, int p_count) const;
+	SegmentEnd walk_segment(const State2D &p_relative, int p_body, double p_start_time, double p_horizon, double p_clearance) const;
+	bool segment_event(const State2D &p_relative, int p_body, double p_time, double p_clearance, SegmentEnd &r_end) const;
+	void sample_segment(godot::PackedFloat64Array *r_points, godot::PackedFloat64Array *r_heights, const State2D &p_relative, int p_body, const SegmentEnd &p_end, double p_origin_x, double p_origin_y, int p_count, double p_clearance) const;
+	// Fills whichever of the two arrays it's given.
+	void build_path(const godot::Ref<ShipState> &p_state, double p_duration, int p_samples, godot::PackedFloat64Array *r_points, godot::PackedFloat64Array *r_heights) const;
 
 	std::vector<Body> bodies = { Body() };
 };

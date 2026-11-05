@@ -18,12 +18,16 @@ void ShipState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_time"), &ShipState::get_time);
 	ClassDB::bind_method(D_METHOD("set_time", "value"), &ShipState::set_time);
 	ClassDB::bind_method(D_METHOD("is_on_surface"), &ShipState::is_on_surface);
+	ClassDB::bind_method(D_METHOD("get_ground_clearance"), &ShipState::get_ground_clearance);
+	ClassDB::bind_method(D_METHOD("set_ground_clearance", "value"), &ShipState::set_ground_clearance);
+	ClassDB::bind_method(D_METHOD("get_touchdown_speed"), &ShipState::get_touchdown_speed);
 
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "x"), "set_x", "get_x");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "y"), "set_y", "get_y");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "velocity_x"), "set_velocity_x", "get_velocity_x");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "velocity_y"), "set_velocity_y", "get_velocity_y");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "time"), "set_time", "get_time");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "ground_clearance"), "set_ground_clearance", "get_ground_clearance");
 }
 
 } // namespace final_orbit

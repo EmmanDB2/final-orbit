@@ -17,6 +17,10 @@ public:
 	double velocity_y = 0.0;
 	double time = 0.0;
 	bool on_surface = false;
+	// How far the ship's center sits above the ground when it's resting there.
+	double ground_clearance = 0.0;
+	// Speed relative to the ground at the last moment of contact.
+	double touchdown_speed = 0.0;
 
 	double get_x() const { return x; }
 	void set_x(double p_value) { x = p_value; }
@@ -29,6 +33,9 @@ public:
 	double get_time() const { return time; }
 	void set_time(double p_value) { time = p_value; }
 	bool is_on_surface() const { return on_surface; }
+	double get_ground_clearance() const { return ground_clearance; }
+	void set_ground_clearance(double p_value) { ground_clearance = p_value; }
+	double get_touchdown_speed() const { return touchdown_speed; }
 
 protected:
 	static void _bind_methods();

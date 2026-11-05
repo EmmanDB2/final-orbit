@@ -39,6 +39,9 @@ func _initialize() -> void:
 	_test_repeatable()
 	_test_precision_far_from_body()
 	_test_no_moon_means_no_encounters()
+	_test_ground_clearance()
+	_test_touchdown_speed()
+	_test_entry_heights()
 
 	var with_moon := PatchedConicsModel.new()
 	with_moon.set_central_body(MU, RADIUS)
@@ -54,6 +57,7 @@ func _initialize() -> void:
 	_test_landing_on_moon()
 	_test_encounter_prediction()
 	_test_prediction_inside_soi()
+	_test_moon_ground_speed_and_altitude()
 
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -283,6 +287,77 @@ func _test_no_moon_means_no_encounters() -> void:
 	_check("nothing to encounter", _model.find_encounter(_circular_state(LOW_ORBIT), 100000.0).size(), 0, 0.0)
 	_check("body 0 has no limit", _model.get_sphere_of_influence(0), 0.0, 0.0)
 	_check("body 0 has no rails to draw", _model.get_body_orbit_path(0, 16).size(), 0, 0.0)
+
+
+func _test_ground_clearance() -> void:
+	var state := _state(0.0, -(RADIUS + 5000.0), 0.0, 0.0)
+	state.ground_clearance = 105.0
+	var points: PackedFloat64Array = _model.predict_trajectory(state, 100000.0, 64)
+	_check("the line ends with the ship resting on the ground", Vector2(points[126], points[127]).length(), RADIUS + 105.0, 1e-2)
+	for i in range(3600):
+		_model.propagate(state, 1.0 / 60.0)
+	_check("the ship rests above the surface by its clearance", _radius_of(state), RADIUS + 105.0, 1e-6)
+	_check("altitude measures from the ground", _model.get_altitude(state.x, state.y, state.time), 105.0, 1e-6)
+	_check("a ship with no clearance rests on the surface", _state(0.0, -RADIUS, 0.0, 0.0).ground_clearance, 0.0, 0.0)
+
+
+func _test_touchdown_speed() -> void:
+	var start: float = RADIUS + 5000.0
+	var contact: float = RADIUS + 105.0
+	var state := _state(0.0, -start, 0.0, 0.0)
+	state.ground_clearance = 105.0
+	var expected: float = sqrt(2.0 * MU * (1.0 / contact - 1.0 / start))
+	while not state.is_on_surface():
+		_model.propagate(state, 1.0 / 60.0)
+	_check("touchdown speed matches free fall", state.get_touchdown_speed(), expected, 5.0)
+	_check("the ground stops the ship", _speed_of(state), 0.0, 0.0)
+	_check("the ground isn't moving", _model.get_surface_velocity(state.x, state.y, state.time)[0], 0.0, 0.0)
+
+
+func _test_entry_heights() -> void:
+	var entry_model := PatchedConicsModel.new()
+	entry_model.set_central_body(MU, RADIUS, 15000.0)
+	# Dips to periapsis 160000, which is 10000 up, below the entry height of 15000.
+	var periapsis: float = 160000.0
+	var apoapsis: float = 300000.0
+	var a: float = (periapsis + apoapsis) / 2.0
+	var state := _state(0.0, -apoapsis, sqrt(MU * (2.0 / apoapsis - 1.0 / a)), 0.0)
+	var points: PackedFloat64Array = entry_model.predict_trajectory(state, 100000.0, 256)
+	var heights: PackedFloat64Array = entry_model.predict_entry_heights(state, 100000.0, 256)
+	_check("one height per point", heights.size(), points.size() / 2.0, 0.0)
+	_check("high up is above the landing zone", heights[0], apoapsis - RADIUS - 15000.0, 1e-3)
+	var lowest: float = INF
+	var first_low: int = -1
+	var last_low: int = -1
+	for i in range(heights.size()):
+		lowest = minf(lowest, heights[i])
+		if heights[i] < 0.0:
+			if first_low < 0:
+				first_low = i
+			last_low = i
+		_check_quiet(sqrt(points[i * 2] * points[i * 2] + points[i * 2 + 1] * points[i * 2 + 1]) - RADIUS - 15000.0, heights[i], 1e-6)
+	_check("periapsis dips below the entry height", lowest, 10000.0 - 15000.0, 50.0)
+	_check("the low part is one stretch in the middle", 1.0 if first_low > 0 and last_low < 255 else 0.0, 1.0, 0.0)
+
+
+func _check_quiet(actual: float, expected: float, tolerance: float) -> void:
+	if absf(actual - expected) > tolerance:
+		_check("heights match the points", actual, expected, tolerance)
+
+
+func _test_moon_ground_speed_and_altitude() -> void:
+	var r: float = 60000.0
+	var state := _state_around_moon(100.0, r, 0.0, 0.0, 0.0)
+	_check("altitude above the moon", _model.get_altitude(state.x, state.y, state.time), r - MOON_RADIUS, 1e-2)
+	var ground: PackedFloat64Array = _model.get_surface_velocity(state.x, state.y, state.time)
+	var moon: PackedFloat64Array = _moon_velocity(state.time)
+	_check("the moon's ground moves with the moon, x", ground[0], moon[0], 1e-2)
+	_check("the moon's ground moves with the moon, y", ground[1], moon[1], 1e-2)
+	var falling := _state_around_moon(100.0, r, 0.0, -300.0, 0.0)
+	while not falling.is_on_surface():
+		_model.propagate(falling, 1.0 / 60.0)
+	var expected: float = sqrt(300.0 * 300.0 + 2.0 * MOON_MU * (1.0 / MOON_RADIUS - 1.0 / r))
+	_check("touchdown speed is relative to the moon", falling.get_touchdown_speed(), expected, 5.0)
 
 
 func _moon_position(time: float) -> Vector2:

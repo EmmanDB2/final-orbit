@@ -18,11 +18,11 @@ enum Focus {
 signal view_changed(center_x: float, center_y: float, pixels_per_unit: float)
 
 ## Zoom tiers from closest to farthest, in screen pixels per world unit.
-@export var tier_scales: PackedFloat64Array = PackedFloat64Array([1.0, 1.0 / 128.0, 1.0 / 800.0, 1.0 / 2400.0])
+@export var tier_scales: PackedFloat64Array = PackedFloat64Array([1.0, 1.0 / 8.0, 1.0 / 128.0, 1.0 / 800.0, 1.0 / 2400.0])
 ## What each tier keeps centered.
-@export var tier_focus: Array[Focus] = [Focus.SHIP, Focus.SHIP, Focus.DOMINANT_BODY, Focus.SYSTEM_CENTER]
+@export var tier_focus: Array[Focus] = [Focus.SHIP, Focus.SHIP, Focus.SHIP, Focus.DOMINANT_BODY, Focus.SYSTEM_CENTER]
 ## The tier the game starts in.
-@export var tier: int = 2
+@export var tier: int = 3
 
 var _gravity_model: GravityModel
 var _state: ShipState

@@ -95,3 +95,11 @@ Files: `native/src/patched_conics_model.cpp`, `native/src/patched_conics_model.h
 - what a sphere of influence is and why the frame switches there
 - computing a moon's position from time instead of simulating it
 - reusing one shader and script for several bodies
+
+## 2026-11-05: Ticket 10, landing and the landing line
+
+Files: `native/src/patched_conics_model.cpp`, `native/src/patched_conics_model.h`, `native/src/gravity_model.cpp`, `native/src/gravity_model.h`, `native/src/ship_state.cpp`, `native/src/ship_state.h`, `tests/test_gravity_model.gd`, `scripts/ship.gd`, `scripts/telemetry_readout.gd`, `scripts/trajectory_preview.gd`, `scripts/flight_view.gd`, `scripts/body_data.gd`, `scripts/main.gd`, `scenes/main.tscn`, `shaders/planet.gdshader`, `data/home_planet.tres`, `data/moon.tres`, `art/hud_font.png`, `docs/DESIGN.md`
+
+- speed relative to the ground versus speed relative to space
+- drawing text from a sprite sheet with `draw_texture_rect_region`
+- splitting a line where it crosses a threshold, with `lerp`

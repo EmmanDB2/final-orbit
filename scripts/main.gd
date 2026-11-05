@@ -13,9 +13,10 @@ extends Node2D
 
 func _ready() -> void:
 	var gravity_model := PatchedConicsModel.new()
-	gravity_model.set_central_body(planet.get_mu(), planet.radius)
+	gravity_model.set_central_body(planet.get_mu(), planet.radius, planet.landing_line_altitude)
 	gravity_model.add_moon(moon.get_mu(), moon.radius, moon.orbit_semi_major_axis,
-			moon.orbit_eccentricity, moon.orbit_argument_of_periapsis, moon.orbit_start_angle)
+			moon.orbit_eccentricity, moon.orbit_argument_of_periapsis, moon.orbit_start_angle,
+			moon.landing_line_altitude)
 
 	var start_radius: float = planet.radius + start_altitude
 	var state := ShipState.new()

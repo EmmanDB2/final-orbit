@@ -32,6 +32,11 @@ public:
 	// it will be at that moment, which find_encounter gives the time of.
 	virtual godot::PackedFloat64Array predict_trajectory(const godot::Ref<ShipState> &p_state, double p_duration, int p_samples) const = 0;
 
+	// How far each point of predict_trajectory is above where its body's landing zone
+	// starts, in the same order. Negative means inside it. That's the top of the
+	// atmosphere, or a set height on an airless body.
+	virtual godot::PackedFloat64Array predict_entry_heights(const godot::Ref<ShipState> &p_state, double p_duration, int p_samples) const = 0;
+
 	// The next time the ship's coast takes it under another body's gravity, as
 	// [seconds from now, body index]. Empty if there isn't one.
 	virtual godot::PackedFloat64Array find_encounter(const godot::Ref<ShipState> &p_state, double p_duration) const = 0;
@@ -45,6 +50,11 @@ public:
 	virtual int get_dominant_body(double p_x, double p_y, double p_time) const = 0;
 	// How far a body's gravity dominates. Zero for a body with no limit, such as body 0.
 	virtual double get_sphere_of_influence(int p_index) const = 0;
+	// Height above the dominant body's surface.
+	virtual double get_altitude(double p_x, double p_y, double p_time) const = 0;
+	// How fast the ground of the dominant body is moving under this point, as [x, y]. This
+	// is the one place ground speed comes from, so planet spin only has to change this.
+	virtual godot::PackedFloat64Array get_surface_velocity(double p_x, double p_y, double p_time) const = 0;
 	// One lap of a body's rails, flat [x0, y0, x1, y1, ...]. Empty for body 0.
 	virtual godot::PackedFloat64Array get_body_orbit_path(int p_index, int p_samples) const = 0;
 
