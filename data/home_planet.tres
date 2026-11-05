@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="BodyData" format=3]
+
+[ext_resource type="Script" path="res://scripts/body_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Home"
+radius = 150000.0
+surface_gravity = 200.0
+surface_colors = PackedColorArray(0.11, 0.2, 0.33, 1, 0.16, 0.31, 0.42, 1, 0.3, 0.5, 0.5, 1, 0.38, 0.45, 0.28, 1, 0.53, 0.47, 0.33, 1, 0.76, 0.73, 0.66, 1)
+terrain_seed = 7

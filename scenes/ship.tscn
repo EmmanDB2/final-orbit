@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://bipnsffl0lcdo" path="res://scripts/ship.gd" id="1_2gnfn"]
 [ext_resource type="Texture2D" uid="uid://ffjjwjrthqtg" path="res://art/ship_lander.png" id="2_4tobq"]
 [ext_resource type="Texture2D" uid="uid://cgk1w00m0s2wo" path="res://art/flame_main.png" id="3_flame"]
+[ext_resource type="Texture2D" uid="uid://d021pawjfte4p" path="res://art/ship_icon.png" id="4_icon"]
 
 [node name="Ship" type="Node2D" unique_id=606153027]
 script = ExtResource("1_2gnfn")
@@ -17,3 +18,8 @@ hframes = 3
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1258765799]
 texture = ExtResource("2_4tobq")
+
+[node name="Icon" type="Sprite2D" parent="." unique_id=1117364092]
+visible = false
+texture = ExtResource("4_icon")
+hframes = 2

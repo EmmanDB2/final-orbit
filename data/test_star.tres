@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_data")
 color = Color(0.62, 0.72, 1, 1)
-world_y = -6000.0
-falloff_distance = 4000.0
+world_y = -600000.0
+falloff_distance = 300000.0

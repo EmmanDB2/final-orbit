@@ -63,3 +63,11 @@ Files: `native/SConstruct`, `native/src/*`, `bin/final_orbit.gdextension`, `test
 - GDExtension: C++ classes that GDScript can call
 - abstract interfaces and virtual methods
 - what a closed-form orbit is, used rather than derived
+
+## 2026-11-05: Ticket 5, part 2: planet, zoom tiers, and first orbit
+
+Files: `project.godot`, `scenes/main.tscn`, `scenes/ship.tscn`, `scripts/main.gd`, `scripts/ship.gd`, `scripts/flight_view.gd`, `scripts/planet_view.gd`, `scripts/body_data.gd`, `scripts/starfield.gd`, `shaders/planet.gdshader`, `data/home_planet.tres`, `data/test_star.tres`, `art/ship_icon.png`, `docs/DESIGN.md`
+
+- thrust as small velocity changes on top of an exact orbit
+- drawing a planet with a shader instead of a sprite
+- one script that sets up the others and hands them what they need

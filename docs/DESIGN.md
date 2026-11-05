@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | First orbit works, with the physics core in C++. Gravity interface changed to take 64-bit x and y, because Godot's Vector2 is 32-bit. Tier 0 planet set far below 1/10 scale so a low orbit takes under 4 minutes without time warp \[Leaning\]. Four of the six zoom tiers built, with far tiers centered on the planet \[Leaning\] |
 | 2026-11-05 | Star tint kept and moved out of the parking lot \[Leaning\]. Never-pure-black rule changed to match: pure black now only happens far from any star \[Leaning\] |
 | 2026-11-05 | Star tint prototyped behind a feature flag, with a fake star and faint stars washing out in the glare |
 | 2026-11-05 | Star tint idea added to the parking lot |
@@ -157,9 +158,10 @@ Patched conics first (the ship feels only the dominant body's gravity), behind a
 
 Gravity model interface: \[Locked\]
 
-- `GravityModel.get_acceleration(position, time)`
+- `GravityModel.get_acceleration(x, y, time)`
 - `GravityModel.propagate(ship_state, dt)`
-- `GravityModel.predict_trajectory(ship_state, duration)`
+- `GravityModel.predict_trajectory(ship_state, duration, samples)`
+- Positions are separate 64-bit x and y, in `ShipState` or as plain floats, because Godot's Vector2 is 32-bit.
 - `PatchedConicsModel` ships first; `NBodyModel` (ship feels every body, planets stay on rails) plugs in later. Nothing else in the game knows which is running.
 
 Celestial bodies: \[Locked\]
@@ -187,6 +189,7 @@ Flight modes: \[Leaning\]
 Scale and precision: \[Leaning\]
 
 - Planets around 1/10 real scale, tuned for play.
+- The Tier 0 planet is far smaller for now, so a low orbit takes under 4 minutes without time warp: radius 150,000 px and surface gravity 200 px/s², or about 1/850 real scale if the 35 px pilot is 1.75 m. Revisit once time warp exists. These live in `data/home_planet.tres`. \[Leaning\]
 - Floating origin re-centered on the ship to avoid jitter.
 - Physics math in 64-bit, either in native code or a double-precision engine build.
 
@@ -253,6 +256,8 @@ One continuous top-down camera with six zoom tiers. Landing is just zooming in: 
 | 6 | Surface | Flat ground, terrain, pads, the pilot through the canopy |
 
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
+- Tier 0 builds tiers 3 to 6. Orbit and Planet center on the planet, so you watch the ship go around it; Approach and Surface center on the ship. \[Leaning\]
+- Until landing is built, a ship that reaches a surface just stops there, with no damage. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
 - Terrain detail is generated only when you zoom in close. \[Leaning\]
 - Far zooms show ships as clean icons; close zooms show the pilot. \[Leaning\]
