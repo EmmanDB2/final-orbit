@@ -49,11 +49,31 @@ func _rebuild_orbits() -> void:
 
 
 func _draw() -> void:
-	for screen: PackedVector2Array in _screen_orbits:
-		draw_polyline(screen, guide_color, -1.0)
-
-	for index in range(1, _gravity_model.get_body_count()):
+	for i in range(_screen_orbits.size()):
+		var index: int = i + 1
 		var now: PackedFloat64Array = _gravity_model.get_body_position(index, _state.time)
 		var center := Vector2(now[0] * _pixels_per_unit, now[1] * _pixels_per_unit)
 		var radius: float = _gravity_model.get_sphere_of_influence(index) * _pixels_per_unit
+		_draw_outside_ring(_screen_orbits[i], center, radius)
 		draw_arc(center, radius, 0.0, TAU, ring_points, guide_color, -1.0)
+
+
+# Draws a moon's orbit line, stopping where it meets the ring around that moon.
+func _draw_outside_ring(points: PackedVector2Array, center: Vector2, radius: float) -> void:
+	var run := PackedVector2Array()
+	for i in range(points.size()):
+		if points[i].distance_to(center) >= radius:
+			if run.is_empty() and i > 0:
+				run.append(_ring_crossing(points[i - 1], points[i], center, radius))
+			run.append(points[i])
+		elif not run.is_empty():
+			run.append(_ring_crossing(points[i - 1], points[i], center, radius))
+			draw_polyline(run, guide_color, -1.0)
+			run = PackedVector2Array()
+	if run.size() >= 2:
+		draw_polyline(run, guide_color, -1.0)
+
+
+func _ring_crossing(from: Vector2, to: Vector2, center: Vector2, radius: float) -> Vector2:
+	var from_distance: float = from.distance_to(center)
+	return from.lerp(to, (radius - from_distance) / (to.distance_to(center) - from_distance))

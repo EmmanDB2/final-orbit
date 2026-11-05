@@ -286,7 +286,7 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
 - Tier 0 builds tiers 3 to 7. Planet centers on the middle of the system, Orbit centers on whichever body you're orbiting, and Approach, Descent, and Surface center on the ship. \[Leaning\]
-- The far tiers draw each moon's rails and sphere of influence in dark canopy glass from the agency palette, behind the planet and moons. \[Leaning\]
+- The far tiers draw each moon's rails and sphere of influence in dark canopy glass from the agency palette, behind the planet and moons. A moon's orbit line stops at its sphere of influence ring. \[Leaning\]
 - A ship rests on its engine bell, and on the ground it settles upright and the turn keys do nothing, so thrust always lifts it straight off. \[Leaning\]
 - Tier 0 has no damage: a touchdown only reports LANDED (up to 150 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 500 units/s). \[Leaning\]
 - A rough readout shows altitude and speed relative to the ground, in world units. It's there so landing can be judged, and isn't the real UI. \[Leaning\]
