@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Star tint kept and moved out of the parking lot \[Leaning\]. Never-pure-black rule changed to match: pure black now only happens far from any star \[Leaning\] |
 | 2026-11-05 | Star tint prototyped behind a feature flag, with a fake star and faint stars washing out in the glare |
 | 2026-11-05 | Star tint idea added to the parking lot |
 | 2026-11-05 | First Android build runs on the Fold. Screen sizes confirmed on the device. Android export approach added under Tech \[Leaning\] |
@@ -279,7 +280,8 @@ Space palette (generated per system): \[Locked\]
 
 - Each system rolls a small palette from its seed; each planet uses about 6 colors from it.
 - Star colors come from real temperature; anomaly systems may roll colors that make no physical sense.
-- Backgrounds are always very dark, never pure black.
+- Backgrounds are always very dark. Pure black only happens far from any star. \[Leaning\]
+- Star tint: space takes on a slight tint of the system star's color, deeper near the star and fading toward black far from it, so the color of space shows your distance from the star. Faint stars wash out in the glare near the star and reappear far from it. The full version needs real stars in Tier 1; until then it's a prototype behind `FeatureFlags.STAR_TINT` with an invisible fake star in `data/test_star.tres`. \[Leaning\]
 - Background stars are a seeded shader with three parallax layers. Real stars would barely shift; the parallax is there so motion reads in empty space. \[Leaning\]
 
 Readability rules: \[Locked\]
@@ -359,4 +361,3 @@ Parking lot:
 - Half-folded Mission Control console \[Cut: no Flex Mode on Fold 8; revisit for Fold 8 Ultra or later\]
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
-- Star tint: space takes on a slight tint of the system star's color, deeper near the star and fading toward black far from it, so the color of space shows your distance from the star. Faint stars wash out in the glare near the star and reappear far from it. Prototyped behind `FeatureFlags.STAR_TINT` with a fake star in `data/test_star.tres` \[Tier 1, needs real stars; would change the never-pure-black rule\]
