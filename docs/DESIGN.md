@@ -343,7 +343,7 @@ Open questions:
 - [ ] Name of the game: decided, Final Orbit
 - [ ] Destroy gigs: real combat with armed ships and AI pilots, or only non-combat targets (dead satellites, derelicts, rogue asteroids)?
 - [ ] Pilot identity: named character, customizable, or anonymous?
-- [ ] Exact internal pixel resolutions for the inner and cover screens. Confirmed on the device 2026-11-05: inner 2448 x 1848 (4:3, not near-square), cover 1972 x 1248 (16:10). Placeholder: 3x, so 816 x 616 inner. The fixed base size draws the cover screen at 2x as 973 x 616, leaving black bars of 13 px on the sides and 8 px top and bottom, so each screen needs its size set at runtime.
+- [ ] Exact internal pixel resolutions for the inner and cover screens. Confirmed on the device 2026-11-05: inner 2448 x 1848 (4:3, not near-square), cover 1972 x 1248 (16:10). Placeholder: 3x, so 816 x 616 inner, which fills the inner screen exactly. The fixed base size draws the cover screen at 2x as 973 x 616, leaving black bars of 13 px on the sides and 8 px top and bottom, so each screen needs its size set at runtime.
 - [ ] Module grid size (64 x 64 px is a starting guess)
 - [ ] Touch controls for burns, rotation, and maneuver planning
 - [ ] Economy numbers: gig pay, ship prices, repair costs, tow cost
