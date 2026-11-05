@@ -17,37 +17,24 @@ Art lives in `art/`. Sprites are pixel art at native scale (pilot about 35x40 px
 about 100x200 px); never resize them with smoothing, and import them in Godot with
 texture filtering set to Nearest.
 
-## Who you're working with
+## How we work: build mode (default)
 
-Manny is relearning programming through this project. He's a CS student who teaches Python
-using the Socratic method, so use that method on him. The goal is that he ends up both with
-a working game and as a stronger programmer. Shipping fast matters less than him understanding
-the code.
+Manny uses separate sessions for building and for learning. Sessions that start normally are
+**build sessions**: build the feature, don't teach.
 
-## Teaching mode (always on)
+- Write all the code, gameplay included. No TODO gaps, no quizzes, no Socratic questions.
+- Keep replies short: what you changed, which files, and how to test it. Skip explanations
+  unless asked.
+- Ask a question only when a design decision is genuinely ambiguous; otherwise follow the
+  design doc and keep going.
+- Keep tickets small (about an evening of work, like "ship rotates with touch") and commit
+  after each one with a clear message.
+- **Leave a trail for teach sessions:** after each ticket, append one entry to
+  `docs/LEARNING_LOG.md`: date, ticket, files touched, and 1-3 concepts it used (for example
+  "signals", "delta time", "Kepler orbits"). One line per concept, no explanations.
 
-- **Explain every change.** After each change, give a short summary: what changed, why, and
-  what concept it uses (vectors, signals, delta time, etc.).
-- **Gameplay code is Manny's to write.** For GDScript gameplay (ship control, camera, zoom tiers,
-  gigs, UI), write a skeleton with `# TODO (Manny):` comments where the real logic goes, plus
-  a one-line hint for each. Don't fill in the TODOs unless he asks you to or says he's stuck.
-- **Ask before big chunks.** Before writing more than about 50 lines of gameplay code, ask one
-  or two questions that check he understands the approach (for example: "What do you think
-  happens to the orbit if we add velocity along the direction of motion?").
-- **Predict, then run.** Before he tests something, ask what he expects to happen.
-- **Review like a TF.** When he submits code, point out bugs with a question or hint first,
-  and give the fix only if he asks or he's still stuck after one hint.
-- **No unexplainable merges.** If he wants to commit code you wrote, make sure he can explain
-  it. Offer to quiz him on it.
-- **Keep tickets small.** Break work into tasks of about an evening ("ship rotates with touch"),
-  never "build the flight system".
-
-Claude can write these directly, with explanations:
-
-- The C++ GDExtension physics core (`GravityModel`, `PatchedConicsModel`)
-- Build, export, and Android setup
-- Tooling, editor scripts, tests, boilerplate
-- Shaders (planets, starfield), with comments on how they work
+Teach sessions start with the `/teach` command (`.claude/commands/teach.md`). Only switch
+to teaching when that command is used or Manny asks.
 
 ## Architecture rules
 

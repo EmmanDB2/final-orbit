@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Tier 0 started. Engine set to Godot 4.7.2 with the Compatibility renderer \[Leaning\]. C# re-checked: Godot 4.7 docs still call Android support experimental, so the physics core stays C++. Published Fold 8 screen sizes added to the resolution question, with a 3x placeholder |
 | 2026-11-05 | Named Final Orbit. Pixel scale locked: pilot about 35 x 40 px (concept art at native scale), canopy 40-48 px, modules about 64 x 64 px, small craft about 100 x 200 px |
 | 2026-11-04 | First draft from brainstorm |
 
@@ -276,6 +277,8 @@ Art pipeline: \[Leaning\]
 
 Godot 4, with GDScript for gameplay and the physics core in C++ through GDExtension. No custom engine. \[Leaning\]
 
+Godot 4.7.2 with the Compatibility renderer, since the game is 2D and needs no compute shaders. Changing renderer is a one-line project setting. \[Leaning\]
+
 Engine options:
 
 | Option | For | Against | Verdict |
@@ -286,7 +289,7 @@ Engine options:
 | Defold | Very light 2D mobile engine | Smaller ecosystem, Lua only | No |
 | Custom engine | Total control | You build rendering, input, UI, Android, tooling yourself before making a game | No |
 
-Why C++ for the physics core: Godot's docs list C# Android export as experimental with limitations ([source](https://github.com/godotengine/godot-docs/blob/master/tutorials/scripting/c_sharp/index.rst)), while GDExtension is native code on every platform. Re-check C# status before starting; if it is stable, C# is an easier option. \[Open\]
+Why C++ for the physics core: Godot's docs list C# Android export as experimental with limitations ([source](https://github.com/godotengine/godot-docs/blob/master/tutorials/scripting/c_sharp/index.rst)), while GDExtension is native code on every platform. Re-checked 2026-11-05: the Godot 4.7 docs still list C# on Android as experimental, so the core stays C++. \[Leaning\]
 
 Architecture for flexibility: \[Locked\]
 
@@ -317,11 +320,11 @@ Open questions:
 - [ ] Name of the game: decided, Final Orbit
 - [ ] Destroy gigs: real combat with armed ships and AI pilots, or only non-combat targets (dead satellites, derelicts, rogue asteroids)?
 - [ ] Pilot identity: named character, customizable, or anonymous?
-- [ ] Exact internal pixel resolutions for the inner and cover screens
+- [ ] Exact internal pixel resolutions for the inner and cover screens. Published specs: inner 2448 x 1848 (4:3, not near-square), cover 1972 x 1248 (16:10); confirm on the device. Placeholder: 3x, so 816 x 616 inner. A fixed base size drops the cover screen to 2x with black bars, so each screen needs its size set at runtime.
 - [ ] Module grid size (64 x 64 px is a starting guess)
 - [ ] Touch controls for burns, rotation, and maneuver planning
 - [ ] Economy numbers: gig pay, ship prices, repair costs, tow cost
-- [ ] C# on Android stable yet, or stay with C++ GDExtension?
+- [x] C# on Android stable yet, or stay with C++ GDExtension? Still experimental in Godot 4.7 (checked 2026-11-05); stay with C++
 - [ ] Starting conditions: first ship, starting money, home station
 
 Parking lot:
