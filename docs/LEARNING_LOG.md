@@ -32,7 +32,7 @@ Files: `scripts/ship.gd`, `docs/DESIGN.md`
 
 - angular velocity and angular acceleration
 
-## 2026-11-05: RAW and SAS flight modes
+## 2026-11-05: RAW and ASS flight modes
 
 Files: `project.godot`, `scenes/main.tscn`, `scripts/ship.gd`, `scripts/assist_indicator.gd`, `art/hud_flight_mode.png`, `docs/DESIGN.md`
 

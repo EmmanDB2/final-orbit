@@ -6,14 +6,14 @@
 # Vector2 is only 32-bit. The node itself stays at the origin and the world is
 # drawn around it. Empty space only for now: gravity arrives with GravityModel.
 #
-# Two flight modes, from "Flight modes" in DESIGN.md. RAW is just your inputs. SAS
-# (Ship Assist Systems) also fires the RCS against the spin when you let go of the
-# turn keys. SAS never touches velocity, since that would break orbits.
+# Two flight modes, from "Flight modes" in DESIGN.md. RAW is just your inputs. ASS
+# (Attitude Stabilization System) also fires the RCS against the spin when you let
+# go of the turn keys. ASS never touches velocity, since that would break orbits.
 extends Node2D
 
 ## Emitted every physics tick with the ship's real position in the world.
 signal world_position_changed(x: float, y: float)
-## Emitted when the flight mode changes: true for SAS, false for RAW.
+## Emitted when the flight mode changes: true for ASS, false for RAW.
 signal assist_changed(enabled: bool)
 
 ## How quickly A and D change the ship's spin, in radians per second squared.
@@ -23,7 +23,7 @@ signal assist_changed(enabled: bool)
 @export var thrust_acceleration: float = 300.0
 ## How many times per second the engine flame changes frame.
 @export var flame_fps: float = 15.0
-## True starts the ship in SAS, false in RAW.
+## True starts the ship in ASS, false in RAW.
 @export var assist_enabled: bool = true
 
 ## Direction of the nose in radians. 0 points up the screen; positive turns clockwise.
