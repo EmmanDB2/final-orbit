@@ -25,3 +25,9 @@ Files: `scenes/main.tscn`, `scripts/starfield.gd`, `shaders/starfield.gdshader`,
 - floating origin
 - signals connected in a scene
 - fragment shaders and uniforms
+
+## 2026-11-05: Turn drift
+
+Files: `scripts/ship.gd`, `docs/DESIGN.md`
+
+- angular velocity and angular acceleration

@@ -10,9 +10,9 @@ extends Node2D
 ## Emitted every physics tick with the ship's real position in the world.
 signal world_position_changed(x: float, y: float)
 
-## How fast the ship turns, in radians per second.
+## How quickly A and D change the ship's spin, in radians per second squared.
 ## @export makes this value editable in the Inspector panel.
-@export var turn_speed: float = 2.0
+@export var turn_acceleration: float = 1.5
 ## Main engine acceleration, in pixels per second squared.
 @export var thrust_acceleration: float = 80.0
 ## How many times per second the engine flame changes frame.
@@ -20,6 +20,8 @@ signal world_position_changed(x: float, y: float)
 
 ## Direction of the nose in radians. 0 points up the screen; positive turns clockwise.
 var heading: float = 0.0
+## How fast the nose is turning, in radians per second. Only the opposite key slows it.
+var angular_velocity: float = 0.0
 var world_x: float = 0.0
 var world_y: float = 0.0
 var velocity_x: float = 0.0
@@ -33,7 +35,8 @@ var _flame_time: float = 0.0
 # Godot calls this at a fixed 60 ticks per second, so the flight is the same
 # on any screen. delta is the length of one tick in seconds.
 func _physics_process(delta: float) -> void:
-	heading += Input.get_axis("turn_left", "turn_right") * turn_speed * delta
+	angular_velocity += Input.get_axis("turn_left", "turn_right") * turn_acceleration * delta
+	heading += angular_velocity * delta
 	rotation = heading
 
 	var thrusting: bool = Input.is_action_pressed("thrust")
