@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Star tint idea added to the parking lot |
 | 2026-11-05 | First Android build runs on the Fold. Screen sizes confirmed on the device. Android export approach added under Tech \[Leaning\] |
 | 2026-11-05 | SAS renamed ASS, for Attitude Stabilization System \[Locked\] |
 | 2026-11-05 | SAS staying spin-only is now \[Locked\], after flight testing |
@@ -357,3 +358,4 @@ Parking lot:
 - Half-folded Mission Control console \[Cut: no Flex Mode on Fold 8; revisit for Fold 8 Ultra or later\]
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
+- Star tint: space takes on a slight tint of the system star's color, deeper near the star and fading toward black far from it, so the color of space shows your distance from the star \[Tier 1, needs stars; would change the never-pure-black rule\]
