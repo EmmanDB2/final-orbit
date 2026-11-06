@@ -295,3 +295,10 @@ Files: `shaders/planet.gdshader`, `scripts/body_data.gd`, `scripts/body_view.gd`
 
 - layering colors by depth
 - growing one look over another as zoom changes
+
+## 2026-11-06: Terrain ticket 5: sky
+
+Files: `shaders/planet.gdshader`, `scripts/body_data.gd`, `scripts/body_view.gd`, `data/home_planet.tres`
+
+- ordered dithering for bands of color
+- alpha blending over a background

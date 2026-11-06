@@ -60,6 +60,8 @@ uniform vec3 cloud_color : source_color = vec3(1.0);
 uniform float crater_amount = 0.0;
 uniform vec3 air_color : source_color = vec3(1.0);
 uniform vec3 air_sunset_color : source_color = vec3(1.0, 0.6, 0.4);
+// The sky just above the ground, which fades up through air_color into space.
+uniform vec3 air_horizon_color : source_color = vec3(1.0);
 uniform vec3 star_color : source_color = vec3(1.0);
 
 // Each zoom shows finer detail than the last: patches of the next color, in tiers from this
@@ -79,9 +81,11 @@ uniform float section_deepest_px = 1200.0;
 uniform float light_steps = 2.0;
 uniform float light_lift = 0.55;
 uniform vec3 night_share = vec3(0.3, 0.34, 0.48);
-// How many flat steps the air fades through, and how strong it is at the ground.
-uniform float air_steps = 6.0;
-uniform float air_strength = 0.8;
+// How many flat bands the sky fades through close up, how strong it is at the ground, and how
+// much of each band's edge breaks up into a pattern of pixels.
+uniform float air_steps = 8.0;
+uniform float air_strength = 0.96;
+uniform float sky_dither = 0.4;
 // Closer than this many world units per pixel, clouds have faded away.
 uniform float cloud_nearest = 24.0;
 
@@ -354,17 +358,20 @@ void fragment() {
 	float from_far = clamp(units_per_px / 256.0, 0.0, 1.0);
 	vec2 outward = distance_px > 0.0 ? offset / distance_px : vec2(0.0, -1.0);
 	float facing = dot(outward, light_way);
-	float air_day = clamp(floor(clamp(facing * 1.4 + 0.45, 0.0, 1.0) * 3.0 + 0.5), 0.0, 3.0) / 3.0;
+	float air_day = clamp(floor(clamp(facing * 1.4 + 0.45, 0.0, 1.0) * 3.0 + pattern), 0.0, 3.0) / 3.0;
 
 	if (on_grid ? above_ground : distance_px > radius_px) {
 		float above_base = on_grid ? max(height_px, 0.0) : distance_px - radius_px;
 		if (above_base < air_px) {
-			// The air glows on the day side and turns warm around sunrise and sunset.
+			// Flat bands of sky, thinning with height: the horizon color at the bottom, fading up
+			// through the air's color into space. Dark on the night side, and warm around sunrise
+			// and sunset. Far out it's just a few bands around the planet.
 			float reach = 1.0 - above_base / air_px;
 			float steps = mix(air_steps, 3.0, from_far);
-			float level = ceil(reach * reach * steps) / steps;
-			float sunset = abs(facing + 0.05) < 0.18 ? 0.8 : 0.0;
-			COLOR = vec4(mix(air_color, air_sunset_color, sunset), level * air_strength * mix(0.08, 1.0, air_day));
+			float level = clamp(floor(reach * reach * steps + 1.0 - sky_dither + pattern * sky_dither), 0.0, steps) / steps;
+			vec3 sky = mix(air_color, air_horizon_color, smoothstep(0.55, 1.0, level));
+			float sunset = clamp(floor((1.0 - abs(facing + 0.05) / 0.2) * 3.0 + pattern), 0.0, 3.0) / 3.0 * 0.8 * level;
+			COLOR = vec4(mix(sky, air_sunset_color, sunset), level * air_strength * mix(0.05, 1.0, air_day));
 		} else {
 			COLOR = vec4(0.0);
 		}

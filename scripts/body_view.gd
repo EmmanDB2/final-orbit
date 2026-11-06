@@ -43,6 +43,7 @@ func show_body(index: int, body: BodyData, gravity_model: GravityModel, state: S
 	_air_height = body.landing_line_altitude if body.air_density > 0.0 else 0.0
 	_material.set_shader_parameter("air_color", body.air_color)
 	_material.set_shader_parameter("air_sunset_color", body.air_sunset_color)
+	_material.set_shader_parameter("air_horizon_color", body.air_horizon_color)
 	_material.set_shader_parameter("sea_level", body.sea_level)
 	_material.set_shader_parameter("ice_cap", body.ice_cap)
 	_material.set_shader_parameter("crater_amount", body.crater_amount)

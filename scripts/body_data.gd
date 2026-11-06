@@ -34,6 +34,8 @@ extends Resource
 @export var air_scale_height: float = 2000.0
 ## The color of the air's glow around the body.
 @export var air_color: Color = Color.WHITE
+## The color of the sky just above the ground, fading up through air_color into space.
+@export var air_horizon_color: Color = Color.WHITE
 ## The color it turns around sunrise and sunset.
 @export var air_sunset_color: Color = Color(1.0, 0.6, 0.4)
 ## How much of the sky has cloud, from 0 to 1. Zero means none.
