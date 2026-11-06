@@ -32,7 +32,8 @@ var pixel_count: int = 0
 var image: Image
 ## The design's modules, in the order module_share counts them.
 var modules: Array[ModuleData] = []
-## Each tank: "position" from the middle of the art, "capacity" left, and its "module" index.
+## Each tank: "position" from the middle of the art, "capacity" left, what it held when
+## "full", and its "module" index.
 var tanks: Array[Dictionary] = []
 
 var _width: int = 0
@@ -123,7 +124,7 @@ static func measure(design: ShipDesign) -> ShipBody:
 		var module: ModuleData = design.modules[i]
 		if module.fuel_capacity > 0.0:
 			var middle: Vector2 = (Vector2(module.cell) + Vector2(0.5, 0.5)) * design.cell_size - Vector2(grid_size) / 2.0
-			body.tanks.append({"position": middle, "capacity": module.fuel_capacity, "module": i})
+			body.tanks.append({"position": middle, "capacity": module.fuel_capacity, "full": module.fuel_capacity, "module": i})
 			body.fuel_capacity += module.fuel_capacity
 	body.original_fuel_capacity = body.fuel_capacity
 	body._refresh()

@@ -449,13 +449,15 @@ func _update_for_damage() -> void:
 		_pivot = new_pivot
 	_place_art()
 
-	# A tank with nothing left loses whatever it held. Smaller holes leak over time.
+	# A tank can only hold as much as is left of it, and the rest of its fuel is gone. What
+	# remains leaks out over time.
 	if body.fuel_capacity > 0.0:
 		var fill: float = fuel / body.fuel_capacity
 		for tank: Dictionary in body.tanks:
-			if body.module_share(tank["module"]) <= 0.0 and tank["capacity"] > 0.0:
-				fuel -= tank["capacity"] * fill
-				body.cut_tank(tank, tank["capacity"])
+			var room: float = tank["full"] * body.module_share(tank["module"])
+			if tank["capacity"] > room:
+				fuel -= (tank["capacity"] - room) * fill
+				body.cut_tank(tank, tank["capacity"] - room)
 		fuel = clampf(fuel, 0.0, body.fuel_capacity)
 
 	# Fuel vents from the edge of what's left of a tank, facing where the hole is.
@@ -496,7 +498,7 @@ func _update_for_damage() -> void:
 				cockpit_total += share
 		if not works and not _warned_modules.has(i):
 			_warned_modules[i] = true
-			warning_raised.emit("%s LOST" % module.display_name.to_upper())
+			warning_raised.emit("%s LOST" % module.display_name.to_upper().replace(",", ""))
 	_engine_share = engine_total / engine_count if engine_count > 0 else 0.0
 	_tail_share = _engine_share
 	_thrust_x = engine_sideways / engine_total if engine_total > 0.0 else 0.0

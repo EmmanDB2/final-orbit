@@ -184,7 +184,7 @@ How it works in Tier 1: \[Leaning\]
 - Pieces under 30 pixels are just sparks. There can be 12 chunks at once. Under 200 pixels, one fades after 30 seconds or burns up in the air, and any chunk on the ground goes after 60 seconds.
 - The ship turns around its new center of mass, which moves as pixels go.
 - A module under half its pixels stops working, and the pilot gets a message. Left RCS gone means no clockwise turn or moving right, and right RCS gone means the reverse. An engine module gone means half the thrust, off-center, so the ship spins.
-- Fuel is shared across the tanks. A holed tank leaks at up to 2,000 kg/s depending on the hole, loses capacity as it goes, and pushes the ship away from the hole. A destroyed tank loses what it held at once. Lost capacity stays lost, even after landing.
+- Fuel is shared across the tanks. A tank can only hold as much as is left of it, so losing pixels loses that share of its fuel at once. What remains leaks at up to 2,000 kg/s depending on the hole, and pushes the ship away from the hole. Lost capacity stays lost, even after landing.
 - Cockpit under half its pixels means the ship is lost, until the escape pod in Tier 2. The ship stops responding and stays where it is as a wreck. Touching the star destroys everything.
 - RESTART appears when the ship is lost, has no engine, or has no fuel, and starts a new flight.
 - A hit stops the ship dead against the ground, with no bounce or slide yet.

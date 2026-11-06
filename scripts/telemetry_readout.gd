@@ -21,7 +21,7 @@ extends Node2D
 ## Most messages shown at once, newest at the bottom.
 @export var most_messages: int = 4
 ## Pixels between one message and the next.
-@export var message_spacing: float = 12.0
+@export var message_spacing: float = 16.0
 
 var _messages: Array[Dictionary] = []
 var _ship_lost: bool = false

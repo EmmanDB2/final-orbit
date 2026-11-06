@@ -24,7 +24,7 @@ const BUTTON_HEIGHT: float = 44.0
 const BURN_HEIGHT: float = 76.0
 const RESTART_WIDTH: float = 84.0
 ## How far below the top bar RESTART sits, leaving room for pilot messages above it.
-const RESTART_DROP: float = 64.0
+const RESTART_DROP: float = 84.0
 ## How much of each hidden panel stays on screen as a strip.
 const STRIP: float = 6.0
 ## How far a finger moves before a touch on open space counts as a drag.
