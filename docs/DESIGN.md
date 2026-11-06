@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Landing legs built, with a LEGS button. They swing down, take harder landings, and can break off, leaving the ship leaning. The ship now stands on its feet with them down, which replaces always resting on the bell \[Leaning\] |
 | 2026-11-06 | Ships are now built from one PNG per module, placed by the ship's data file, with working pixels marked so damage knows the real parts. Engines weaken as the bell goes instead of working or not \[Leaning\] |
 | 2026-11-06 | Damage reads better: hits spread across the art with a glowing edge instead of blinking out, every lost pixel flies off as a longer-lived spark, and chunks crumble into sparks instead of vanishing \[Leaning\] |
 | 2026-11-05 | Damage built: pixels are collision, hits and heat erase them, pieces break off as debris with their own orbits, lost modules change how the ship flies, and tanks leak. Losing the cockpit loses the ship. RESTART added. CRASH now starts at 250 units/s instead of 500 \[Leaning\] |
@@ -344,8 +345,10 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
 - Tiers 2 to 7 are built. Star system centers on the star, Planet on the planet you're around, Orbit on whichever body you're orbiting, and Approach, Descent, and Surface on the ship. In between, the center slides steadily with the zoom. Out in deep space, the ship stands in for the planet and orbited body. \[Leaning\]
 - The far tiers draw each body's rails and sphere of influence in dark canopy glass from the agency palette, behind the bodies. An orbit line stops at that body's sphere of influence ring, and rails or rings too small to read aren't drawn. \[Leaning\]
-- A ship rests on its engine bell, and on the ground it settles upright and the turn keys do nothing, so thrust always lifts it straight off. \[Leaning\]
-- A touchdown reports LANDED (up to 50 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 250 units/s), on top of any damage. \[Leaning\]
+- A ship rests on whatever's lowest: its feet with the legs down, or its engine bell with them up. On the ground the turn keys do nothing, and it settles upright if it's whole, so thrust lifts it straight off. A damaged ship settles on whichever side of its outline it can balance on, nearest upright, so losing a leg leaves it leaning. \[Leaning\]
+- The LEGS button, or L on the Mac, swings the legs down over 2 seconds or back up. They start up, and they won't go up on the ground. Nothing deploys them for you, so forgetting means landing on the engine. \[Leaning\]
+- With both legs fully down and working, a landing is clean up to 80 units/s instead of 50. Harder than that, the feet go first because they're lowest. Their pixels are real, and the struts holding them out have no pixels of their own. \[Leaning\]
+- A touchdown reports LANDED (at a safe speed and within about 30 degrees of upright), HARD LANDING, or CRASH (over 250 units/s), on top of any damage. \[Leaning\]
 - Up close, patches of the next color speckle the ground so you can see drift. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
 - One exception: closer than the Orbit view, the ship is its normal sprite at true scale, with no smoothing and no minimum size, so it can shrink out of sight just before the icon takes over. At the Orbit view and farther it's a clean icon, and very far out it's a dot. \[Leaning\]
@@ -410,6 +413,7 @@ Turning and RCS controls: \[Leaning\]
 - RCS pad (right panel, inner screen): rotate left, rotate right, and four translate arrows (forward, back, left, right).
 - Translation moves the ship without turning it and is required for docking and precise landings.
 - A ROT / TRANS switch sits above the cover screen's compact pad, flipping its four arrows between rotation and translation, with STAB in the middle. The inner screen's pad shows rotate and translate at once, so it has no switch.
+- LEGS sits above the mode buttons on the inner screen, and in the top-left corner of the pad on the cover screen. Its lamp is amber while the legs move and green when they're down. \[Leaning\]
 - Heading dial above the pad: nose direction, prograde (cyan) and retrograde (orange) markers, and a rate bar showing spin speed. The markers hide when landed or barely moving, since there's no direction of travel to show. Inner screen only.
 - The right panel on the inner screen is full height and 140 game pixels wide: heading dial, RCS pad, modes, then BURN at the bottom. On the cover screen it only rises as far as its controls need.
 - Translation gives the lander about 30 m/s² when full and uses RCS fuel. It's too weak to lift off from the planet or the moon, and ASS doesn't cancel it. \[Leaning\]

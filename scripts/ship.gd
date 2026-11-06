@@ -20,8 +20,12 @@
 # Fuel has mass. Burning it makes the ship lighter and quicker, and the main engine and
 # RCS both stop when it runs out. Landing on the planet refills it until stations exist.
 #
-# On the ground the ship settles upright and the turn keys do nothing, so thrust always
-# lifts it straight off.
+# On the ground the ship settles on whatever's holding it up, which is upright if it's whole,
+# and the turn keys do nothing, so thrust lifts it straight off.
+#
+# The landing legs go down with LEGS. Down, the ship stands on their feet and they take a
+# harder landing. Up, it lands on its engine bell. Their pixels are real, so they're what the
+# ground hits first and they can break off, leaving the ship tipped over on what's left.
 #
 # Pixels are the ship, from "Destruction" in DESIGN.md. The ground touches whichever pixel
 # reaches it first, and a hit crushes pixels from that side. Pieces no longer attached fly
@@ -46,9 +50,12 @@ signal assist_changed(enabled: bool)
 signal orbit_changed
 ## Emitted when STAB is switched on or off.
 signal stab_changed(enabled: bool)
-## Emitted when the ship reaches the ground, with its speed relative to the ground and
-## whether its nose was pointing away from the surface.
-signal touched_down(speed: float, upright: bool)
+## Emitted when the ship reaches the ground, with its speed relative to the ground, whether
+## its nose was pointing away from the surface, and the fastest landing that does no damage.
+signal touched_down(speed: float, upright: bool, safe_speed: float)
+## Emitted when the legs start or finish moving: which way they're going, and whether they
+## still are.
+signal legs_changed(down: bool, moving: bool)
 ## Emitted when the ship leaves the ground.
 signal lifted_off
 ## Emitted when a piece breaks off, with where it is, how it's moving, how it's turned, and
@@ -111,6 +118,8 @@ var state: ShipState
 var _gravity_model: GravityModel
 var _thrusting: bool = false
 var _was_on_surface: bool = false
+## True if the landing legs are down or on their way down.
+var legs_down: bool = false
 ## How hot the air is making the ship, where 1.0 is the top of the scale.
 var heat_share: float = 0.0
 ## How hot the hull has got, on the same scale. Past 1.0 it burns.
@@ -145,6 +154,9 @@ var _stranded: bool = false
 var _warned_modules: Dictionary = {}
 var _wave: DamageWave
 var _part_sprites: Array[Sprite2D] = []
+var _legs_out: float = 0.0
+var _legs_moving: bool = false
+var _rest_angle: float = 0.0
 var _sink: Vector2 = Vector2.ZERO
 var _sink_per_tick: float = 0.0
 var _jolt_ticks: int = 0
@@ -197,6 +209,8 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("toggle_assist"):
 		assist_enabled = not assist_enabled
 		assist_changed.emit(assist_enabled)
+	if Input.is_action_just_pressed("toggle_legs"):
+		_toggle_legs()
 	if Input.is_action_just_pressed("toggle_stab"):
 		stab_enabled = not stab_enabled
 		_stab_needs_pick = true
@@ -206,7 +220,7 @@ func _physics_process(delta: float) -> void:
 	if state.is_on_surface():
 		angular_velocity = 0.0
 		if not _lost:
-			heading = rotate_toward(heading, _local_up_heading(), settle_speed * delta)
+			heading = rotate_toward(heading, _local_up_heading() - _rest_angle, settle_speed * delta)
 	else:
 		var spin_before: float = angular_velocity
 		var turn_input: float = Input.get_axis("turn_left", "turn_right")
@@ -259,6 +273,7 @@ func _physics_process(delta: float) -> void:
 	var in_air: bool = _push_through_air(delta)
 	_heat_hull(delta)
 
+	_move_legs(delta)
 	state.ground_clearance = body.reach(_pivot, _local_down())
 	_gravity_model.propagate(state, delta)
 
@@ -267,7 +282,7 @@ func _physics_process(delta: float) -> void:
 		orbit_changed.emit()
 	if on_surface and not _was_on_surface:
 		var tilt: float = absf(angle_difference(heading, _local_up_heading()))
-		touched_down.emit(state.get_touchdown_speed(), tilt <= upright_tolerance)
+		touched_down.emit(state.get_touchdown_speed(), tilt <= upright_tolerance, _safe_impact_speed())
 		var landed_on: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
 		_hit_ground(state.get_touchdown_speed(), landed_on)
 		if _gravity_model.get_body_parent(landed_on) == 0 and not _lost:
@@ -411,6 +426,41 @@ func _art_to_world(point: Vector2) -> Vector2:
 	return (point - _pivot).rotated(heading)
 
 
+# Legs fully down and all working take a harder landing.
+func _safe_impact_speed() -> float:
+	if _legs_out < 1.0:
+		return design.safe_impact_speed
+	for i in range(body.modules.size()):
+		if body.modules[i].kind == "leg" and body.working_share(i) < module_dead_share:
+			return design.safe_impact_speed
+	return design.legs_safe_impact_speed
+
+
+# The legs carry the ship's weight on the ground, so they can't go up there.
+func _toggle_legs() -> void:
+	if _lost:
+		return
+	if legs_down and state.is_on_surface():
+		warning_raised.emit("LEGS LOCKED ON GROUND")
+		return
+	legs_down = not legs_down
+	_legs_moving = true
+	legs_changed.emit(legs_down, true)
+
+
+func _move_legs(delta: float) -> void:
+	if not _legs_moving:
+		return
+	_legs_out = move_toward(_legs_out, 1.0 if legs_down else 0.0, delta / design.legs_seconds)
+	body.set_parts_out(_legs_out)
+	_rest_height = body.reach(_pivot, Vector2.DOWN)
+	_rest_angle = body.rest_angle()
+	_place_art()
+	if _legs_out == (1.0 if legs_down else 0.0):
+		_legs_moving = false
+		legs_changed.emit(legs_down, false)
+
+
 # A point on the art as it's drawn right now, which a crushed ship is still sinking toward.
 func _shown_to_world(point: Vector2) -> Vector2:
 	return (point - _pivot + _sink).rotated(heading)
@@ -419,7 +469,8 @@ func _shown_to_world(point: Vector2) -> Vector2:
 # The ground takes all the ship's energy above the safe speed, since it's far heavier. The
 # star takes everything, whatever the speed.
 func _hit_ground(speed: float, landed_on: int) -> void:
-	var energy: float = 0.5 * _mass_now * maxf(speed * speed - design.safe_impact_speed * design.safe_impact_speed, 0.0)
+	var safe: float = _safe_impact_speed()
+	var energy: float = 0.5 * _mass_now * maxf(speed * speed - safe * safe, 0.0)
 	if landed_on == 0:
 		energy = INF
 	if energy <= 0.0:
@@ -439,6 +490,7 @@ func repair() -> void:
 	_sink = Vector2.ZERO
 	_jolt_ticks = 0
 	body = ShipBody.measure(design)
+	body.set_parts_out(_legs_out)
 	_wave.show_body(body)
 	_lost = false
 	_warned_modules.clear()
@@ -569,6 +621,7 @@ func _update_for_damage() -> void:
 	_update_performance()
 
 	_rest_height = body.reach(_pivot, Vector2.DOWN)
+	_rest_angle = body.rest_angle()
 	state.ground_clearance = body.reach(_pivot, _local_down())
 	if state.is_on_surface():
 		var was_x: float = state.x
@@ -742,8 +795,6 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	_show_sprite = pixels_per_unit > icon_max_zoom
 	_sprite_scale = minf(pixels_per_unit, 1.0)
 	_sprite.scale = Vector2.ONE * _sprite_scale
-	for i in range(_part_sprites.size()):
-		_part_sprites[i].scale = Vector2(_sprite_scale, _sprite_scale * body.layer_fold(i + 1))
 	_flame.scale = Vector2.ONE * _sprite_scale
 	_place_art()
 	var show_dot: bool = pixels_per_unit < dot_max_zoom
@@ -765,12 +816,25 @@ func _place_art() -> void:
 	_sprite.position = offset
 	for i in range(_part_sprites.size()):
 		_part_sprites[i].position = offset + body.layer_center(i + 1) * _sprite_scale
+		_part_sprites[i].scale = Vector2(_sprite_scale, _sprite_scale * body.layer_fold(i + 1))
+	if _legs_out > 0.0:
+		queue_redraw()
 	_puffs.position = offset
 	_glow.position = offset
 	_flame.position = _flame_position * _sprite_scale + offset
 
 
 func _draw() -> void:
+	# The struts holding the legs out, behind everything else. They have no pixels of their own.
+	if _show_sprite and _legs_out > 0.0:
+		var palette: AgencyPalette = UiStyle.palette()
+		var offset: Vector2 = (_sink - _pivot) * _sprite_scale
+		var thickness: float = maxf(roundf(2.0 * _sprite_scale), 1.0)
+		for strut: Array in body.part_struts(module_dead_share):
+			var from: Vector2 = offset + strut[0] * _sprite_scale
+			var to: Vector2 = offset + strut[1] * _sprite_scale
+			draw_line(from, to, palette.hull_darkest, thickness + 2.0)
+			draw_line(from, to, palette.hull_light, thickness)
 	if _show_dot:
 		draw_rect(Rect2(-2.0, -2.0, 4.0, 4.0), UiStyle.palette().hull_darkest)
 		draw_rect(Rect2(-1.0, -1.0, 2.0, 2.0), UiStyle.palette().hull_lightest)

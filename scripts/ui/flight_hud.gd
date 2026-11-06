@@ -55,6 +55,7 @@ var _left_tab: SideTab
 var _right_tab: SideTab
 var _zoom_buttons: Array[UiButton] = []
 var _restart_button: UiButton
+var _legs_button: UiButton
 
 var _ship: Node2D
 var _is_inner_screen: bool = true
@@ -88,6 +89,8 @@ func connect_flight(ship: Node2D, view: Node, turn_guide: Node) -> void:
 	ship.assist_changed.connect(_on_assist_changed)
 	ship.stab_changed.connect(_on_stab_changed)
 	ship.stranded_changed.connect(_on_stranded_changed)
+	ship.legs_changed.connect(_on_legs_changed)
+	_on_legs_changed(ship.legs_down, false)
 	_lever.throttle_changed.connect(ship._on_throttle_changed)
 	zoom_button_pressed.connect(view._on_zoom_button_pressed)
 	zoom_scaled.connect(view._on_zoom_scaled)
@@ -134,6 +137,9 @@ func _build() -> void:
 	_right_panel.add_child(_burn)
 	_assist_button.tapped.connect(_tap_action.bind(&"toggle_assist"))
 	_stab_button.tapped.connect(_tap_action.bind(&"toggle_stab"))
+	_legs_button = UiButton.new().setup("LEGS", palette.telemetry_green)
+	_right_panel.add_child(_legs_button)
+	_legs_button.tapped.connect(_tap_action.bind(&"toggle_legs"))
 
 	for button_name: String in ["SYS", "ORBIT", "SHIP"]:
 		var button: UiButton = UiButton.new().setup(button_name, palette.telemetry_cyan)
@@ -203,6 +209,8 @@ func _layout() -> void:
 	if _is_inner_screen:
 		_stab_button.position = Vector2(PAD_MARGIN + half_width, modes_y)
 		_stab_button.size = Vector2(half_width, BUTTON_HEIGHT)
+		_legs_button.position = Vector2(PAD_MARGIN, modes_y - BUTTON_HEIGHT - PAD_MARGIN)
+		_legs_button.size = Vector2(half_width, BUTTON_HEIGHT)
 		_dial.position = Vector2(floorf((RIGHT_WIDTH - 64.0) / 2.0), 6.0)
 		_dial.size = Vector2(64.0, 76.0)
 		_rotate_left.position = Vector2(PAD_MARGIN, 88.0)
@@ -217,6 +225,8 @@ func _layout() -> void:
 		_rot_trans_switch.size = Vector2(inner_width, BUTTON_HEIGHT)
 		_stab_button.position = Vector2(PAD_MARGIN + PAD_BUTTON, pad_y + PAD_BUTTON)
 		_stab_button.size = Vector2(PAD_BUTTON, PAD_BUTTON)
+		_legs_button.position = Vector2(PAD_MARGIN, pad_y)
+		_legs_button.size = Vector2(PAD_BUTTON, PAD_BUTTON)
 	_rotate_left.visible = _is_inner_screen
 	_rotate_right.visible = _is_inner_screen
 	_rot_trans_switch.visible = not _is_inner_screen
@@ -319,6 +329,11 @@ func _on_assist_changed(enabled: bool) -> void:
 	_assist_button.set_lamp(true, palette.telemetry_green if enabled else palette.telemetry_amber, "ASS" if enabled else "RAW")
 
 
+func _on_legs_changed(down: bool, moving: bool) -> void:
+	var palette: AgencyPalette = UiStyle.palette()
+	_legs_button.set_lamp(down or moving, palette.telemetry_amber if moving else palette.telemetry_green, "LEGS")
+
+
 func _on_stab_changed(enabled: bool) -> void:
 	_stab_button.set_lamp(enabled, UiStyle.palette().telemetry_green, "STAB")
 
@@ -370,6 +385,7 @@ func _widgets_in_reach() -> Array[UiWidget]:
 		widgets.append(_lever)
 		widgets.append(_burn)
 		widgets.append(_stab_button)
+		widgets.append(_legs_button)
 		widgets.append_array([_pad_up, _pad_down, _pad_left, _pad_right, _rotate_left, _rotate_right, _rot_trans_switch])
 		widgets.append_array(_zoom_buttons)
 	widgets.append(_assist_button)

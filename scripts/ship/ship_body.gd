@@ -337,6 +337,36 @@ func part_struts(dead_share: float) -> Array:
 	return struts
 
 
+## How far the ship tips when it comes to rest on the ground, in radians, from standing on the
+## flat of its outline. Of the sides it could stay balanced on, the one nearest upright wins.
+func rest_angle() -> float:
+	var points := PackedVector2Array()
+	for layer: Layer in _layers:
+		for point: Vector2 in layer.outline:
+			points.append(layer.place(point))
+	if points.size() < 3:
+		return 0.0
+	var around: PackedVector2Array = Geometry2D.convex_hull(points)
+	var best: float = INF
+	for i in range(around.size() - 1):
+		var edge: Vector2 = around[i + 1] - around[i]
+		var edge_squared: float = edge.length_squared()
+		if edge_squared < 1.0:
+			continue
+		var along: float = (center_of_mass - around[i]).dot(edge) / edge_squared
+		if along < 0.0 or along > 1.0:
+			continue
+		var outward: Vector2 = edge.orthogonal().normalized()
+		if outward.dot(around[i] - center_of_mass) < 0.0:
+			outward = -outward
+		var angle: float = Vector2.DOWN.angle_to(outward)
+		if absf(angle) < absf(best):
+			best = angle
+	if best == INF or absf(best) < 0.02:
+		return 0.0
+	return best
+
+
 ## Whether there's a pixel at this point, measured from the middle of the grid.
 func has_pixel(point: Vector2) -> bool:
 	for layer: Layer in _layers:

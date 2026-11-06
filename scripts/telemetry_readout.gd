@@ -9,9 +9,7 @@ extends Node2D
 @export var bad_color: Color = Color("C8302C")
 ## Darkest hull color, for the 1 px outline all human-made things get.
 @export var outline_color: Color = Color("0E0F12")
-## Top speed for a clean landing, in world units per second.
-@export var soft_touchdown_speed: float = 50.0
-## Top speed for a hard landing rather than a crash.
+## Top speed for a hard landing rather than a crash, in world units per second.
 @export var hard_touchdown_speed: float = 250.0
 ## How long the touchdown message stays up, in seconds.
 @export var message_seconds: float = 4.0
@@ -38,10 +36,10 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
-func _on_ship_touched_down(speed: float, upright: bool) -> void:
+func _on_ship_touched_down(speed: float, upright: bool, safe_speed: float) -> void:
 	if speed > hard_touchdown_speed:
 		_show_message("CRASH", bad_color)
-	elif speed > soft_touchdown_speed or not upright:
+	elif speed > safe_speed or not upright:
 		_show_message("HARD LANDING", warning_color)
 	else:
 		_show_message("LANDED", good_color)

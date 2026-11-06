@@ -229,3 +229,11 @@ Files: `tools/slice_lander.gd`, `art/lander/*`, `data/lander_design.tres`, `scri
 - composing a picture from smaller images
 - inner classes for grouping related data
 - a tool script that only runs from the command line
+
+## 2026-11-06: Tier 1, ticket 12: landing legs
+
+Files: `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/ship/ship_design.gd`, `scripts/telemetry_readout.gd`, `scripts/ui/flight_hud.gd`, `project.godot`, `docs/DESIGN.md`
+
+- flipping a sprite with a negative scale
+- balance: a center of mass over a support edge
+- input actions shared between keys and buttons

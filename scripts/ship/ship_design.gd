@@ -18,6 +18,10 @@ extends Resource
 @export var rcs_translate_force: float = 0.0
 ## The fastest a hit can be and do no damage, in meters per second.
 @export var safe_impact_speed: float = 50.0
+## The fastest a landing can be with the legs down and do no damage, in meters per second.
+@export var legs_safe_impact_speed: float = 80.0
+## How long the legs take to go up or down, in seconds.
+@export var legs_seconds: float = 2.0
 ## How fast fuel escapes a tank that has lost all its pixels, in kilograms per second. A
 ## smaller hole leaks in proportion.
 @export var tank_leak_rate: float = 2000.0
