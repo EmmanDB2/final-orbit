@@ -23,6 +23,10 @@ void GravityModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_altitude", "x", "y", "time"), &GravityModel::get_altitude);
 	ClassDB::bind_method(D_METHOD("get_surface_velocity", "x", "y", "time"), &GravityModel::get_surface_velocity);
 	ClassDB::bind_method(D_METHOD("get_air_density", "x", "y", "time"), &GravityModel::get_air_density);
+	ClassDB::bind_method(D_METHOD("get_ground_height", "x", "y", "time"), &GravityModel::get_ground_height);
+	ClassDB::bind_method(D_METHOD("get_ground_column", "x", "y", "time"), &GravityModel::get_ground_column);
+	ClassDB::bind_method(D_METHOD("get_highest_ground", "index"), &GravityModel::get_highest_ground);
+	ClassDB::bind_method(D_METHOD("get_ground_strip", "index", "first_column", "step", "count"), &GravityModel::get_ground_strip);
 	ClassDB::bind_method(D_METHOD("get_body_count"), &GravityModel::get_body_count);
 	ClassDB::bind_method(D_METHOD("get_body_parent", "index"), &GravityModel::get_body_parent);
 	ClassDB::bind_method(D_METHOD("get_local_root", "index"), &GravityModel::get_local_root);

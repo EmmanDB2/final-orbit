@@ -9,6 +9,7 @@
 
 #include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_float64_array.hpp>
 
 namespace final_orbit {
@@ -59,12 +60,23 @@ public:
 	// The low and high points of the ship's current orbit, as heights above the dominant
 	// body's surface: [periapsis, apoapsis]. Apoapsis is -1 on a path that never comes back.
 	virtual godot::PackedFloat64Array get_orbit_apsides(const godot::Ref<ShipState> &p_state) const = 0;
-	// Height above the dominant body's surface.
+	// Height above the ground of the dominant body.
 	virtual double get_altitude(double p_x, double p_y, double p_time) const = 0;
 	// How fast the ground of the dominant body is moving under this point, as [x, y]. This
 	// is the one place ground speed comes from. Spin only counts inside the body's landing
 	// zone: higher up, this is just how the body itself is moving.
 	virtual godot::PackedFloat64Array get_surface_velocity(double p_x, double p_y, double p_time) const = 0;
+	// How high the ground of the dominant body is under this point, above its base radius.
+	virtual double get_ground_height(double p_x, double p_y, double p_time) const = 0;
+	// Which column of its rim's ground the dominant body has under this point. It stays the same
+	// for a point fixed to the ground as the body turns.
+	virtual double get_ground_column(double p_x, double p_y, double p_time) const = 0;
+	// The highest a body's ground ever gets above its base radius.
+	virtual double get_highest_ground(int p_index) const = 0;
+	// A stretch of a body's rim for drawing or for checking what a ship is touching, flat
+	// [height, map color band, height, ...]. Starts at a column and steps by p_step columns,
+	// leaving out bumps narrower than a step.
+	virtual godot::PackedFloat32Array get_ground_strip(int p_index, int64_t p_first_column, int64_t p_step, int p_count) const = 0;
 	// How thick the air is at this point: 1.0 is the home planet's ground, and 0 is no air.
 	virtual double get_air_density(double p_x, double p_y, double p_time) const = 0;
 	// One lap of a body's rails around its parent, relative to the parent, flat

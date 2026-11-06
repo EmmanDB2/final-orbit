@@ -461,6 +461,15 @@ func reach(from: Vector2, direction: Vector2) -> float:
 	return farthest
 
 
+## The corners of the ship's outline where they are right now, from the middle of the grid.
+func outline_now() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for layer: Layer in _layers:
+		for point: Vector2 in layer.outline:
+			points.append(layer.place(point))
+	return points
+
+
 ## Crushes the ship from one side, as flat ground does. Spends energy on the pixels farthest
 ## along the direction first, and returns what was erased as "pixels", "points", and "colors".
 func crush(direction: Vector2, energy: float, damage_seed: int) -> Dictionary:

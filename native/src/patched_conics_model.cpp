@@ -49,6 +49,7 @@ void PatchedConicsModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_body", "parent", "mu", "radius", "semi_major_axis", "eccentricity", "argument_of_periapsis", "mean_anomaly_at_start", "entry_altitude"), &PatchedConicsModel::add_body, DEFVAL(0.0));
 	ClassDB::bind_method(D_METHOD("set_body_spin", "index", "rate"), &PatchedConicsModel::set_body_spin);
 	ClassDB::bind_method(D_METHOD("set_body_atmosphere", "index", "surface_density", "scale_height"), &PatchedConicsModel::set_body_atmosphere);
+	ClassDB::bind_method(D_METHOD("set_body_terrain", "index", "seed", "mountains", "hills", "rough", "rocks", "crater_depth", "crater_share", "cliff_step", "sea_level", "largest_feature"), &PatchedConicsModel::set_body_terrain);
 }
 
 void PatchedConicsModel::set_central_body(double p_mu, double p_radius, double p_entry_altitude) {
@@ -84,6 +85,36 @@ void PatchedConicsModel::set_body_atmosphere(int p_index, double p_surface_densi
 	ERR_FAIL_INDEX(p_index, static_cast<int>(bodies.size()));
 	bodies[p_index].air_density = p_surface_density;
 	bodies[p_index].air_scale_height = p_scale_height;
+}
+
+void PatchedConicsModel::set_body_terrain(int p_index, int64_t p_seed, double p_mountains, double p_hills, double p_rough, double p_rocks, double p_crater_depth, double p_crater_share, double p_cliff_step, double p_sea_level, double p_largest_feature) {
+	ERR_FAIL_INDEX(p_index, static_cast<int>(bodies.size()));
+	TerrainProfile &terrain = bodies[p_index].terrain;
+	terrain.seed = static_cast<uint32_t>(p_seed);
+	terrain.radius = bodies[p_index].radius;
+	terrain.mountain_height = p_mountains;
+	terrain.hill_height = p_hills;
+	terrain.rough_height = p_rough;
+	terrain.rock_height = p_rocks;
+	terrain.crater_depth = p_crater_depth;
+	terrain.crater_share = p_crater_share;
+	terrain.cliff_step = p_cliff_step;
+	terrain.sea_level = p_sea_level;
+	terrain.largest_feature = p_largest_feature;
+}
+
+double PatchedConicsModel::along_rim(const Body &p_body, double p_x, double p_y, double p_time) const {
+	const double angle = std::atan2(p_x, -p_y) - p_body.spin_rate * p_time;
+	const double wrapped = angle - FULL_CIRCLE * std::floor(angle / FULL_CIRCLE);
+	return wrapped * p_body.radius;
+}
+
+double PatchedConicsModel::ground_height_under(const Body &p_body, double p_x, double p_y, double p_time) const {
+	if (p_body.terrain.is_flat()) {
+		return 0.0;
+	}
+	const double column = p_body.terrain.column_at(along_rim(p_body, p_x, p_y, p_time));
+	return p_body.terrain.height_at(static_cast<int64_t>(std::floor(column)));
 }
 
 PatchedConicsModel::State2D PatchedConicsModel::body_state(int p_index, double p_time) const {
@@ -315,16 +346,20 @@ void PatchedConicsModel::ground_velocity_on_body(const Body &p_body, double p_x,
 	r_vy = p_body.spin_rate * p_x;
 }
 
-bool PatchedConicsModel::coast_to_surface(State2D &r_state, double p_dt, const Body &p_body, double p_clearance, double &r_touchdown_speed) const {
-	const double contact = p_body.radius + p_clearance;
+bool PatchedConicsModel::coast_to_surface(State2D &r_state, double p_dt, const Body &p_body, double p_clearance, double p_time, double &r_touchdown_speed) const {
+	const double highest_contact = p_body.radius + p_body.terrain.highest() + p_clearance;
 	int pieces = 1;
-	if (contact > 0.0 && periapsis_radius(r_state, p_body.mu) < contact) {
+	if (highest_contact > 0.0 && periapsis_radius(r_state, p_body.mu) < highest_contact) {
 		pieces = std::max(1, static_cast<int>(std::ceil(std::abs(p_dt) / MAX_IMPACT_CHECK_STEP)));
 	}
 	const double piece_dt = p_dt / pieces;
 	for (int i = 0; i < pieces; i++) {
 		r_state = coast(r_state, piece_dt, p_body.mu);
 		const double r = std::sqrt(r_state.x * r_state.x + r_state.y * r_state.y);
+		if (r >= highest_contact) {
+			continue;
+		}
+		const double contact = p_body.radius + ground_height_under(p_body, r_state.x, r_state.y, p_time + piece_dt * (i + 1)) + p_clearance;
 		if (r < contact) {
 			if (r > 0.0) {
 				r_state.x *= contact / r;
@@ -400,7 +435,7 @@ void PatchedConicsModel::propagate(const Ref<ShipState> &p_state, double p_dt) c
 		relative.vx = world.vx - origin.vx;
 		relative.vy = world.vy - origin.vy;
 
-		on_surface = coast_to_surface(relative, direction * h, bodies[index], p_state->ground_clearance, touchdown_speed);
+		on_surface = coast_to_surface(relative, direction * h, bodies[index], p_state->ground_clearance, time, touchdown_speed);
 		time += direction * h;
 		remaining -= h;
 
@@ -429,11 +464,13 @@ void PatchedConicsModel::propagate(const Ref<ShipState> &p_state, double p_dt) c
 bool PatchedConicsModel::segment_event(const State2D &p_relative, int p_body, double p_time, double p_clearance, SegmentEnd &r_end) const {
 	const Body &body = bodies[p_body];
 	const double r_squared = p_relative.x * p_relative.x + p_relative.y * p_relative.y;
-	const double contact = body.radius + p_clearance;
-
-	if (r_squared < contact * contact) {
-		r_end.reason = SegmentEndReason::IMPACT;
-		return true;
+	const double highest_contact = body.radius + body.terrain.highest() + p_clearance;
+	if (r_squared < highest_contact * highest_contact) {
+		const double contact = body.radius + ground_height_under(body, p_relative.x, p_relative.y, p_time) + p_clearance;
+		if (r_squared < contact * contact) {
+			r_end.reason = SegmentEndReason::IMPACT;
+			return true;
+		}
 	}
 	if (p_body != 0 && r_squared > body.sphere_of_influence * body.sphere_of_influence) {
 		r_end.reason = SegmentEndReason::LEFT_BODY;
@@ -473,7 +510,7 @@ PatchedConicsModel::SegmentEnd PatchedConicsModel::walk_segment(const State2D &p
 		}
 	}
 
-	const double contact = body.radius + p_clearance;
+	const double contact = body.radius + body.terrain.highest() + p_clearance;
 	const bool can_hit_surface = contact > 0.0 && periapsis_radius(p_relative, body.mu) < contact;
 	double elapsed = 0.0;
 	for (int step = 0; step < MAX_WALK_STEPS && elapsed < limit; step++) {
@@ -517,10 +554,9 @@ PatchedConicsModel::SegmentEnd PatchedConicsModel::walk_segment(const State2D &p
 	return end;
 }
 
-void PatchedConicsModel::sample_segment(PackedFloat64Array *r_points, PackedFloat64Array *r_heights, const State2D &p_relative, int p_body, const SegmentEnd &p_end, double p_origin_x, double p_origin_y, int p_count, double p_clearance) const {
+void PatchedConicsModel::sample_segment(PackedFloat64Array *r_points, PackedFloat64Array *r_heights, const State2D &p_relative, int p_body, const SegmentEnd &p_end, double p_origin_x, double p_origin_y, int p_count, double p_clearance, double p_start_time) const {
 	const Body &body = bodies[p_body];
 	const Conic conic = make_conic(p_relative, body.mu);
-	const double contact = body.radius + p_clearance;
 	if (conic.r0 == 0.0) {
 		return;
 	}
@@ -540,6 +576,7 @@ void PatchedConicsModel::sample_segment(PackedFloat64Array *r_points, PackedFloa
 		if (i == p_count - 1 && p_end.reason == SegmentEndReason::IMPACT) {
 			const double r = std::sqrt(x * x + y * y);
 			if (r > 0.0) {
+				const double contact = body.radius + ground_height_under(body, x, y, p_start_time + p_end.duration) + p_clearance;
 				x *= contact / r;
 				y *= contact / r;
 			}
@@ -567,13 +604,13 @@ void PatchedConicsModel::build_path(const Ref<ShipState> &p_state, double p_dura
 
 	if (p_duration <= 0.0) {
 		SegmentEnd nothing;
-		sample_segment(r_points, r_heights, relative, index, nothing, origin.x, origin.y, 1, clearance);
+		sample_segment(r_points, r_heights, relative, index, nothing, origin.x, origin.y, 1, clearance, now);
 		return;
 	}
 
 	const SegmentEnd first = walk_segment(relative, index, now, p_duration, clearance);
 	if (first.reason != SegmentEndReason::ENCOUNTER) {
-		sample_segment(r_points, r_heights, relative, index, first, origin.x, origin.y, p_samples, clearance);
+		sample_segment(r_points, r_heights, relative, index, first, origin.x, origin.y, p_samples, clearance, now);
 		return;
 	}
 
@@ -581,7 +618,7 @@ void PatchedConicsModel::build_path(const Ref<ShipState> &p_state, double p_dura
 	// drawn around the other body as it will be at the moment the ship arrives, seen from
 	// the current body, which is drawn where it is now.
 	const int first_count = std::max(2, p_samples * 2 / 3);
-	sample_segment(r_points, r_heights, relative, index, first, origin.x, origin.y, first_count, clearance);
+	sample_segment(r_points, r_heights, relative, index, first, origin.x, origin.y, first_count, clearance, now);
 
 	const double arrival = now + first.duration;
 	const State2D at_arrival = coast(relative, first.duration, bodies[index].mu);
@@ -594,7 +631,7 @@ void PatchedConicsModel::build_path(const Ref<ShipState> &p_state, double p_dura
 	around_moon.vy = at_arrival.vy + origin_then.vy - moon.vy;
 
 	const SegmentEnd second = walk_segment(around_moon, first.next_body, arrival, std::max(p_duration - first.duration, 1.0), clearance);
-	sample_segment(r_points, r_heights, around_moon, first.next_body, second, moon.x - origin_then.x + origin.x, moon.y - origin_then.y + origin.y, std::max(2, p_samples - first_count), clearance);
+	sample_segment(r_points, r_heights, around_moon, first.next_body, second, moon.x - origin_then.x + origin.x, moon.y - origin_then.y + origin.y, std::max(2, p_samples - first_count), clearance, arrival);
 }
 
 PackedFloat64Array PatchedConicsModel::predict_trajectory(const Ref<ShipState> &p_state, double p_duration, int p_samples) const {
@@ -643,7 +680,41 @@ double PatchedConicsModel::get_altitude(double p_x, double p_y, double p_time) c
 	const State2D body = body_state(index, p_time);
 	const double dx = p_x - body.x;
 	const double dy = p_y - body.y;
-	return std::sqrt(dx * dx + dy * dy) - bodies[index].radius;
+	return std::sqrt(dx * dx + dy * dy) - bodies[index].radius - ground_height_under(bodies[index], dx, dy, p_time);
+}
+
+double PatchedConicsModel::get_ground_height(double p_x, double p_y, double p_time) const {
+	const int index = dominant_body(p_x, p_y, p_time);
+	const State2D body = body_state(index, p_time);
+	return ground_height_under(bodies[index], p_x - body.x, p_y - body.y, p_time);
+}
+
+double PatchedConicsModel::get_ground_column(double p_x, double p_y, double p_time) const {
+	const int index = dominant_body(p_x, p_y, p_time);
+	const State2D body = body_state(index, p_time);
+	return along_rim(bodies[index], p_x - body.x, p_y - body.y, p_time) / TerrainProfile::WORLD_PIXEL;
+}
+
+double PatchedConicsModel::get_highest_ground(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(bodies.size()), 0.0);
+	return bodies[p_index].terrain.highest();
+}
+
+PackedFloat32Array PatchedConicsModel::get_ground_strip(int p_index, int64_t p_first_column, int64_t p_step, int p_count) const {
+	PackedFloat32Array strip;
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(bodies.size()), strip);
+	ERR_FAIL_COND_V(p_step < 1 || p_count < 1, strip);
+	const TerrainProfile &terrain = bodies[p_index].terrain;
+	strip.resize(p_count * 2);
+	float *values = strip.ptrw();
+	const bool flat = terrain.is_flat();
+	for (int i = 0; i < p_count; i++) {
+		// The middle of the stretch of columns this entry stands for.
+		const int64_t column = p_first_column + p_step * i + p_step / 2;
+		values[i * 2] = flat ? 0.0f : static_cast<float>(terrain.height_at(column, p_step));
+		values[i * 2 + 1] = flat ? 3.0f : static_cast<float>(terrain.band_at(column));
+	}
+	return strip;
 }
 
 PackedFloat64Array PatchedConicsModel::get_surface_velocity(double p_x, double p_y, double p_time) const {

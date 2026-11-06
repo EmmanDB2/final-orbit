@@ -6,10 +6,17 @@ extends ColorRect
 
 ## Far out, a body stays at least this big on screen so it can be found, in pixels.
 @export var smallest_radius: float = 2.0
+## How many columns of the rim the shader gets to draw at once. Must match the shader.
+const STRIP_SIZE: int = 1024
+
+## The skyline fades in between these zooms, in world units per pixel, so it can't be seen from
+## orbit. It's only the drawing: the ground is the same height from everywhere.
+@export var rim_gone_zoom: float = 400.0
+@export var rim_full_zoom: float = 128.0
 ## How wide a pixel of the ground is at the closest zoom, in world units.
 @export var world_pixel: float = 2.0
 ## Once a body is at least this big on screen, in pixels, its surface goes on the ground's grid.
-@export var surface_grid_radius: float = 300.0
+@export var surface_grid_radius: float = 200.0
 ## A moon whose orbit shrinks to less than this on screen is hidden, in pixels.
 @export var smallest_orbit: float = 8.0
 
@@ -20,6 +27,8 @@ var _spin_rate: float = 0.0
 var _cloud_spin_rate: float = 0.0
 var _air_height: float = 0.0
 var _gravity_model: GravityModel
+var _strip_image: Image
+var _strip_texture: ImageTexture
 var _state: ShipState
 
 @onready var _material: ShaderMaterial = material
@@ -77,7 +86,22 @@ func _feed_surface_grid(from_body_x: float, from_body_y: float, radius_px: float
 	_material.set_shader_parameter("view_column_share", columns - column)
 	_material.set_shader_parameter("cell_px", cell * pixels_per_unit)
 	_material.set_shader_parameter("cell_units", cell)
+	_feed_rim(int(column), roundi(cell / world_pixel), pixels_per_unit)
 	_material.set_shader_parameter("detail_units", cell)
+
+
+# Hands the shader the stretch of the rim in view, from the same numbers the physics uses.
+func _feed_rim(column: int, step: int, pixels_per_unit: float) -> void:
+	var strip: PackedFloat32Array = _gravity_model.get_ground_strip(_index, (column - STRIP_SIZE / 2) * step, step, STRIP_SIZE)
+	if _strip_image == null:
+		_strip_image = Image.create_from_data(STRIP_SIZE, 1, false, Image.FORMAT_RGF, strip.to_byte_array())
+		_strip_texture = ImageTexture.create_from_image(_strip_image)
+		_material.set_shader_parameter("rim_strip", _strip_texture)
+	else:
+		_strip_image.set_data(STRIP_SIZE, 1, false, Image.FORMAT_RGF, strip.to_byte_array())
+		_strip_texture.update(_strip_image)
+	var zoomed_out: float = 1.0 / pixels_per_unit
+	_material.set_shader_parameter("rim_fade", clampf((rim_gone_zoom - zoomed_out) / (rim_gone_zoom - rim_full_zoom), 0.0, 1.0))
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:

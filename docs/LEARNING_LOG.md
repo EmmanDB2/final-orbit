@@ -273,3 +273,11 @@ Files: `shaders/planet.gdshader`, `scripts/body_view.gd`
 
 - polar coordinates for a rim
 - keeping shader numbers small by measuring from the view
+
+## 2026-11-06: Terrain ticket 2: terrain silhouette
+
+Files: `native/src/terrain_profile.*`, `native/src/patched_conics_model.*`, `native/src/gravity_model.*`, `tests/test_gravity_model.gd`, `shaders/planet.gdshader`, `scripts/body_view.gd`, `scripts/body_data.gd`, `scripts/main.gd`, `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `data/home_planet.tres`, `data/moon.tres`
+
+- 1D noise that loops around a circle
+- sending data to a shader through a texture
+- one source of numbers for physics and drawing

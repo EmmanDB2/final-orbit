@@ -42,6 +42,18 @@ extends Resource
 @export var cloud_spin_rate: float = 0.0
 @export var cloud_color: Color = Color.WHITE
 
+@export_group("Terrain")
+## How tall the ground's mountains, hills, roughness, and rocks get, in world units.
+@export var terrain_mountains: float = 0.0
+@export var terrain_hills: float = 0.0
+@export var terrain_rough: float = 0.0
+@export var terrain_rocks: float = 0.0
+## How deep craters get on the rim, in world units, and how many cells have one, from 0 to 1.
+@export var terrain_crater_depth: float = 0.0
+@export var terrain_crater_share: float = 0.0
+## How tall each cliff step is, in world units. Zero means none.
+@export var terrain_cliff_step: float = 0.0
+
 @export_group("Rails")
 ## Average distance from the body this one orbits. Zero for the body at the center.
 @export var orbit_semi_major_axis: float = 0.0

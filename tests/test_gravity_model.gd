@@ -63,6 +63,7 @@ func _initialize() -> void:
 	_test_nested_system()
 	_test_spin()
 	_test_air()
+	_test_terrain()
 
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -815,3 +816,128 @@ func _test_air() -> void:
 	_check("none above the top", airy.get_air_density(0.0, -(RADIUS + ZONE * 2.0), 0.0), 0.0, 0.0)
 	var one_up: float = airy.get_air_density(0.0, -(RADIUS + SCALE_HEIGHT), 0.0)
 	_check("thins by e every scale height", one_up, exp(-1.0), 1e-3)
+
+
+func _test_terrain() -> void:
+	var world := PatchedConicsModel.new()
+	world.set_central_body(MU, RADIUS)
+	_check("no terrain means flat ground", world.get_ground_height(0.0, -RADIUS, 0.0), 0.0, 0.0)
+	world.set_body_terrain(0, 7, 2600.0, 420.0, 46.0, 7.0, 0.0, 0.0, 220.0, 0.0, RADIUS * 0.6)
+	var highest: float = world.get_highest_ground(0)
+	_check("terrain has a highest point", 1.0 if highest > 3000.0 else 0.0, 1.0, 0.0)
+
+	# Same seed, same ground.
+	var twin := PatchedConicsModel.new()
+	twin.set_central_body(MU, RADIUS)
+	twin.set_body_terrain(0, 7, 2600.0, 420.0, 46.0, 7.0, 0.0, 0.0, 220.0, 0.0, RADIUS * 0.6)
+	var other := PatchedConicsModel.new()
+	other.set_central_body(MU, RADIUS)
+	other.set_body_terrain(0, 8, 2600.0, 420.0, 46.0, 7.0, 0.0, 0.0, 220.0, 0.0, RADIUS * 0.6)
+	var strip: PackedFloat32Array = world.get_ground_strip(0, 1000, 1, 3000)
+	var same: PackedFloat32Array = twin.get_ground_strip(0, 1000, 1, 3000)
+	var different: PackedFloat32Array = other.get_ground_strip(0, 1000, 1, 3000)
+	var matches: int = 0
+	var differs: int = 0
+	var lowest: float = INF
+	var tallest: float = -INF
+	var whole_steps: int = 0
+	for i in range(0, strip.size(), 2):
+		if strip[i] == same[i]:
+			matches += 1
+		if strip[i] != different[i]:
+			differs += 1
+		lowest = minf(lowest, strip[i])
+		tallest = maxf(tallest, strip[i])
+		if is_equal_approx(fposmod(strip[i], 2.0), 0.0):
+			whole_steps += 1
+	_check("the same seed gives the same ground", matches, 3000.0, 0.0)
+	_check("another seed gives other ground", 1.0 if differs > 2000 else 0.0, 1.0, 0.0)
+	_check("heights are whole steps of the ground's pixels", whole_steps, 3000.0, 0.0)
+	_check("the ground stays above the base radius", 1.0 if lowest >= 0.0 else 0.0, 1.0, 0.0)
+	_check("and below its highest point", 1.0 if tallest <= highest else 0.0, 1.0, 0.0)
+
+	# All the way around, it never jumps much, even where the loop closes.
+	var columns: int = ceili(TAU * RADIUS / 2.0)
+	var around: PackedFloat32Array = world.get_ground_strip(0, 0, 8, columns / 8 + 2)
+	var biggest_jump: float = 0.0
+	for i in range(2, around.size(), 2):
+		biggest_jump = maxf(biggest_jump, absf(around[i] - around[i - 2]))
+	print("biggest jump around the rim: %.0f" % biggest_jump)
+	_check("the ground has no huge jump anywhere around", 1.0 if biggest_jump < 340.0 else 0.0, 1.0, 0.0)
+	var seam: PackedFloat32Array = world.get_ground_strip(0, columns - 2, 1, 4)
+	_check("and none where the loop closes", 1.0 if absf(seam[0] - seam[6]) < 30.0 else 0.0, 1.0, 0.0)
+	var loop_a: PackedFloat32Array = world.get_ground_strip(0, 5, 1, 1)
+	var loop_b: PackedFloat32Array = world.get_ground_strip(0, 5 + columns, 1, 1)
+	_check("the rim is a loop", loop_a[0], loop_b[0], 0.0)
+
+	# Dropping a ship: contact is at the terrain, not the base radius.
+	var peak_column: int = -1
+	var peak: float = -1.0
+	var valley_column: int = -1
+	var valley: float = INF
+	var wide: PackedFloat32Array = world.get_ground_strip(0, 0, 1, 40000)
+	for i in range(40000):
+		var height: float = wide[i * 2]
+		if height > peak:
+			peak = height
+			peak_column = i
+		if height < valley:
+			valley = height
+			valley_column = i
+	_check("this stretch has a real hill", 1.0 if peak - valley > 200.0 else 0.0, 1.0, 0.0)
+	for pair in [[peak_column, peak, "on the hill"], [valley_column, valley, "in the valley"]]:
+		var angle: float = (pair[0] + 0.5) * 2.0 / RADIUS
+		var r: float = RADIUS + pair[1] + 100.0 + 5.0
+		var ship := ShipState.new()
+		ship.ground_clearance = 100.0
+		ship.x = sin(angle) * r
+		ship.y = -cos(angle) * r
+		for i in range(120):
+			world.propagate(ship, 1.0 / 60.0)
+		_check("the ship stops %s" % pair[2], sqrt(ship.x * ship.x + ship.y * ship.y), RADIUS + pair[1] + 100.0, 3.0)
+		_check("touching it", 1.0 if ship.is_on_surface() else 0.0, 1.0, 0.0)
+		_check("and altitude reads from the ground, %s" % pair[2], world.get_altitude(ship.x, ship.y, ship.time), 100.0, 3.0)
+
+	# The ground turns with the planet: the same column stays under a landed ship.
+	var turning := PatchedConicsModel.new()
+	turning.set_central_body(MU, RADIUS, 15000.0)
+	turning.set_body_spin(0, 0.0022)
+	turning.set_body_terrain(0, 7, 2600.0, 420.0, 46.0, 7.0, 0.0, 0.0, 220.0, 0.0, RADIUS * 0.6)
+	var angle_there: float = 0.1
+	var start_r: float = RADIUS + turning.get_ground_height(sin(angle_there) * RADIUS, -cos(angle_there) * RADIUS, 0.0) + 100.0
+	var rider := ShipState.new()
+	rider.ground_clearance = 100.0
+	rider.x = sin(angle_there) * start_r
+	rider.y = -cos(angle_there) * start_r
+	rider.velocity_x = cos(angle_there) * 0.0022 * start_r
+	rider.velocity_y = sin(angle_there) * 0.0022 * start_r
+	turning.propagate(rider, 0.0)
+	var column_before: float = turning.get_ground_column(rider.x, rider.y, rider.time)
+	for i in range(1800):
+		turning.propagate(rider, 1.0 / 60.0)
+	_check("a landed ship stays over the same ground", turning.get_ground_column(rider.x, rider.y, rider.time), column_before, 2.0)
+
+	# A far-out strip leaves out what it can't show.
+	var fine: PackedFloat32Array = world.get_ground_strip(0, 1000, 1, 512)
+	var coarse: PackedFloat32Array = world.get_ground_strip(0, 1000, 64, 8)
+	var fine_change: int = 0
+	for i in range(2, fine.size(), 2):
+		if fine[i] != fine[i - 2]:
+			fine_change += 1
+	_check("up close there are small bumps", 1.0 if fine_change > 50 else 0.0, 1.0, 0.0)
+	_check("and far out the steps are bigger", 1.0 if is_equal_approx(fposmod(coarse[0], 128.0), 0.0) else 0.0, 1.0, 0.0)
+
+	# Sea stays flat where the map says sea.
+	var with_sea := PatchedConicsModel.new()
+	with_sea.set_central_body(MU, RADIUS)
+	with_sea.set_body_terrain(0, 7, 2600.0, 420.0, 46.0, 7.0, 0.0, 0.0, 220.0, 0.5, RADIUS * 0.6)
+	var coast: PackedFloat32Array = with_sea.get_ground_strip(0, 0, 32, 14000)
+	var flat_sea: int = 0
+	var sea_count: int = 0
+	for i in range(0, coast.size(), 2):
+		if coast[i + 1] < 3.0:
+			sea_count += 1
+			if coast[i] == 0.0:
+				flat_sea += 1
+	_check("this planet has sea on its rim", 1.0 if sea_count > 100 else 0.0, 1.0, 0.0)
+	_check("and the sea is flat", flat_sea, sea_count, 0.0)

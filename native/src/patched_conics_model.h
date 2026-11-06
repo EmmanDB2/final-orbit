@@ -13,6 +13,7 @@
 #pragma once
 
 #include "gravity_model.h"
+#include "terrain_profile.h"
 
 #include <vector>
 
@@ -38,6 +39,10 @@ public:
 	// Gives a body air, thickest at the ground and thinning with height, every p_scale_height
 	// by a factor of e. It ends at the top of the body's landing zone.
 	void set_body_atmosphere(int p_index, double p_surface_density, double p_scale_height);
+	// Gives a body's rim seeded ground: mountains, hills, roughness, and rocks by their tallest,
+	// then craters and cliffs. The sea level and largest feature come from its surface map, so
+	// the sea stays flat where the map shows sea.
+	void set_body_terrain(int p_index, int64_t p_seed, double p_mountains, double p_hills, double p_rough, double p_rocks, double p_crater_depth, double p_crater_share, double p_cliff_step, double p_sea_level, double p_largest_feature);
 
 	godot::PackedFloat64Array get_acceleration(double p_x, double p_y, double p_time) const override;
 	void propagate(const godot::Ref<ShipState> &p_state, double p_dt) const override;
@@ -47,6 +52,10 @@ public:
 	double get_altitude(double p_x, double p_y, double p_time) const override;
 	godot::PackedFloat64Array get_surface_velocity(double p_x, double p_y, double p_time) const override;
 	double get_air_density(double p_x, double p_y, double p_time) const override;
+	double get_ground_height(double p_x, double p_y, double p_time) const override;
+	double get_ground_column(double p_x, double p_y, double p_time) const override;
+	double get_highest_ground(int p_index) const override;
+	godot::PackedFloat32Array get_ground_strip(int p_index, int64_t p_first_column, int64_t p_step, int p_count) const override;
 	int get_body_count() const override;
 	int get_body_parent(int p_index) const override;
 	godot::PackedFloat64Array get_body_position(int p_index, double p_time) const override;
@@ -77,6 +86,7 @@ private:
 		// Air at the ground, and how quickly it thins with height. Zero means airless.
 		double air_density = 0.0;
 		double air_scale_height = 1.0;
+		TerrainProfile terrain;
 		// The body this one orbits, and its rails around it. Body 0 doesn't use these.
 		int parent = -1;
 		double semi_major_axis = 0.0;
@@ -123,7 +133,12 @@ private:
 	State2D coast(const State2D &p_state, double p_dt, double p_mu) const;
 	// Coast that stops at the body's surface. Returns true if the ship hit it, with its
 	// speed relative to the ground at that moment.
-	bool coast_to_surface(State2D &r_state, double p_dt, const Body &p_body, double p_clearance, double &r_touchdown_speed) const;
+	bool coast_to_surface(State2D &r_state, double p_dt, const Body &p_body, double p_clearance, double p_time, double &r_touchdown_speed) const;
+	// How far around its rim a point relative to the body is, in world units, measured on the
+	// ground, which turns with the body.
+	double along_rim(const Body &p_body, double p_x, double p_y, double p_time) const;
+	// How high the ground is under a point relative to the body.
+	double ground_height_under(const Body &p_body, double p_x, double p_y, double p_time) const;
 	// How fast the ground moves in the body's own frame, at a point relative to the body.
 	void ground_velocity_on_body(const Body &p_body, double p_x, double p_y, double &r_vx, double &r_vy) const;
 	// Closest the current conic ever gets to the body.
@@ -142,7 +157,7 @@ private:
 	// Follows a coast around one body until something changes.
 	SegmentEnd walk_segment(const State2D &p_relative, int p_body, double p_start_time, double p_horizon, double p_clearance) const;
 	bool segment_event(const State2D &p_relative, int p_body, double p_time, double p_clearance, SegmentEnd &r_end) const;
-	void sample_segment(godot::PackedFloat64Array *r_points, godot::PackedFloat64Array *r_heights, const State2D &p_relative, int p_body, const SegmentEnd &p_end, double p_origin_x, double p_origin_y, int p_count, double p_clearance) const;
+	void sample_segment(godot::PackedFloat64Array *r_points, godot::PackedFloat64Array *r_heights, const State2D &p_relative, int p_body, const SegmentEnd &p_end, double p_origin_x, double p_origin_y, int p_count, double p_clearance, double p_start_time) const;
 	// Fills whichever of the two arrays it's given.
 	void build_path(const godot::Ref<ShipState> &p_state, double p_duration, int p_samples, godot::PackedFloat64Array *r_points, godot::PackedFloat64Array *r_heights) const;
 

@@ -39,6 +39,11 @@
 # go of the turn keys. ASS never touches velocity, since that would break orbits.
 extends Node2D
 
+## How wide a column of the ground is, in world units. See the gravity model's terrain.
+const WORLD_PIXEL: float = 2.0
+## How many columns to each side the ship checks the ground under itself, enough for its whole
+## width, legs out, however it's turned.
+const GROUND_CHECK_COLUMNS: int = 90
 ## How long a hit shakes the art, in ticks.
 const JOLT_TICKS: int = 18
 
@@ -86,6 +91,10 @@ signal flight_data_changed(data: Dictionary)
 @export var icon_max_zoom: float = 1.0 / 800.0
 ## A module with less than this share of its working pixels left stops working.
 @export var module_dead_share: float = 0.5
+## How far above the ground the ship starts checking its shape against the terrain.
+@export var terrain_check_height: float = 200.0
+## The steepest ground the ship leans with when it's resting on it, in radians.
+@export var most_ground_lean: float = 0.5
 ## A piece that breaks off with fewer pixels than this is just sparks.
 @export var smallest_chunk: int = 30
 ## An engine keeps pushing, more weakly, down to this share of its bell.
@@ -159,6 +168,7 @@ var _part_sprites: Array[Sprite2D] = []
 var _legs_out: float = 0.0
 var _legs_moving: bool = false
 var _rest_angle: float = 0.0
+var _ground_lean: float = 0.0
 var _sink: Vector2 = Vector2.ZERO
 var _sink_per_tick: float = 0.0
 var _jolt_ticks: int = 0
@@ -222,7 +232,7 @@ func _physics_process(delta: float) -> void:
 	if state.is_on_surface():
 		angular_velocity = 0.0
 		if not _lost:
-			heading = rotate_toward(heading, _local_up_heading() - _rest_angle, settle_speed * delta)
+			heading = rotate_toward(heading, _local_up_heading() - _rest_angle + _ground_lean, settle_speed * delta)
 	else:
 		var spin_before: float = angular_velocity
 		var turn_input: float = Input.get_axis("turn_left", "turn_right")
@@ -276,7 +286,7 @@ func _physics_process(delta: float) -> void:
 	_heat_hull(delta)
 
 	_move_legs(delta)
-	state.ground_clearance = body.reach(_pivot, _local_down())
+	_touch_terrain()
 	_gravity_model.propagate(state, delta)
 
 	var on_surface: bool = state.is_on_surface()
@@ -461,6 +471,39 @@ func _move_legs(delta: float) -> void:
 	if _legs_out == (1.0 if legs_down else 0.0):
 		_legs_moving = false
 		legs_changed.emit(legs_down, false)
+
+
+# The ground isn't flat, so whichever of the ship's pixels is first to meet it is what touches.
+# That only matters low down. It also works out which way the ground under the ship leans.
+func _touch_terrain() -> void:
+	var down: Vector2 = _local_down()
+	var flat_reach: float = body.reach(_pivot, down)
+	state.ground_clearance = flat_reach
+	_ground_lean = 0.0
+	if _gravity_model.get_altitude(state.x, state.y, state.time) > flat_reach + terrain_check_height:
+		return
+	var dominant: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
+	var column: int = floori(_gravity_model.get_ground_column(state.x, state.y, state.time))
+	var strip: PackedFloat32Array = _gravity_model.get_ground_strip(dominant, column - GROUND_CHECK_COLUMNS, 1, GROUND_CHECK_COLUMNS * 2 + 1)
+	var here: float = strip[GROUND_CHECK_COLUMNS * 2]
+	var along: Vector2 = down.orthogonal()
+	var clearance: float = 0.0
+	for point: Vector2 in body.outline_now():
+		var from_middle: Vector2 = point - _pivot
+		var drop: float = from_middle.dot(down)
+		# Clockwise around the planet is to the ship's right when it's upright.
+		var sideways: int = clampi(roundi(-from_middle.dot(along) / WORLD_PIXEL), -GROUND_CHECK_COLUMNS, GROUND_CHECK_COLUMNS)
+		var ground: float = strip[(sideways + GROUND_CHECK_COLUMNS) * 2]
+		clearance = maxf(clearance, drop + ground - here)
+	state.ground_clearance = clearance
+	# Resting, it follows its own lowest pixel down as it settles, so it stays on the ground.
+	if state.is_on_surface():
+		_rest_on_ground()
+
+	var stance: int = mini(roundi((62.0 if legs_down else 18.0) / WORLD_PIXEL), GROUND_CHECK_COLUMNS)
+	var left: float = strip[(GROUND_CHECK_COLUMNS - stance) * 2]
+	var right: float = strip[(GROUND_CHECK_COLUMNS + stance) * 2]
+	_ground_lean = clampf(atan2(left - right, stance * 2.0 * WORLD_PIXEL), -most_ground_lean, most_ground_lean)
 
 
 # A point on the art as it's drawn right now, which a crushed ship is still sinking toward.
@@ -648,7 +691,8 @@ func _rest_on_ground() -> void:
 	var dx: float = state.x - at[0]
 	var dy: float = state.y - at[1]
 	var distance: float = sqrt(dx * dx + dy * dy)
-	var wanted: float = _gravity_model.get_body_radius(dominant) + state.ground_clearance
+	var ground: float = _gravity_model.get_ground_height(state.x, state.y, state.time)
+	var wanted: float = _gravity_model.get_body_radius(dominant) + ground + state.ground_clearance
 	if distance > 0.0:
 		state.x = at[0] + dx * wanted / distance
 		state.y = at[1] + dy * wanted / distance

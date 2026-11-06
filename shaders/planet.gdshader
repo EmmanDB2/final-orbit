@@ -37,6 +37,10 @@ uniform float view_column_share = 0.0;
 uniform int view_column = 0;
 uniform float cell_px = 1.0;
 uniform float cell_units = 2.0;
+// The stretch of the rim in view: its height in world units and its map color, one entry per
+// column, with the middle of the view at the middle. How much of its height to show, too.
+uniform sampler2D rim_strip : filter_nearest, repeat_disable;
+uniform float rim_fade = 0.0;
 // How high the air reaches on screen, in pixels. Zero means airless.
 uniform float air_px = 0.0;
 
@@ -224,6 +228,8 @@ void fragment() {
 	// Close up, it works on the grid fixed to the ground instead. Near the pole that grid would
 	// pinch together, so the middle of the disc stays on the far-out pixels.
 	bool on_grid = false;
+	bool above_ground = false;
+	float ground_px = 0.0;
 	float height_px = 0.0;
 	vec2 grid_ground = vec2(0.0);
 	if (on_surface_grid) {
@@ -238,6 +244,11 @@ void fragment() {
 			height_px = view_height_px + (2.0 * dot(view_from_body, from_view) + dot(from_view, from_view)) / (distance_now + length(view_from_body));
 			float row = floor(height_px / cell_px);
 			whole = vec2(column + 4096.0, row + 4096.0);
+			float strip_at = column + 512.0;
+			if (strip_at >= 0.0 && strip_at < 1024.0) {
+				ground_px = texelFetch(rim_strip, ivec2(int(strip_at), 0), 0).r * rim_fade / units_per_px;
+			}
+			above_ground = row * cell_px >= floor(ground_px / cell_px) * cell_px;
 			float at_angle = (float(view_column) + column + 0.5) * cell_px / radius_px;
 			float at_radius = (radius_px + (row + 0.5) * cell_px) * units_per_px;
 			grid_ground = vec2(sin(at_angle), -cos(at_angle)) * at_radius;
@@ -252,11 +263,11 @@ void fragment() {
 	float facing = dot(outward, light_way);
 	float air_day = clamp(floor(clamp(facing * 1.4 + 0.45, 0.0, 1.0) * 3.0 + 0.5), 0.0, 3.0) / 3.0;
 
-	if (on_grid ? height_px > 0.0 : distance_px > radius_px) {
-		float above_ground = on_grid ? height_px : distance_px - radius_px;
-		if (above_ground < air_px) {
+	if (on_grid ? above_ground : distance_px > radius_px) {
+		float above_base = on_grid ? max(height_px, 0.0) : distance_px - radius_px;
+		if (above_base < air_px) {
 			// The air glows on the day side and turns warm around sunrise and sunset.
-			float reach = 1.0 - above_ground / air_px;
+			float reach = 1.0 - above_base / air_px;
 			float steps = mix(air_steps, 3.0, from_far);
 			float level = ceil(reach * reach * steps) / steps;
 			float sunset = abs(facing + 0.05) < 0.18 ? 0.8 : 0.0;
@@ -317,7 +328,7 @@ void fragment() {
 		color = mix(color * night_share, color, daylight);
 
 		// A thin bright rim of air on the day side, from far out.
-		if (air_px > 0.0 && from_far > 0.0 && radius_px - distance_px < block_px * 2.5 && air_day > 0.0) {
+		if (!on_grid && air_px > 0.0 && from_far > 0.0 && radius_px - distance_px < block_px * 2.5 && air_day > 0.0) {
 			color = mix(color, air_color, 0.75 * air_day);
 		}
 		COLOR = vec4(color, 1.0);
