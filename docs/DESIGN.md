@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Surfaces rebuilt up close: a pixel grid fixed to the ground, a seeded skyline that ships really collide with, new detail at each zoom, a cross-section of the ground, dithered sky bands, surface props by biome, engine dust, a ship shadow, and far-off mountains \[Leaning\] |
 | 2026-11-06 | Planets reworked to read as pixel art: flat colors, clean clusters, and bigger pixels from far out, which is a second exception to the fixed pixel size \[Leaning\] |
 | 2026-11-06 | Planets redrawn: seas and wandering coasts, day and night from the real star, clouds, ice at the pole, and craters on the moon \[Leaning\]. The home planet now starts with the ship on its day side. Landing on water is added to the parking lot |
 | 2026-11-06 | Connectivity now goes by pixels actually touching instead of 3 x 3 cells, so loose pixels drop off instead of floating \[Leaning\] |
@@ -310,7 +311,14 @@ Exotic but explained: \[Locked\]
 - Life colors follow the star's light; plants around red dwarfs skew dark purple or black.
 - Rare exceptions need a cause: hot Jupiters (giants that migrated inward), eyeball planets (tidally locked near red dwarfs, with a living twilight ring), ocean moons (icy moons warmed by tidal heating), rogue planets (no star).
 
-World structure: \[Leaning\]
+Terrain and biomes per body: \[Leaning\]
+
+- A body's data file sets its ground: how tall its mountains, hills, roughness, and rocks get, how deep its craters go and how many there are, how tall its cliff steps are, and how tall its far-off peaks are. Its seed sets the rest, so the same seed always gives the same ground.
+- The same file sets what the ground is made of (dirt, rock, deep rock, core) and what stands on low, middle, and high ground (`boulder`, `plant`, `ice`, `crater`, or `lava`), which is how a biome shows up close.
+- The surface map and the rim use the same noise, so the rim's color at any spot matches what you saw from orbit.
+- These are set by hand for the home planet and moon. The generation chain above fills them in once systems are generated.
+
+\1
 
 - Seeded galaxy; systems are generated only when approached.
 - Off-screen, nothing simulates except the rails math.
@@ -356,7 +364,14 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 - The LEGS button, or L on the Mac, swings the legs down over 2 seconds or back up. They start up, and they won't go up on the ground. Nothing deploys them for you, so forgetting means landing on the engine. \[Leaning\]
 - With both legs fully down and working, a landing is clean up to 80 units/s instead of 50. Harder than that, the feet go first because they're lowest. Their pixels are real, and the struts holding them out have no pixels of their own. \[Leaning\]
 - A touchdown reports LANDED (at a safe speed and within about 30 degrees of upright), HARD LANDING, or CRASH (over 250 units/s), on top of any damage. \[Leaning\]
-- Up close, patches of the next color speckle the ground so you can see drift. \[Leaning\]
+- Close to a body, its surface sits on a grid fixed to the ground: columns around the rim and rows up from it, starting at 2 world units each. Cells double as you zoom out, so they're always 2 to 4 game pixels wide, and they don't swim as the ship or planet moves. \[Leaning\]
+- Each body's rim has a seeded height all the way around: mountains in ranges with plains between them, hills, terraced cliffs, rough ground, rocks, and craters, in whole world pixels. The sea stays flat. It's invisible from orbit and fades in between 400 and 128 world units per pixel. Only the drawing fades: the ground is the same height from everywhere. \[Leaning\]
+- The physics core owns those heights and hands the shader the stretch in view, so the skyline you see is exactly the ground you hit. A ship touches with whichever of its pixels meets the ground first, leans with the slope when it's resting, and ALT reads from the ground under it. \[Leaning\]
+- Each zoom shows new detail: continents from orbit, then hills, then rocks. Patches of the next color come in as tiers from 4,800 units across down to about 19, and the skyline's smaller bumps come in the same way. It's also what lets you see drift up close. \[Leaning\]
+- From about 300 world units per pixel in, a side view of the ground grows down from the skyline over the orbital map, filling the screen by 32: the surface color at that spot on the rim, then dirt, banded rock, deep rock, and a dark core, with stones in them. Where the map shows sea, it's water down to a bed. \[Leaning\]
+- Inside an atmosphere the sky is flat bands that thin with height, from a horizon color up through the air's color into space, with pixel-pattern edges and no smooth gradients. It goes dark on the night side and warm around sunrise and sunset. Airless bodies keep a black sky. \[Leaning\]
+- Seeded pixel sprites stand along the rim from 1/16 zoom in, chosen by the ground: plants, boulders, and ice on the home planet, boulders and crater rims on the moon. They're placeholder shapes, and scenery only, with no collision. \[Leaning\]
+- The engine blows dust off the ground from 260 units up, in the ground's own colors. The ship's shadow lies along the terrain from 800 units up, shifted away from the star, thinning as it climbs, and gone at night. A far-off line of peaks stands behind the skyline and goes by at 0.3 of the ground's speed. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
 - A second exception: from far out, a planet or moon is drawn in bigger pixels, up to 4 game pixels wide, so it reads like a sprite. Manny's call, after comparing it with one fixed pixel size. \[Leaning\]
 - One exception: closer than the Orbit view, the ship is its normal sprite at true scale, with no smoothing and no minimum size, so it can shrink out of sight just before the icon takes over. At the Orbit view and farther it's a clean icon, and very far out it's a dot. \[Leaning\]
@@ -561,5 +576,6 @@ Parking lot:
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
 - Water: the sea is only a color for now, so you can land on it like ground. It could splash down, sink, or be off limits \[For later: Manny's call\]
+- Procedural burn animation: a ship's engine flame drawn in the same style as the rest of the game, replacing the current flame sprite \[Next up soon: Manny's call\]
 - Time warp: speeding up coasting, which orbits make cheap, since a moon lap takes about 23 minutes at normal speed \[For later: Manny's call on when\]
 - Dim line past a moon's sphere of influence: the rest of the orbit keeps drawing faintly beyond the ring, so you can watch it shrink during a capture burn \[Not built: capture is meant to take some skill\]
