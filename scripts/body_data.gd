@@ -15,6 +15,13 @@ extends Resource
 @export var terrain_seed: int = 1
 ## How fast the body turns, in radians per second. Positive is clockwise on screen.
 @export var spin_rate: float = 0.0
+## How much of the height range is under water, from 0 to 1. Zero means no sea.
+@export var sea_level: float = 0.0
+## How far out from the pole in the middle of the disc the ice reaches, as a share of the
+## radius. Zero means none.
+@export var ice_cap: float = 0.0
+## How much of the ground has a crater at each of two sizes, from 0 to 1. Zero means none.
+@export var crater_amount: float = 0.0
 ## Height where the path line turns amber: the top of the atmosphere, or a set height on
 ## an airless body. In world units.
 @export var landing_line_altitude: float = 0.0
@@ -27,6 +34,13 @@ extends Resource
 @export var air_scale_height: float = 2000.0
 ## The color of the air's glow around the body.
 @export var air_color: Color = Color.WHITE
+## The color it turns around sunrise and sunset.
+@export var air_sunset_color: Color = Color(1.0, 0.6, 0.4)
+## How much of the sky has cloud, from 0 to 1. Zero means none.
+@export var cloud_amount: float = 0.0
+## How fast the clouds turn, in radians per second, a little different from the ground.
+@export var cloud_spin_rate: float = 0.0
+@export var cloud_color: Color = Color.WHITE
 
 @export_group("Rails")
 ## Average distance from the body this one orbits. Zero for the body at the center.

@@ -251,3 +251,11 @@ Files: `scripts/ship/ship_body.gd`, `scripts/ship/damage_wave.gd`, `scripts/ship
 
 - union-find for connected pieces
 - runs of pixels instead of single pixels
+
+## 2026-11-06: Planet look
+
+Files: `shaders/planet.gdshader`, `scripts/body_view.gd`, `scripts/body_data.gd`, `scripts/main.gd`, `data/home_planet.tres`, `data/moon.tres`, `docs/DESIGN.md`
+
+- domain warping noise
+- lighting a disc as if it were a ball
+- ordered dithering with screen-space derivatives

@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Planets redrawn: seas and wandering coasts, day and night from the real star, clouds, ice at the pole, and craters on the moon \[Leaning\]. The home planet now starts with the ship on its day side. Landing on water is added to the parking lot |
 | 2026-11-06 | Connectivity now goes by pixels actually touching instead of 3 x 3 cells, so loose pixels drop off instead of floating \[Leaning\] |
 | 2026-11-06 | Inside layers built from Manny's frame and systems drawings: damage strips the skin first, then the systems, then the frame. Material strengths halved so a crash costs about what it did, with the skin going first \[Leaning\] |
 | 2026-11-06 | Landing legs built, with a LEGS button. They swing down, take harder landings, and can break off, leaving the ship leaning. The ship now stands on its feet with them down, which replaces always resting on the bell \[Leaning\] |
@@ -471,6 +472,12 @@ Space palette (generated per system): \[Locked\]
 - Backgrounds are always very dark. Pure black only happens far from any star. \[Leaning\]
 - Star tint: space takes on a slight tint of the system star's color, deeper near the star and fading toward black far from it, so the color of space shows your distance from the star. Faint stars wash out in the glare near the star and reappear far from it. It's measured from the real star at the center of the system. \[Leaning\]
 - The star is a boiling disc, white hot in the middle and taking on its color toward the rim, with a stepped glow. Far out it stays at least 3 px in radius, and planets at least 2 px, so they can be found. \[Leaning\]
+- The camera looks down on a planet's spinning pole, so the middle of the disc is the pole and the rim is the equator, where you fly and land. Ice sits around the middle. \[Leaning\]
+- A planet's six colors split into three for the sea and three for the land, with a sea level in its data file, and coasts wander instead of forming round blobs. Edges between colors break into a pattern of pixels a pixel or two wide at any zoom. \[Leaning\]
+- The real star lights each body from one side, in five flat steps, so there's a day side and a night side. The night side stays readable enough to land on, and the air glows on the day side and turns warm around sunrise and sunset. Human-made things aren't shaded, so they stay on the agency palette. \[Leaning\]
+- Clouds turn at their own speed, in bands that twist around the pole, and throw a small shadow. They fade out as you come in to land. \[Leaning\]
+- Airless bodies get craters at two sizes, with dark floors, bright rims, and an inside wall that catches the star. \[Leaning\]
+- All of this lives in each body's data file: colors, `sea_level`, `ice_cap`, `cloud_amount`, `crater_amount`, and the air's colors. \[Leaning\]
 - Background stars are a seeded shader with three parallax layers. Real stars would barely shift; the parallax is there so motion reads in empty space. \[Leaning\]
 
 Readability rules: \[Locked\]
@@ -551,5 +558,6 @@ Parking lot:
 - Half-folded Mission Control console \[Cut: no Flex Mode on Fold 8; revisit for Fold 8 Ultra or later\]
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
+- Water: the sea is only a color for now, so you can land on it like ground. It could splash down, sink, or be off limits \[For later: Manny's call\]
 - Time warp: speeding up coasting, which orbits make cheap, since a moon lap takes about 23 minutes at normal speed \[For later: Manny's call on when\]
 - Dim line past a moon's sphere of influence: the rest of the orbit keeps drawing faintly beyond the ring, so you can watch it shrink during a capture burn \[Not built: capture is meant to take some skill\]

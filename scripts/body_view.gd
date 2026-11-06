@@ -1,4 +1,5 @@
-# body_view.gd: feeds one planet or moon's data and position into planet.gdshader.
+# body_view.gd: feeds one planet or moon's data and position into planet.gdshader, including
+# the way to the star, which sits at the world origin.
 # From DESIGN.md, "Art direction" (planets are shaders and code) and "Physics" (bodies
 # move on Kepler rails, computed from time).
 extends ColorRect
@@ -12,6 +13,7 @@ var _index: int = 0
 var _radius: float = 0.0
 var _moon_orbit: float = 0.0
 var _spin_rate: float = 0.0
+var _cloud_spin_rate: float = 0.0
 var _air_height: float = 0.0
 var _gravity_model: GravityModel
 var _state: ShipState
@@ -20,12 +22,20 @@ var _state: ShipState
 
 
 ## Starts showing a body from the gravity model, using its look from the data file.
-func show_body(index: int, body: BodyData, gravity_model: GravityModel, state: ShipState) -> void:
+func show_body(index: int, body: BodyData, gravity_model: GravityModel, state: ShipState, star: StarData) -> void:
 	_index = index
 	_radius = body.radius
 	_spin_rate = body.spin_rate
+	_cloud_spin_rate = body.cloud_spin_rate
 	_air_height = body.landing_line_altitude if body.air_density > 0.0 else 0.0
 	_material.set_shader_parameter("air_color", body.air_color)
+	_material.set_shader_parameter("air_sunset_color", body.air_sunset_color)
+	_material.set_shader_parameter("sea_level", body.sea_level)
+	_material.set_shader_parameter("ice_cap", body.ice_cap)
+	_material.set_shader_parameter("crater_amount", body.crater_amount)
+	_material.set_shader_parameter("cloud_amount", body.cloud_amount)
+	_material.set_shader_parameter("cloud_color", body.cloud_color)
+	_material.set_shader_parameter("star_color", star.color)
 	_moon_orbit = body.orbit_semi_major_axis if gravity_model.get_body_parent(index) > 0 else 0.0
 	_gravity_model = gravity_model
 	_state = state
@@ -55,4 +65,9 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	var turned: float = fposmod(_spin_rate * _state.time, TAU)
 	_material.set_shader_parameter("spin_cos", cos(turned))
 	_material.set_shader_parameter("spin_sin", sin(turned))
+	var clouds_turned: float = fposmod(_cloud_spin_rate * _state.time, TAU)
+	_material.set_shader_parameter("cloud_cos", cos(clouds_turned))
+	_material.set_shader_parameter("cloud_sin", sin(clouds_turned))
+	var to_star: Vector2 = Vector2(-position_now[0], -position_now[1]).normalized()
+	_material.set_shader_parameter("light_way", to_star)
 	_material.set_shader_parameter("units_per_px", 1.0 / pixels_per_unit)
