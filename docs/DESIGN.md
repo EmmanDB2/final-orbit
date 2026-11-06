@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Ships are now built from one PNG per module, placed by the ship's data file, with working pixels marked so damage knows the real parts. Engines weaken as the bell goes instead of working or not \[Leaning\] |
 | 2026-11-06 | Damage reads better: hits spread across the art with a glowing edge instead of blinking out, every lost pixel flies off as a longer-lived spark, and chunks crumble into sparks instead of vanishing \[Leaning\] |
 | 2026-11-05 | Damage built: pixels are collision, hits and heat erase them, pieces break off as debris with their own orbits, lost modules change how the ship flies, and tanks leak. Losing the cockpit loses the ship. RESTART added. CRASH now starts at 250 units/s instead of 500 \[Leaning\] |
 | 2026-11-05 | The lander's fuel doubled to 40 t, with engine and RCS raised so a full tank feels the same \[Leaning\] |
@@ -156,6 +157,8 @@ Ships are built from modules, and each module is a small pixel mask where every 
 Construction:
 
 - Modules snap to a fixed grid (starting guess: about 64 x 64 px cells, scaled to the 35 x 40 px pilot; small craft around 100 x 200 px): cockpit, engines, RCS thrusters, fuel tanks, cargo, hull plating, heat shields, radiators, landing gear, solar panels. \[Leaning\]
+- Each module is its own PNG, in a folder per ship such as `art/lander/`, and the ship's data file says which go where, so new ships can reuse parts. The lander's were cut from its whole drawing by `tools/slice_lander.gd`, and put back together they match it pixel for pixel. \[Leaning\]
+- A module's data can mark its working pixels, so damage knows the real part. An RCS module works while its nozzle does, however much hull around it is gone, and an engine depends on its half of the bell. \[Leaning\]
 - Each material has a density; the ship's total mass, center of mass, and spin resistance are summed from its pixels. \[Locked\]
 - A pixel's material goes by its art color, from a table in `data/materials/`, so drawing a part in gold foil makes it light. \[Leaning\]
 - Fuel has mass and burns off, so ships get lighter and more agile as they fly. \[Locked\]
@@ -186,7 +189,7 @@ How it works in Tier 1: \[Leaning\]
 - Every lost pixel becomes a spark, thrown away from the hit, up to 800 pixels in one hit. Past that, sparks stand in for 2 x 2 blocks, and past 3,000 for 3 x 3 blocks. Sparks live 1.6 to 4.5 seconds and flicker out at the end. Near the ground they fall and bounce, and elsewhere they drift, slowed by any air. There can be 1,500 at once. \[Leaning\]
 - Pieces under 30 pixels are just sparks. There can be 12 chunks at once. Under 200 pixels, one crumbles into sparks after 30 seconds or burns up in the air. Any chunk crumbles after 60 seconds on the ground, or at once if it hits the ground faster than 120 units/s.
 - The ship turns around its new center of mass, which moves as pixels go.
-- A module under half its pixels stops working, and the pilot gets a message. Left RCS gone means no clockwise turn or moving right, and right RCS gone means the reverse. An engine module gone means half the thrust, off-center, so the ship spins.
+- A module under half its working pixels stops working, and the pilot gets a message. Left RCS gone means no clockwise turn or moving right, and right RCS gone means the reverse. An engine weakens as its bell goes and stops under a quarter of it. One engine module gone means half the thrust, off-center, so the ship spins. The tail nozzles work or fail on their own.
 - Fuel is shared across the tanks. A tank can only hold as much as is left of it, so losing pixels loses that share of its fuel at once. What remains leaks at up to 2,000 kg/s depending on the hole, and pushes the ship away from the hole. Lost capacity stays lost, and landing only refills tanks with no holes.
 - Cockpit under half its pixels means the ship is lost, until the escape pod in Tier 2. The ship stops responding and stays where it is as a wreck. Touching the star destroys everything.
 - RESTART appears when the ship is lost, has no engine, or has no fuel, and starts a new flight.
@@ -472,7 +475,7 @@ Art pipeline: \[Leaning\]
 1. Describe the asset to Gemini for concept images.
 2. Recreate it by hand, or hand the image to Claude to turn into a clean sprite.
 3. Clean up in Aseprite: snap to grid, force the agency palette, fix edges.
-4. Ship modules are drawn on the fixed module grid, since their pixels are collision and damage.
+4. Ship modules are drawn on the fixed module grid, one PNG each, since their pixels are collision and damage. Keep gaps within a part to 2 px or less so it counts as one piece.
 5. Planets and space are shaders and code, not hand-drawn sprites.
 
 ## Tech

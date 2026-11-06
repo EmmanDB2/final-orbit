@@ -26,14 +26,20 @@ var _leaks: Array = []
 var _time: float = 0.0
 
 
-## Takes nozzle positions in art pixels and makes them relative to the ship's middle.
-func set_nozzles(design: ShipDesign) -> void:
-	var middle: Vector2 = design.texture.get_size() / 2.0
-	_left = design.rcs_left_nozzle - middle
-	_right = design.rcs_right_nozzle - middle
+## Finds each module's nozzle: side ones on the RCS modules, and tail ones on the engines.
+func set_nozzles(body: ShipBody) -> void:
 	_rear = PackedVector2Array()
-	for nozzle: Vector2 in design.rcs_rear_nozzles:
-		_rear.append(nozzle - middle)
+	for i in range(body.modules.size()):
+		var module: ModuleData = body.modules[i]
+		if not module.nozzle_rect.has_area():
+			continue
+		var at: Vector2 = body.nozzle_point(i)
+		if module.kind == "engine":
+			_rear.append(at)
+		elif at.x < 0.0:
+			_left = at
+		else:
+			_right = at
 
 
 ## Says where fuel is venting from: pairs of a point on the art and the way it's going.

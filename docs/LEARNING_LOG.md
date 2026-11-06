@@ -221,3 +221,11 @@ Files: `scripts/ship/damage_wave.gd`, `scripts/spark_field.gd`, `scripts/debris_
 - separating what's simulated from what's drawn
 - inner classes and parallel arrays for many small things
 - process priority for keeping systems in step
+
+## 2026-11-06: Tier 1, ticket 11: ships from module PNGs
+
+Files: `tools/slice_lander.gd`, `art/lander/*`, `data/lander_design.tres`, `scripts/ship/ship_body.gd`, `scripts/ship/module_data.gd`, `scripts/ship/ship_design.gd`, `scripts/ship/damage_wave.gd`, `scripts/ship.gd`, `scripts/rcs_puffs.gd`, `tests/test_ship_body.gd`, `docs/DESIGN.md`
+
+- composing a picture from smaller images
+- inner classes for grouping related data
+- a tool script that only runs from the command line

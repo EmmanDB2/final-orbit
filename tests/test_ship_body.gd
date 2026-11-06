@@ -37,8 +37,11 @@ func _test_two_pixels() -> void:
 	var material_b := MaterialData.new()
 	material_b.density = 3.0
 	material_b.colors = PackedColorArray([heavy])
+	var module := ModuleData.new()
+	module.texture = ImageTexture.create_from_image(image)
 	var design := ShipDesign.new()
-	design.texture = ImageTexture.create_from_image(image)
+	design.cell_size = 5
+	design.modules = [module]
 	design.materials = [material_a, material_b]
 	var body: ShipBody = ShipBody.measure(design)
 	_check("mass adds up", body.mass, 4.0, 0.0)
@@ -52,8 +55,8 @@ func _test_lander() -> void:
 	var design: ShipDesign = load("res://data/lander_design.tres")
 	var body: ShipBody = ShipBody.measure(design)
 	var module_total: float = 0.0
-	for cell: Vector2i in body.module_masses:
-		module_total += body.module_masses[cell]
+	for module: int in body.module_masses:
+		module_total += body.module_masses[module]
 	_check("every module has pixels", body.module_masses.size(), design.modules.size(), 0.0)
 	_check("modules add up to the whole ship", module_total, body.mass, 1e-6)
 	_check("lander's center of mass is near its middle", body.center_of_mass.x, 0.0, 2.0)
@@ -78,8 +81,11 @@ func _bar_design(strength: float) -> ShipDesign:
 	material.density = 2.0
 	material.strength = strength
 	material.colors = PackedColorArray([color])
+	var module := ModuleData.new()
+	module.texture = ImageTexture.create_from_image(image)
 	var design := ShipDesign.new()
-	design.texture = ImageTexture.create_from_image(image)
+	design.cell_size = 20
+	design.modules = [module]
 	design.materials = [material]
 	return design
 
@@ -99,11 +105,10 @@ func _test_erasing() -> void:
 
 	# A cut right through the middle leaves two pieces.
 	var cut: ShipBody = ShipBody.measure(_bar_design(10.0))
-	for y in range(4):
-		for x in range(8, 16):
-			var index: int = y * 20 + x
-			if cut._density[index] > 0.0:
-				cut._erase(index)
+	for index in range(cut._density.size()):
+		var x: float = cut.position_of(index).x
+		if x >= -2.0 and x < 6.0:
+			cut._erase(index)
 	cut._refresh()
 	var pieces: Array[Dictionary] = cut.split_off()
 	_check("a cut splits off one piece", pieces.size(), 1.0, 0.0)
@@ -115,12 +120,12 @@ func _test_erasing() -> void:
 	_check("the ship's mass drops too", cut.mass, 64.0, 1e-3)
 
 	var dented: ShipBody = ShipBody.measure(_bar_design(10.0))
-	var dent_erased: Dictionary = dented.dent(Vector2(-10.0, 0.0), 40.0, 1)
+	var dent_erased: Dictionary = dented.dent(Vector2(-10.0, -8.0), 40.0, 1)
 	var farthest_x: float = -10.0
 	for point: Vector2 in dent_erased["points"]:
 		farthest_x = maxf(farthest_x, point.x)
 	_check("a dent stays near the point", 1.0 if farthest_x < 0.0 else 0.0, 1.0, 0.0)
-	_check("and leaves the far end alone", 1.0 if dented.has_pixel(Vector2(9.5, 0.5)) else 0.0, 1.0, 0.0)
+	_check("and leaves the far end alone", 1.0 if dented.has_pixel(Vector2(9.5, -8.5)) else 0.0, 1.0, 0.0)
 
 
 func _test_lander_damage() -> void:
@@ -128,7 +133,7 @@ func _test_lander_damage() -> void:
 	var body: ShipBody = ShipBody.measure(design)
 	_check("the whole lander counts as one piece", body.split_off().size(), 0.0, 0.0)
 	_check("every module starts whole", body.module_share(0), 1.0, 0.0)
-	_check("it rests on its engine bell", body.reach(Vector2.ZERO, Vector2.DOWN), 105.5, 1.0)
+	_check("it rests on its engine bell", body.reach(Vector2.ZERO, Vector2.DOWN), 105.0, 1.0)
 
 	# Crushing the bottom takes the engine first and leaves the cockpit alone.
 	body.crush(Vector2.DOWN, 1.0e9, 3)
@@ -137,3 +142,59 @@ func _test_lander_damage() -> void:
 	_check("a crash from below hurts the engine", 1.0 if engine_share < 0.8 else 0.0, 1.0, 0.0)
 	_check("and leaves the cockpit whole", cockpit_share, 1.0, 0.0)
 	_check("the ship gets shorter", 1.0 if body.reach(Vector2.ZERO, Vector2.DOWN) < 105.0 else 0.0, 1.0, 0.0)
+	_test_real_parts()
+
+
+# A module's job depends on its working pixels, not on how much of the cell is left.
+func _test_real_parts() -> void:
+	var design: ShipDesign = load("res://data/lander_design.tres")
+	var body: ShipBody = ShipBody.measure(design)
+	var rcs_left: int = 2
+	_check("the lander is the same mass as the drawing", body.mass, 19485.0, 2.0)
+	_check("and every pixel's there", body.pixel_count, 14337.0, 0.0)
+	_check("the RCS nozzle starts working", body.nozzle_share(rcs_left), 1.0, 0.0)
+	_check("and its module", body.working_share(rcs_left), 1.0, 0.0)
+
+	# Take most of the module's hull and leave the nozzle.
+	for index in range(body._density.size()):
+		if body._module_of[index] == rcs_left and body._is_nozzle[index] == 0 and body.position_of(index).x > -30.0:
+			body._erase(index)
+	body._refresh()
+	_check("hull can go with the nozzle untouched", 1.0 if body.module_share(rcs_left) < 0.8 and body.nozzle_share(rcs_left) == 1.0 else 0.0, 1.0, 0.0)
+	_check("and the RCS still works", body.working_share(rcs_left), 1.0, 0.0)
+
+	# Now take only the nozzle from a whole ship.
+	var other: ShipBody = ShipBody.measure(design)
+	for index in range(other._density.size()):
+		if other._module_of[index] == rcs_left and other._is_nozzle[index] == 1:
+			other._erase(index)
+	other._refresh()
+	_check("the nozzle gone means the RCS is gone", other.working_share(rcs_left), 0.0, 0.0)
+	_check("with nearly all the module left", 1.0 if other.module_share(rcs_left) > 0.95 else 0.0, 1.0, 0.0)
+
+	# Puts the pieces back together and compares them with the original drawing.
+	var whole: ShipBody = ShipBody.measure(design)
+	var art: Image = (load("res://art/ship_lander.png") as Texture2D).get_image()
+	if art.is_compressed():
+		art.decompress()
+	art.convert(Image.FORMAT_RGBA8)
+	var differences: int = 0
+	var drawn: int = 0
+	for y in range(art.get_height()):
+		for x in range(art.get_width()):
+			var from_art: Color = art.get_pixel(x, y)
+			if from_art.a < 0.5:
+				continue
+			drawn += 1
+			var grid_at := Vector2i(x, y) + Vector2i(8, 22)
+			var found: bool = false
+			for layer in whole._layers:
+				var on_art: Vector2i = grid_at - layer.top_left
+				if on_art.x >= 0 and on_art.y >= 0 and on_art.x < layer.image.get_width() and on_art.y < layer.image.get_height():
+					var here: Color = layer.image.get_pixel(on_art.x, on_art.y)
+					if here.a > 0.5 and here.is_equal_approx(from_art):
+						found = true
+			if not found:
+				differences += 1
+	_check("the pieces match the drawing exactly", differences, 0.0, 0.0)
+	_check("and nothing's extra", whole.pixel_count, drawn, 0.0)

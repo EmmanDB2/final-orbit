@@ -1,10 +1,46 @@
 # ship_body.gd: a ship's pixels: which are left, and the mass, center of mass, and spin
 # resistance they add up to.
-# From DESIGN.md, "Ships" (each material has a density, and the ship's totals are summed
-# from its pixels) and "Destruction" (damage erases pixels, and a connectivity check splits
-# off any piece no longer attached).
+# From DESIGN.md, "Ships" (each module is a pixel mask, each material has a density, and the
+# ship's totals are summed from its pixels) and "Destruction" (damage erases pixels, and a
+# connectivity check splits off any piece no longer attached).
+#
+# The modules on the grid are drawn together as one layer. A part that moves, such as a
+# landing leg, is a layer of its own that can be somewhere else while its pixels stay the same.
+# Mass always counts a moving part where it's stowed, since it's tiny next to the whole ship.
 class_name ShipBody
 extends RefCounted
+
+## One set of pixels drawn and moved together.
+class Layer:
+	var image: Image
+	var top_left: Vector2i = Vector2i.ZERO
+	var lookup: PackedInt32Array = PackedInt32Array()
+	var outline: PackedVector2Array = PackedVector2Array()
+	var center: Vector2 = Vector2.ZERO
+	var module: int = -1
+	var moves: bool = false
+	var folds: bool = false
+	var hinge_home: Vector2 = Vector2.ZERO
+	var hinge_now: Vector2 = Vector2.ZERO
+	var travel: Vector2 = Vector2.ZERO
+	var fold: float = 1.0
+
+	## Where a point on this layer's stowed art is right now.
+	func place(home: Vector2) -> Vector2:
+		if not moves:
+			return home
+		var from_hinge: Vector2 = home - hinge_home
+		return hinge_now + Vector2(from_hinge.x, from_hinge.y * fold)
+
+	## Where on this layer's stowed art a point is right now. A part edge-on covers nothing.
+	func unplace(point: Vector2) -> Vector2:
+		if not moves:
+			return point
+		var from_hinge: Vector2 = point - hinge_now
+		if absf(fold) < 0.2:
+			return Vector2(INF, INF)
+		return hinge_home + Vector2(from_hinge.x, from_hinge.y / fold)
+
 
 ## Pixels are grouped into square cells this wide for the connectivity check, and touching
 ## cells count as attached. It's faster than checking every pixel, and it holds together
@@ -13,48 +49,57 @@ const CONNECT_CELL: int = 3
 
 ## Total mass, in kilograms.
 var mass: float = 0.0
-## In pixels, measured from the middle of the art.
+## In pixels, measured from the middle of the ship's grid.
 var center_of_mass: Vector2 = Vector2.ZERO
 ## How hard the ship is to spin around its center of mass, the moment of inertia.
 var spin_resistance: float = 0.0
-## Mass of each module, by grid cell.
+## Mass of each module, by its place in modules.
 var module_masses: Dictionary = {}
 ## Total fuel the tanks can hold now, in kilograms.
 var fuel_capacity: float = 0.0
 ## What the tanks held when the ship was whole.
 var original_fuel_capacity: float = 0.0
-## How wide and long what's left of the art is, in pixels. Sets how much air the ship pushes.
+## How wide and long what's left of the ship is, in pixels. Sets how much air it pushes.
 var width: float = 0.0
 var length: float = 0.0
 ## How many pixels are left.
 var pixel_count: int = 0
-## The art as it is now, with erased pixels transparent.
-var image: Image
 ## The design's modules, in the order module_share counts them.
 var modules: Array[ModuleData] = []
-## Each tank: "position" from the middle of the art, "capacity" left, what it held when
+## Each tank: "position" from the middle of the grid, "capacity" left, what it held when
 ## "full", and its "module" index.
 var tanks: Array[Dictionary] = []
+## Per pixel: which layer it's on, and where on that layer's art.
+var pixel_layer: PackedByteArray = PackedByteArray()
+var pixel_x: PackedInt32Array = PackedInt32Array()
+var pixel_y: PackedInt32Array = PackedInt32Array()
 
-var _width: int = 0
-var _height: int = 0
+var _half: Vector2 = Vector2.ZERO
+var _canvas: Vector2i = Vector2i.ZERO
+var _cell_size: int = 64
+var _layers: Array[Layer] = []
 var _total_x: float = 0.0
 var _total_y: float = 0.0
 var _total_r_squared: float = 0.0
-var _grid_offset: Vector2i = Vector2i.ZERO
-var _cell_size: int = 64
-# Per pixel, row by row. A density of zero means the pixel is gone.
+# Per pixel. A density of zero means the pixel is gone.
 var _density: PackedFloat32Array = PackedFloat32Array()
 var _strength: PackedFloat32Array = PackedFloat32Array()
 var _module_of: PackedInt32Array = PackedInt32Array()
+var _home: PackedVector2Array = PackedVector2Array()
+var _color: PackedColorArray = PackedColorArray()
+var _is_working: PackedByteArray = PackedByteArray()
+var _is_nozzle: PackedByteArray = PackedByteArray()
 # Per module.
 var _module_start: PackedInt32Array = PackedInt32Array()
 var _module_left: PackedInt32Array = PackedInt32Array()
+var _working_start: PackedInt32Array = PackedInt32Array()
+var _working_left: PackedInt32Array = PackedInt32Array()
+var _nozzle_start: PackedInt32Array = PackedInt32Array()
+var _nozzle_left: PackedInt32Array = PackedInt32Array()
 var _module_hole: PackedVector2Array = PackedVector2Array()
-var _outline: PackedVector2Array = PackedVector2Array()
 
 
-## Measures a design's art, pixel by pixel.
+## Puts a design's modules together and measures them, pixel by pixel.
 static func measure(design: ShipDesign) -> ShipBody:
 	var body := ShipBody.new()
 	var materials: Dictionary = {}
@@ -62,40 +107,76 @@ static func measure(design: ShipDesign) -> ShipBody:
 		for color: Color in material.colors:
 			materials[color.to_html(false)] = material
 
-	body.image = design.texture.get_image().duplicate()
-	if body.image.is_compressed():
-		body.image.decompress()
-	body.image.convert(Image.FORMAT_RGBA8)
 	body.modules = design.modules
 	body._cell_size = design.cell_size
-	body._width = body.image.get_width()
-	body._height = body.image.get_height()
-
-	var module_at: Dictionary = {}
 	var columns: int = 1
 	var rows: int = 1
-	for i in range(design.modules.size()):
+	for module: ModuleData in design.modules:
+		if module.on_grid:
+			columns = maxi(columns, module.cell.x + 1)
+			rows = maxi(rows, module.cell.y + 1)
+	body._canvas = Vector2i(columns, rows) * design.cell_size
+	body._half = Vector2(body._canvas) / 2.0
+
+	var grid_layer := Layer.new()
+	grid_layer.image = Image.create(body._canvas.x, body._canvas.y, false, Image.FORMAT_RGBA8)
+	grid_layer.lookup.resize(body._canvas.x * body._canvas.y)
+	grid_layer.lookup.fill(-1)
+	grid_layer.center = Vector2.ZERO
+	body._layers.append(grid_layer)
+
+	var count: int = design.modules.size()
+	for list: PackedInt32Array in [body._module_start, body._module_left, body._working_start, body._working_left, body._nozzle_start, body._nozzle_left]:
+		list.resize(count)
+		list.fill(0)
+	body._module_hole.resize(count)
+	for i in range(count):
+		body._add_module(i, design.modules[i], materials)
+	body._module_left = body._module_start.duplicate()
+	body._working_left = body._working_start.duplicate()
+	body._nozzle_left = body._nozzle_start.duplicate()
+
+	for i in range(count):
 		var module: ModuleData = design.modules[i]
-		module_at[module.cell] = i
-		columns = maxi(columns, module.cell.x + 1)
-		rows = maxi(rows, module.cell.y + 1)
-	var grid_size := Vector2i(columns, rows) * design.cell_size
-	body._grid_offset = (grid_size - body.image.get_size()) / 2
-	body._module_start.resize(design.modules.size())
-	body._module_start.fill(0)
-	body._module_hole.resize(design.modules.size())
+		if module.fuel_capacity > 0.0:
+			var middle: Vector2 = (Vector2(module.cell) + Vector2(0.5, 0.5)) * design.cell_size - body._half
+			body.tanks.append({"position": middle, "capacity": module.fuel_capacity, "full": module.fuel_capacity, "module": i})
+			body.fuel_capacity += module.fuel_capacity
+	body.original_fuel_capacity = body.fuel_capacity
+	body._refresh()
+	return body
 
-	var total_pixels: int = body._width * body._height
-	body._density.resize(total_pixels)
-	body._density.fill(0.0)
-	body._strength.resize(total_pixels)
-	body._strength.fill(0.0)
-	body._module_of.resize(total_pixels)
-	body._module_of.fill(-1)
 
-	for y in range(body._height):
-		for x in range(body._width):
-			var color: Color = body.image.get_pixel(x, y)
+func _add_module(index: int, module: ModuleData, materials: Dictionary) -> void:
+	var art: Image = module.texture.get_image().duplicate()
+	if art.is_compressed():
+		art.decompress()
+	art.convert(Image.FORMAT_RGBA8)
+
+	var layer: Layer = _layers[0]
+	var layer_index: int = 0
+	var offset: Vector2i = module.cell * _cell_size
+	if not module.on_grid:
+		layer = Layer.new()
+		layer.image = Image.create(art.get_width(), art.get_height(), false, Image.FORMAT_RGBA8)
+		layer.lookup.resize(art.get_width() * art.get_height())
+		layer.lookup.fill(-1)
+		layer.top_left = module.art_position
+		layer.center = Vector2(module.art_position) + Vector2(art.get_size()) / 2.0 - _half
+		layer.module = index
+		layer.moves = true
+		layer.folds = module.folds
+		layer.hinge_home = Vector2(module.hinge) - _half
+		layer.hinge_now = layer.hinge_home
+		layer.travel = Vector2(module.travel)
+		layer_index = _layers.size()
+		_layers.append(layer)
+		offset = Vector2i.ZERO
+
+	var layer_width: int = layer.image.get_width()
+	for y in range(art.get_height()):
+		for x in range(art.get_width()):
+			var color: Color = art.get_pixel(x, y)
 			if color.a < 0.5:
 				continue
 			var key: String = color.to_html(false)
@@ -103,32 +184,33 @@ static func measure(design: ShipDesign) -> ShipBody:
 				push_warning("Ship pixel color %s isn't in any material" % key)
 				continue
 			var material: MaterialData = materials[key]
-			var index: int = y * body._width + x
-			var from_middle: Vector2 = body._from_middle(index)
-			body._density[index] = material.density
-			body._strength[index] = material.strength
-			body.mass += material.density
-			body._total_x += material.density * from_middle.x
-			body._total_y += material.density * from_middle.y
-			body._total_r_squared += material.density * from_middle.length_squared()
-			body.pixel_count += 1
-			var cell: Vector2i = (Vector2i(x, y) + body._grid_offset) / design.cell_size
-			body.module_masses[cell] = body.module_masses.get(cell, 0.0) + material.density
-			if module_at.has(cell):
-				var module_index: int = module_at[cell]
-				body._module_of[index] = module_index
-				body._module_start[module_index] += 1
-
-	body._module_left = body._module_start.duplicate()
-	for i in range(design.modules.size()):
-		var module: ModuleData = design.modules[i]
-		if module.fuel_capacity > 0.0:
-			var middle: Vector2 = (Vector2(module.cell) + Vector2(0.5, 0.5)) * design.cell_size - Vector2(grid_size) / 2.0
-			body.tanks.append({"position": middle, "capacity": module.fuel_capacity, "full": module.fuel_capacity, "module": i})
-			body.fuel_capacity += module.fuel_capacity
-	body.original_fuel_capacity = body.fuel_capacity
-	body._refresh()
-	return body
+			var at := Vector2i(x, y) + offset
+			var home: Vector2 = Vector2(layer.top_left + at) + Vector2(0.5, 0.5) - _half
+			layer.image.set_pixel(at.x, at.y, color)
+			layer.lookup[at.y * layer_width + at.x] = _density.size()
+			_density.append(material.density)
+			_strength.append(material.strength)
+			_module_of.append(index)
+			_home.append(home)
+			_color.append(color)
+			pixel_layer.append(layer_index)
+			pixel_x.append(at.x)
+			pixel_y.append(at.y)
+			var working: bool = not module.working_rect.has_area() or module.working_rect.has_point(Vector2i(x, y))
+			var nozzle: bool = module.nozzle_rect.has_area() and module.nozzle_rect.has_point(Vector2i(x, y))
+			_is_working.append(1 if working else 0)
+			_is_nozzle.append(1 if nozzle else 0)
+			mass += material.density
+			_total_x += material.density * home.x
+			_total_y += material.density * home.y
+			_total_r_squared += material.density * home.length_squared()
+			pixel_count += 1
+			module_masses[index] = module_masses.get(index, 0.0) + material.density
+			_module_start[index] += 1
+			if working:
+				_working_start[index] += 1
+			if nozzle:
+				_nozzle_start[index] += 1
 
 
 ## The ship's mass and spin resistance with this much fuel aboard, shared across its tanks.
@@ -162,20 +244,38 @@ func module_share(module_index: int) -> float:
 	return float(_module_left[module_index]) / start if start > 0 else 0.0
 
 
-## The middle of the pixels a module has lost, from the middle of the art.
+## How much of the pixels that do a module's job are left, from 0 to 1.
+func working_share(module_index: int) -> float:
+	var start: int = _working_start[module_index]
+	return float(_working_left[module_index]) / start if start > 0 else 0.0
+
+
+## How much of a module's RCS nozzle is left, from 0 to 1. Zero if it hasn't got one.
+func nozzle_share(module_index: int) -> float:
+	var start: int = _nozzle_start[module_index]
+	return float(_nozzle_left[module_index]) / start if start > 0 else 0.0
+
+
+## Where gas leaves a module's RCS nozzle, from the middle of the grid.
+func nozzle_point(module_index: int) -> Vector2:
+	var module: ModuleData = modules[module_index]
+	return Vector2(module.cell * _cell_size) + module.nozzle_point - _half
+
+
+## The middle of the pixels a module has lost, from the middle of the grid.
 func module_hole(module_index: int) -> Vector2:
 	var lost: int = _module_start[module_index] - _module_left[module_index]
 	return _module_hole[module_index] / lost if lost > 0 else Vector2.ZERO
 
 
-## The pixel left in a module that's closest to a point, from the middle of the art. Returns
+## The pixel left in a module that's closest to a point, from the middle of the grid. Returns
 ## the point itself if the module has nothing left.
 func nearest_in_module(module_index: int, point: Vector2) -> Vector2:
 	var best: Vector2 = point
 	var best_distance: float = INF
 	for index in range(_density.size()):
 		if _density[index] > 0.0 and _module_of[index] == module_index:
-			var at: Vector2 = _from_middle(index)
+			var at: Vector2 = position_of(index)
 			var distance: float = at.distance_squared_to(point)
 			if distance < best_distance:
 				best_distance = distance
@@ -190,62 +290,120 @@ func cut_tank(tank: Dictionary, amount: float) -> void:
 	fuel_capacity -= cut
 
 
-## Whether there's a pixel at this point, measured from the middle of the art.
+## Where a pixel is right now, from the middle of the grid.
+func position_of(index: int) -> Vector2:
+	var layer_index: int = pixel_layer[index]
+	return _home[index] if layer_index == 0 else _layers[layer_index].place(_home[index])
+
+
+func layer_count() -> int:
+	return _layers.size()
+
+
+## A layer's art as it is now, with erased pixels transparent.
+func layer_image(layer_index: int) -> Image:
+	return _layers[layer_index].image
+
+
+## Where the middle of a layer's art is right now, from the middle of the grid.
+func layer_center(layer_index: int) -> Vector2:
+	var layer: Layer = _layers[layer_index]
+	return layer.place(layer.center)
+
+
+## How far over a layer is folded: 1 is as drawn, and -1 is upside down.
+func layer_fold(layer_index: int) -> float:
+	return _layers[layer_index].fold
+
+
+## Moves every moving part, from 0 for stowed to 1 for fully out. Parts fold over in the first
+## half of the way, and the whole way they stay on whole pixels.
+func set_parts_out(share: float) -> void:
+	for layer: Layer in _layers:
+		if layer.moves:
+			layer.hinge_now = (layer.hinge_home + layer.travel * share).round()
+			if layer.folds:
+				layer.fold = cos(PI * minf(share * 2.0, 1.0))
+	_update_size()
+
+
+## What's holding each moving part out, as pairs of points from the middle of the grid: where
+## it's mounted, and where its hinge has got to. Only for parts that still work.
+func part_struts(dead_share: float) -> Array:
+	var struts: Array = []
+	for layer: Layer in _layers:
+		if layer.moves and layer.hinge_now != layer.hinge_home and module_share(layer.module) >= dead_share:
+			struts.append([layer.hinge_home, layer.hinge_now])
+	return struts
+
+
+## Whether there's a pixel at this point, measured from the middle of the grid.
 func has_pixel(point: Vector2) -> bool:
-	var x: int = floori(point.x + _width / 2.0)
-	var y: int = floori(point.y + _height / 2.0)
-	if x < 0 or y < 0 or x >= _width or y >= _height:
-		return false
-	return _density[y * _width + x] > 0.0
+	for layer: Layer in _layers:
+		var home: Vector2 = layer.unplace(point)
+		if home.x == INF:
+			continue
+		var on_art: Vector2 = home + _half - Vector2(layer.top_left)
+		var x: int = floori(on_art.x)
+		var y: int = floori(on_art.y)
+		var art_width: int = layer.image.get_width()
+		if x < 0 or y < 0 or x >= art_width or y >= layer.image.get_height():
+			continue
+		var index: int = layer.lookup[y * art_width + x]
+		if index >= 0 and _density[index] > 0.0:
+			return true
+	return false
 
 
-## How far the ship reaches in a direction from a point, measured from the middle of the art.
+## How far the ship reaches in a direction from a point, measured from the middle of the grid.
 ## This is what touches the ground first.
 func reach(from: Vector2, direction: Vector2) -> float:
 	var farthest: float = 0.0
-	for point: Vector2 in _outline:
-		farthest = maxf(farthest, (point - from).dot(direction))
+	for layer: Layer in _layers:
+		for point: Vector2 in layer.outline:
+			farthest = maxf(farthest, (layer.place(point) - from).dot(direction))
 	return farthest
 
 
 ## Crushes the ship from one side, as flat ground does. Spends energy on the pixels farthest
-## along the direction first, and returns what was erased as "points" and "colors".
+## along the direction first, and returns what was erased as "pixels", "points", and "colors".
 func crush(direction: Vector2, energy: float, damage_seed: int) -> Dictionary:
 	var order := PackedInt32Array()
 	var ranks := PackedInt32Array()
 	for index in range(_density.size()):
 		if _density[index] > 0.0:
 			order.append(index)
-			ranks.append(floori(_from_middle(index).dot(direction)) + _jitter(index, damage_seed))
+			ranks.append(floori(position_of(index).dot(direction)) + _jitter(index, damage_seed))
 	return _erase_in_order(order, ranks, energy)
 
 
 ## Knocks a dent in the ship at a point, as a small hard object does. Spends energy on the
-## pixels nearest it first, and returns what was erased as "points" and "colors".
+## pixels nearest it first, and returns what was erased as "pixels", "points", and "colors".
 func dent(point: Vector2, energy: float, damage_seed: int) -> Dictionary:
 	var order := PackedInt32Array()
 	var ranks := PackedInt32Array()
 	for index in range(_density.size()):
 		if _density[index] > 0.0:
 			order.append(index)
-			ranks.append(_jitter(index, damage_seed) - floori(_from_middle(index).distance_to(point)))
+			ranks.append(_jitter(index, damage_seed) - floori(position_of(index).distance_to(point)))
 	return _erase_in_order(order, ranks, energy)
 
 
 ## Removes every piece no longer attached and returns them, biggest first. The piece with the
 ## most cockpit in it stays as the ship, or the biggest one if the cockpit's gone. Each has an
-## "image", its "center" from the middle of the art, its "mass", its "pixel_count", and its
-## pixels as "points" and "colors".
+## "image", its "center" from the middle of the grid, its "mass", its "pixel_count", and its
+## pixels as "pixels", "points", and "colors". Whether pieces touch goes by where they're
+## stowed, since a moving part stays attached however far out it is.
 func split_off() -> Array[Dictionary]:
-	var columns: int = ceili(float(_width) / CONNECT_CELL)
-	var rows: int = ceili(float(_height) / CONNECT_CELL)
+	var columns: int = ceili(float(_canvas.x) / CONNECT_CELL)
+	var rows: int = ceili(float(_canvas.y) / CONNECT_CELL)
 	var cell_piece := PackedInt32Array()
 	cell_piece.resize(columns * rows)
 	cell_piece.fill(-1)
 	const UNLABELED: int = -2
 	for index in range(_density.size()):
 		if _density[index] > 0.0:
-			cell_piece[(index / _width) / CONNECT_CELL * columns + (index % _width) / CONNECT_CELL] = UNLABELED
+			cell_piece[_connect_cell(index, columns)] = UNLABELED
 
 	var piece_count: int = 0
 	for start in range(cell_piece.size()):
@@ -279,10 +437,9 @@ func split_off() -> Array[Dictionary]:
 	cockpit.fill(0)
 	for index in range(_density.size()):
 		if _density[index] > 0.0:
-			var piece: int = cell_piece[(index / _width) / CONNECT_CELL * columns + (index % _width) / CONNECT_CELL]
+			var piece: int = cell_piece[_connect_cell(index, columns)]
 			counts[piece] += 1
-			var module_index: int = _module_of[index]
-			if module_index >= 0 and modules[module_index].kind == "cockpit":
+			if modules[_module_of[index]].kind == "cockpit":
 				cockpit[piece] += 1
 
 	var main: int = 0
@@ -290,34 +447,35 @@ func split_off() -> Array[Dictionary]:
 		if cockpit[piece] > cockpit[main] or (cockpit[piece] == cockpit[main] and counts[piece] > counts[main]):
 			main = piece
 
+	var entry_of: Dictionary = {}
 	for piece in range(piece_count):
 		if piece != main:
-			pieces.append({
+			var entry := {
 				"mass": 0.0,
 				"pixel_count": counts[piece],
+				"pixels": PackedInt32Array(),
 				"points": PackedVector2Array(),
 				"colors": PackedColorArray(),
-				"low": Vector2i(_width, _height),
-				"high": Vector2i(-1, -1),
-				"id": piece,
-			})
-	var entry_of: Dictionary = {}
-	for i in range(pieces.size()):
-		entry_of[pieces[i]["id"]] = pieces[i]
+				"low": Vector2i(1 << 20, 1 << 20),
+				"high": Vector2i(-(1 << 20), -(1 << 20)),
+			}
+			entry_of[piece] = entry
+			pieces.append(entry)
 	for index in range(_density.size()):
 		if _density[index] <= 0.0:
 			continue
-		var piece: int = cell_piece[(index / _width) / CONNECT_CELL * columns + (index % _width) / CONNECT_CELL]
+		var piece: int = cell_piece[_connect_cell(index, columns)]
 		if piece == main:
 			continue
 		var entry: Dictionary = entry_of[piece]
-		var x: int = index % _width
-		var y: int = index / _width
+		var at: Vector2 = position_of(index)
+		var whole := Vector2i(floori(at.x), floori(at.y))
 		entry["mass"] += _density[index]
-		entry["points"].append(Vector2(x, y))
-		entry["colors"].append(image.get_pixel(x, y))
-		entry["low"] = Vector2i(mini(entry["low"].x, x), mini(entry["low"].y, y))
-		entry["high"] = Vector2i(maxi(entry["high"].x, x), maxi(entry["high"].y, y))
+		entry["pixels"].append(index)
+		entry["points"].append(at)
+		entry["colors"].append(_color[index])
+		entry["low"] = Vector2i(mini(entry["low"].x, whole.x), mini(entry["low"].y, whole.y))
+		entry["high"] = Vector2i(maxi(entry["high"].x, whole.x), maxi(entry["high"].y, whole.y))
 		_erase(index)
 
 	for entry: Dictionary in pieces:
@@ -327,19 +485,17 @@ func split_off() -> Array[Dictionary]:
 		var points: PackedVector2Array = entry["points"]
 		var colors: PackedColorArray = entry["colors"]
 		for i in range(points.size()):
-			piece_image.set_pixel(int(points[i].x) - low.x, int(points[i].y) - low.y, colors[i])
+			piece_image.set_pixel(floori(points[i].x) - low.x, floori(points[i].y) - low.y, colors[i])
 		entry["image"] = piece_image
-		entry["center"] = Vector2(low) + Vector2(piece_size) / 2.0 - Vector2(_width, _height) / 2.0
-		for i in range(points.size()):
-			points[i] += Vector2(0.5, 0.5) - Vector2(_width, _height) / 2.0
-		entry["points"] = points
+		entry["center"] = Vector2(low) + Vector2(piece_size) / 2.0
 	_refresh()
 	pieces.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["pixel_count"] > b["pixel_count"])
 	return pieces
 
 
-func _from_middle(index: int) -> Vector2:
-	return Vector2(index % _width + 0.5, index / _width + 0.5) - Vector2(_width, _height) / 2.0
+func _connect_cell(index: int, columns: int) -> int:
+	var on_canvas: Vector2 = _home[index] + _half
+	return int(on_canvas.y) / CONNECT_CELL * columns + int(on_canvas.x) / CONNECT_CELL
 
 
 # A repeatable small number per pixel, so a crushed edge is jagged instead of ruled.
@@ -349,28 +505,28 @@ func _jitter(index: int, damage_seed: int) -> int:
 
 func _erase(index: int) -> void:
 	var density: float = _density[index]
-	var from_middle: Vector2 = _from_middle(index)
+	var home: Vector2 = _home[index]
 	mass -= density
-	_total_x -= density * from_middle.x
-	_total_y -= density * from_middle.y
-	_total_r_squared -= density * from_middle.length_squared()
+	_total_x -= density * home.x
+	_total_y -= density * home.y
+	_total_r_squared -= density * home.length_squared()
 	_density[index] = 0.0
 	pixel_count -= 1
-	var x: int = index % _width
-	var y: int = index / _width
-	image.set_pixel(x, y, Color(0.0, 0.0, 0.0, 0.0))
-	var cell: Vector2i = (Vector2i(x, y) + _grid_offset) / _cell_size
-	module_masses[cell] = module_masses.get(cell, 0.0) - density
+	_layers[pixel_layer[index]].image.set_pixel(pixel_x[index], pixel_y[index], Color(0.0, 0.0, 0.0, 0.0))
 	var module_index: int = _module_of[index]
-	if module_index >= 0:
-		_module_left[module_index] -= 1
-		_module_hole[module_index] += from_middle
+	module_masses[module_index] = module_masses.get(module_index, 0.0) - density
+	_module_left[module_index] -= 1
+	_module_hole[module_index] += home
+	if _is_working[index] == 1:
+		_working_left[module_index] -= 1
+	if _is_nozzle[index] == 1:
+		_nozzle_left[module_index] -= 1
 
 
 # Erases highest rank first until the energy runs out. A counting sort, since the ranks are
 # whole numbers in a small range and there are thousands of pixels.
 func _erase_in_order(order: PackedInt32Array, ranks: PackedInt32Array, energy: float) -> Dictionary:
-	var erased := {"points": PackedVector2Array(), "colors": PackedColorArray()}
+	var erased := {"pixels": PackedInt32Array(), "points": PackedVector2Array(), "colors": PackedColorArray()}
 	if order.is_empty():
 		return erased
 	var lowest: int = ranks[0]
@@ -398,8 +554,9 @@ func _erase_in_order(order: PackedInt32Array, ranks: PackedInt32Array, energy: f
 		if cost > left:
 			break
 		left -= cost
-		erased["points"].append(_from_middle(index))
-		erased["colors"].append(image.get_pixel(index % _width, index / _width))
+		erased["pixels"].append(index)
+		erased["points"].append(position_of(index))
+		erased["colors"].append(_color[index])
 		_erase(index)
 	if not erased["points"].is_empty():
 		_refresh()
@@ -415,27 +572,42 @@ func _refresh() -> void:
 		center_of_mass = Vector2.ZERO
 		spin_resistance = 0.0
 
-	# Each row's two ends are enough to find the outline.
-	var edge_points := PackedVector2Array()
-	var half := Vector2(_width, _height) / 2.0
-	for y in range(_height):
-		var first: int = -1
-		var last: int = -1
-		for x in range(_width):
-			if _density[y * _width + x] > 0.0:
-				if first < 0:
-					first = x
-				last = x
-		if first >= 0:
-			edge_points.append(Vector2(first, y) - half)
-			edge_points.append(Vector2(first, y + 1) - half)
-			edge_points.append(Vector2(last + 1, y) - half)
-			edge_points.append(Vector2(last + 1, y + 1) - half)
-	_outline = Geometry2D.convex_hull(edge_points) if edge_points.size() >= 3 else edge_points
-	var low := Vector2(_width, _height)
-	var high := -low
-	for point: Vector2 in _outline:
-		low = Vector2(minf(low.x, point.x), minf(low.y, point.y))
-		high = Vector2(maxf(high.x, point.x), maxf(high.y, point.y))
-	width = maxf(high.x - low.x, 0.0)
-	length = maxf(high.y - low.y, 0.0)
+	# Each row's two ends are enough to find a layer's outline.
+	for layer_index in range(_layers.size()):
+		var layer: Layer = _layers[layer_index]
+		var rows: int = layer.image.get_height()
+		var first := PackedInt32Array()
+		var last := PackedInt32Array()
+		first.resize(rows)
+		first.fill(-1)
+		last.resize(rows)
+		last.fill(-1)
+		for index in range(_density.size()):
+			if _density[index] > 0.0 and pixel_layer[index] == layer_index:
+				var x: int = pixel_x[index]
+				var y: int = pixel_y[index]
+				if first[y] < 0 or x < first[y]:
+					first[y] = x
+				last[y] = maxi(last[y], x)
+		var edge_points := PackedVector2Array()
+		var corner: Vector2 = Vector2(layer.top_left) - _half
+		for y in range(rows):
+			if first[y] >= 0:
+				edge_points.append(corner + Vector2(first[y], y))
+				edge_points.append(corner + Vector2(first[y], y + 1))
+				edge_points.append(corner + Vector2(last[y] + 1, y))
+				edge_points.append(corner + Vector2(last[y] + 1, y + 1))
+		layer.outline = Geometry2D.convex_hull(edge_points) if edge_points.size() >= 3 else edge_points
+	_update_size()
+
+
+func _update_size() -> void:
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for layer: Layer in _layers:
+		for point: Vector2 in layer.outline:
+			var at: Vector2 = layer.place(point)
+			low = Vector2(minf(low.x, at.x), minf(low.y, at.y))
+			high = Vector2(maxf(high.x, at.x), maxf(high.y, at.y))
+	width = maxf(high.x - low.x, 0.0) if low.x != INF else 0.0
+	length = maxf(high.y - low.y, 0.0) if low.x != INF else 0.0

@@ -77,8 +77,10 @@ signal flight_data_changed(data: Dictionary)
 @export var dot_max_zoom: float = 0.0001
 ## The icon shows at this zoom and farther, and the sprite at anything closer.
 @export var icon_max_zoom: float = 1.0 / 800.0
-## A module with less than this share of its pixels left stops working.
+## A module with less than this share of its working pixels left stops working.
 @export var module_dead_share: float = 0.5
+## An engine keeps pushing, more weakly, down to this share of its bell.
+@export var engine_dead_share: float = 0.25
 ## How fast the ship straightens up on the ground, in radians per second.
 @export var settle_speed: float = 2.0
 ## Touching down within this angle of straight up counts as upright, in radians.
@@ -142,6 +144,7 @@ var _lost: bool = false
 var _stranded: bool = false
 var _warned_modules: Dictionary = {}
 var _wave: DamageWave
+var _part_sprites: Array[Sprite2D] = []
 var _sink: Vector2 = Vector2.ZERO
 var _sink_per_tick: float = 0.0
 var _jolt_ticks: int = 0
@@ -161,12 +164,18 @@ func _ready() -> void:
 	_flame_position = _flame.position
 	body = ShipBody.measure(design)
 	_whole_center = body.center_of_mass
-	_wave = DamageWave.new(body.image)
-	_sprite.texture = _wave.texture
+	_wave = DamageWave.new(body)
+	_sprite.texture = _wave.textures[0]
+	for i in range(1, body.layer_count()):
+		var part := Sprite2D.new()
+		part.texture = _wave.textures[i]
+		add_child(part)
+		move_child(part, _sprite.get_index())
+		_part_sprites.append(part)
 	_rest_height = body.reach(_pivot, Vector2.DOWN)
 	fuel = body.fuel_capacity
 	_update_performance()
-	_puffs.set_nozzles(design)
+	_puffs.set_nozzles(body)
 	# Nothing flies until start_flight hands over gravity and a starting state.
 	set_physics_process(false)
 	assist_changed.emit(assist_enabled)
@@ -430,7 +439,7 @@ func repair() -> void:
 	_sink = Vector2.ZERO
 	_jolt_ticks = 0
 	body = ShipBody.measure(design)
-	_wave.show_image(body.image)
+	_wave.show_body(body)
 	_lost = false
 	_warned_modules.clear()
 	_update_for_damage()
@@ -458,12 +467,12 @@ func take_hit(world_offset: Vector2, energy: float) -> void:
 func _take_damage(erased: Dictionary, kick: Vector2, hit_point: Vector2, blast: float) -> void:
 	if erased["points"].is_empty():
 		return
-	_wave.add_hit(erased["points"], erased["colors"], hit_point, kick, blast)
+	_wave.add_hit(erased, hit_point, kick, blast)
 	_jolt_size = maxf(_jolt_size, clampf(erased["points"].size() / 120.0, 0.5, 5.0))
 	_jolt_ticks = JOLT_TICKS
 	var hit_at: Vector2 = _art_to_world(hit_point)
 	for piece: Dictionary in body.split_off():
-		_wave.remove_now(piece["points"])
+		_wave.remove_now(piece["pixels"])
 		var at: Vector2 = _art_to_world(piece["center"])
 		var thrown: Vector2 = kick + (at - hit_at).normalized() * blast * 0.4
 		part_detached.emit(piece, state.x + at.x, state.y + at.y, state.velocity_x, state.velocity_y, heading, angular_velocity, thrown)
@@ -490,7 +499,7 @@ func _show_damage() -> void:
 
 func _update_for_damage() -> void:
 	if _wave.is_idle():
-		_wave.show_image(body.image)
+		_wave.show_body(body)
 
 	# The ship now turns around its new center of mass, which stays put in the world.
 	if body.pixel_count > 0:
@@ -529,10 +538,11 @@ func _update_for_damage() -> void:
 	for module: ModuleData in body.modules:
 		columns_middle = maxf(columns_middle, module.cell.x + 1.0)
 	columns_middle /= 2.0
+	var tail_nozzles: int = 0
 	for i in range(body.modules.size()):
 		var module: ModuleData = body.modules[i]
-		var share: float = body.module_share(i)
-		var works: bool = share >= module_dead_share
+		var share: float = body.working_share(i)
+		var works: bool = share >= (engine_dead_share if module.kind == "engine" else module_dead_share)
 		var on_left: bool = module.cell.x + 0.5 < columns_middle
 		match module.kind:
 			"engine":
@@ -540,6 +550,8 @@ func _update_for_damage() -> void:
 				if works:
 					engine_total += share
 					engine_sideways += share * (module.cell.x + 0.5 - columns_middle) * design.cell_size
+				if body.nozzle_share(i) >= module_dead_share:
+					tail_nozzles += 1
 			"rcs":
 				if on_left:
 					_rcs_left = works
@@ -552,7 +564,7 @@ func _update_for_damage() -> void:
 			_warned_modules[i] = true
 			warning_raised.emit("%s LOST" % module.display_name.to_upper().replace(",", ""))
 	_engine_share = engine_total / engine_count if engine_count > 0 else 0.0
-	_tail_share = _engine_share
+	_tail_share = float(tail_nozzles) / engine_count if engine_count > 0 else 0.0
 	_thrust_x = engine_sideways / engine_total if engine_total > 0.0 else 0.0
 	_update_performance()
 
@@ -730,6 +742,8 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	_show_sprite = pixels_per_unit > icon_max_zoom
 	_sprite_scale = minf(pixels_per_unit, 1.0)
 	_sprite.scale = Vector2.ONE * _sprite_scale
+	for i in range(_part_sprites.size()):
+		_part_sprites[i].scale = Vector2(_sprite_scale, _sprite_scale * body.layer_fold(i + 1))
 	_flame.scale = Vector2.ONE * _sprite_scale
 	_place_art()
 	var show_dot: bool = pixels_per_unit < dot_max_zoom
@@ -737,6 +751,8 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 		_show_dot = show_dot
 		queue_redraw()
 	_sprite.visible = _show_sprite
+	for part: Sprite2D in _part_sprites:
+		part.visible = _show_sprite
 	_icon.visible = not _show_sprite and not show_dot
 
 
@@ -747,6 +763,8 @@ func _place_art() -> void:
 		var fading: float = float(_jolt_ticks) / JOLT_TICKS
 		offset += Vector2(sin(_jolt_ticks * 2.1), cos(_jolt_ticks * 1.3)) * _jolt_size * fading * _sprite_scale
 	_sprite.position = offset
+	for i in range(_part_sprites.size()):
+		_part_sprites[i].position = offset + body.layer_center(i + 1) * _sprite_scale
 	_puffs.position = offset
 	_glow.position = offset
 	_flame.position = _flame_position * _sprite_scale + offset

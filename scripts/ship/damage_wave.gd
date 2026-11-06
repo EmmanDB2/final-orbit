@@ -14,35 +14,52 @@ const PIXELS_PER_TICK: int = 30
 const SINGLE_SPARK_LIMIT: int = 800
 const DOUBLE_SPARK_LIMIT: int = 3000
 
-## The art as it should look right now.
-var texture: ImageTexture
+## The art as it should look right now, one texture per layer of the ship.
+var textures: Array[ImageTexture] = []
 
-var _image: Image
-var _half: Vector2
+var _body: ShipBody
+var _images: Array[Image] = []
+var _changed: PackedByteArray = PackedByteArray()
 var _hits: Array[Dictionary] = []
-var _changed: bool = false
 
 
-func _init(image: Image) -> void:
-	_image = image.duplicate()
-	_half = Vector2(_image.get_size()) / 2.0
-	texture = ImageTexture.create_from_image(_image)
+func _init(body: ShipBody) -> void:
+	_body = body
+	for i in range(body.layer_count()):
+		var image: Image = body.layer_image(i).duplicate()
+		_images.append(image)
+		textures.append(ImageTexture.create_from_image(image))
+		_changed.append(0)
 
 
 func is_idle() -> bool:
 	return _hits.is_empty()
 
 
-## Forgets anything still playing and shows this art.
-func show_image(image: Image) -> void:
+## Forgets anything still playing and shows this ship as it is.
+func show_body(body: ShipBody) -> void:
+	_body = body
 	_hits.clear()
-	_image.copy_from(image)
-	texture.update(_image)
+	for i in range(_images.size()):
+		_images[i].copy_from(body.layer_image(i))
+		textures[i].update(_images[i])
 
 
-## Starts playing a hit. Points are from the middle of the art, in the order they should go.
-func add_hit(points: PackedVector2Array, colors: PackedColorArray, hit_point: Vector2, kick: Vector2, blast: float) -> void:
-	var count: int = points.size()
+## How many pixels are showing, across every layer.
+func shown_pixel_count() -> int:
+	var count: int = 0
+	for image: Image in _images:
+		for y in range(image.get_height()):
+			for x in range(image.get_width()):
+				if image.get_pixel(x, y).a > 0.5:
+					count += 1
+	return count
+
+
+## Starts playing a hit, with pixels in the order they should go.
+func add_hit(erased: Dictionary, hit_point: Vector2, kick: Vector2, blast: float) -> void:
+	var pixels: PackedInt32Array = erased["pixels"]
+	var count: int = pixels.size()
 	if count == 0:
 		return
 	var ticks: int = clampi(count / PIXELS_PER_TICK, FEWEST_TICKS, MOST_TICKS)
@@ -52,8 +69,8 @@ func add_hit(points: PackedVector2Array, colors: PackedColorArray, hit_point: Ve
 	elif count > SINGLE_SPARK_LIMIT:
 		block = 2
 	_hits.append({
-		"points": points,
-		"colors": colors,
+		"pixels": pixels,
+		"colors": erased["colors"],
 		"next": 0,
 		"rate": ceili(float(count) / ticks),
 		"block": block,
@@ -64,16 +81,16 @@ func add_hit(points: PackedVector2Array, colors: PackedColorArray, hit_point: Ve
 
 
 ## Takes pixels away right now, for a piece that has just broken off and is drawn on its own.
-func remove_now(points: PackedVector2Array) -> void:
-	for point: Vector2 in points:
-		_paint(point, Color(0.0, 0.0, 0.0, 0.0))
+func remove_now(pixels: PackedInt32Array) -> void:
+	for pixel: int in pixels:
+		_paint(pixel, Color(0.0, 0.0, 0.0, 0.0))
 
 
 ## How many ticks until the slowest hit has finished.
 func ticks_left() -> int:
 	var most: int = 1
 	for hit: Dictionary in _hits:
-		var left: int = hit["points"].size() - hit["next"]
+		var left: int = hit["pixels"].size() - hit["next"]
 		most = maxi(most, ceili(float(left) / hit["rate"]))
 	return most
 
@@ -84,18 +101,18 @@ func advance(hot: Color, warm: Color, cool: Color) -> Array[Dictionary]:
 	var sprays: Array[Dictionary] = []
 	for i in range(_hits.size() - 1, -1, -1):
 		var hit: Dictionary = _hits[i]
-		var points: PackedVector2Array = hit["points"]
+		var pixels: PackedInt32Array = hit["pixels"]
 		var colors: PackedColorArray = hit["colors"]
 		var rate: int = hit["rate"]
 		var next: int = hit["next"]
 		var stride: int = hit["block"] * hit["block"]
-		var stop: int = mini(next + rate, points.size())
+		var stop: int = mini(next + rate, pixels.size())
 		var spray_points := PackedVector2Array()
 		var spray_colors := PackedColorArray()
 		for index in range(next, stop):
-			_paint(points[index], Color(0.0, 0.0, 0.0, 0.0))
+			_paint(pixels[index], Color(0.0, 0.0, 0.0, 0.0))
 			if index % stride == 0:
-				spray_points.append(points[index])
+				spray_points.append(_body.position_of(pixels[index]))
 				spray_colors.append(colors[index])
 		sprays.append({
 			"points": spray_points,
@@ -107,23 +124,25 @@ func advance(hot: Color, warm: Color, cool: Color) -> Array[Dictionary]:
 		})
 
 		# The edge that goes next glows, hottest right beside the pixels that just left.
-		_glow(points, stop, stop + rate, hot)
-		_glow(points, stop + rate, stop + rate * 2, warm)
-		_glow(points, stop + rate * 2, stop + rate * 3, cool)
+		_glow(pixels, stop, stop + rate, hot)
+		_glow(pixels, stop + rate, stop + rate * 2, warm)
+		_glow(pixels, stop + rate * 2, stop + rate * 3, cool)
 		hit["next"] = stop
-		if stop >= points.size():
+		if stop >= pixels.size():
 			_hits.remove_at(i)
-	if _changed:
-		_changed = false
-		texture.update(_image)
+	for i in range(_images.size()):
+		if _changed[i] == 1:
+			_changed[i] = 0
+			textures[i].update(_images[i])
 	return sprays
 
 
-func _glow(points: PackedVector2Array, start: int, stop: int, color: Color) -> void:
-	for index in range(start, mini(stop, points.size())):
-		_paint(points[index], color)
+func _glow(pixels: PackedInt32Array, start: int, stop: int, color: Color) -> void:
+	for index in range(start, mini(stop, pixels.size())):
+		_paint(pixels[index], color)
 
 
-func _paint(point: Vector2, color: Color) -> void:
-	_image.set_pixel(floori(point.x + _half.x), floori(point.y + _half.y), color)
-	_changed = true
+func _paint(pixel: int, color: Color) -> void:
+	var layer: int = _body.pixel_layer[pixel]
+	_images[layer].set_pixel(_body.pixel_x[pixel], _body.pixel_y[pixel], color)
+	_changed[layer] = 1

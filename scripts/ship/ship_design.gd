@@ -1,10 +1,9 @@
-# ship_design.gd: everything that defines one ship: its art, modules, materials, and engines.
-# From DESIGN.md, "Ships". Adding a ship means adding a data file, not code.
+# ship_design.gd: everything that defines one ship: its modules, materials, and engines.
+# From DESIGN.md, "Ships". Adding a ship means adding a data file, not code, and each module
+# brings its own art.
 class_name ShipDesign
 extends Resource
 
-## The whole ship's art, centered on its module grid.
-@export var texture: Texture2D
 ## Size of one module grid cell, in pixels.
 @export var cell_size: int = 64
 @export var modules: Array[ModuleData] = []
@@ -34,9 +33,5 @@ extends Resource
 @export var burn_power: float = 2.0e8
 ## How often a burning hull loses pixels, in seconds.
 @export var burn_seconds: float = 0.33
-## Where the RCS nozzles sit on the art, in pixels, for drawing their puffs.
-@export var rcs_left_nozzle: Vector2 = Vector2.ZERO
-@export var rcs_right_nozzle: Vector2 = Vector2.ZERO
-@export var rcs_rear_nozzles: PackedVector2Array = PackedVector2Array()
 ## How much fuel the RCS burns while firing flat out, in kilograms per second.
 @export var rcs_fuel_rate: float = 0.0
