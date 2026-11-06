@@ -317,3 +317,11 @@ Files: `scripts/ground_effects.gd`, `scripts/spark_field.gd`, `scripts/ship.gd`,
 - parallax by moving through noise slower
 - process priority to keep systems at the same moment
 - raycasting down to the ground
+
+## 2026-11-06: Re-entry rebuilt
+
+Files: `shaders/reentry.gdshader`, `scripts/reentry_glow.gd`, `scripts/ship.gd`, `scripts/ui/agency_palette.gd`, `data/agency_palette.tres`, `scenes/ship.tscn`, `docs/DESIGN.md`
+
+- using a texture as a mask in a shader
+- marching along a direction in a shader
+- inner classes that extend a node

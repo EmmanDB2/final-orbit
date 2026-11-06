@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Re-entry rebuilt: the hull visibly heats from the hot side, hot air hugs its real outline, and flames stream off its edges, replacing a fixed arc \[Leaning\] |
 | 2026-11-06 | Surfaces rebuilt up close: a pixel grid fixed to the ground, a seeded skyline that ships really collide with, new detail at each zoom, a cross-section of the ground, dithered sky bands, surface props by biome, engine dust, a ship shadow, and far-off mountains \[Leaning\] |
 | 2026-11-06 | Planets reworked to read as pixel art: flat colors, clean clusters, and bigger pixels from far out, which is a second exception to the fixed pixel size \[Leaning\] |
 | 2026-11-06 | Planets redrawn: seas and wandering coasts, day and night from the real star, clouds, ice at the pole, and craters on the moon \[Leaning\]. The home planet now starts with the ship on its day side. Landing on water is added to the parking lot |
@@ -250,7 +251,8 @@ Rotating planets and atmospheres: \[Leaning, Tier 1\]
 - Outside the atmosphere, momentum is conserved and the ship does not slow down.
 - Airless bodies have no moving air, so a hovering ship stays put while the ground slides past underneath.
 - Coasting stays closed-form above the atmosphere. Inside it the ship is simulated step by step, which limits time warp and fold-to-coast there and needs the preview's background thread.
-- Re-entry heat grows with the square root of air density and the cube of speed, and shows as a bow shock and streaks of gas in the thrust and fire colors. A gentle return from low orbit reads about 0.2 on a scale where 1.0 is the limit, and a steep return from high up goes past 1.0. \[Leaning\]
+- Re-entry heat grows with the square root of air density and the cube of speed. A gentle return from low orbit reads about 0.2 on a scale where 1.0 is the limit, and a steep return from high up goes past 1.0. \[Leaning\]
+- Heat shows on the ship itself, following its real shape: a thin layer of burning air hugs whatever faces the airflow, and flames stream back, longest off its edges. The hull glows from the hot side in, from dull red through orange to nearly white, with the color and depth following hull temperature. It stays on the side that soaked it up, and cools over a few seconds after leaving the air. So the hull's color is a heat gauge with no extra UI. All in the thrust and fire colors. From far out, where the art is too small, it's a little comet. \[Leaning\]
 - The hull warms toward the heat over about 6 seconds, so a short spike does no harm. Past 1.0 it burns away from the hot side, at 200 MJ a second for each whole step past, about 4% of the lander. Heat shields come with more modules. \[Leaning\]
 - For now the path line ignores the air, so inside the atmosphere it shows where the ship would go with no drag and updates every tick. Drawing the drag into it waits for the background thread. \[Leaning\]
 

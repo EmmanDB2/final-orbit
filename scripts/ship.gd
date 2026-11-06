@@ -93,6 +93,8 @@ signal flight_data_changed(data: Dictionary)
 @export var icon_max_zoom: float = 1.0 / 800.0
 ## A module with less than this share of its working pixels left stops working.
 @export var module_dead_share: float = 0.5
+## How quickly heat moves to a new side of the hull as the ship turns, in radians per second.
+@export var soak_turn_rate: float = 1.2
 ## How far above the ground the ship starts checking its shape against the terrain.
 @export var terrain_check_height: float = 200.0
 ## The steepest ground the ship leans with when it's resting on it, in radians.
@@ -177,6 +179,7 @@ var _sink_per_tick: float = 0.0
 var _jolt_ticks: int = 0
 var _jolt_size: float = 0.0
 var _heat_heading: float = 0.0
+var _soak_way: Vector2 = Vector2.UP
 var _translate_forward: float = 0.0
 var _translate_right: float = 0.0
 
@@ -193,6 +196,7 @@ func _ready() -> void:
 	_whole_center = body.center_of_mass
 	_wave = DamageWave.new(body)
 	_sprite.texture = _wave.textures[0]
+	_glow.setup(_wave.textures)
 	for i in range(1, body.layer_count()):
 		var part := Sprite2D.new()
 		part.texture = _wave.textures[i]
@@ -327,8 +331,7 @@ func _process(delta: float) -> void:
 	var turning_clockwise: bool = _spin_firing > 0.2
 	var turning_back: bool = _spin_firing < -0.2
 	_glow.visible = _show_sprite
-	_glow.rotation = _heat_heading - heading
-	_glow.set_heat(heat_share, _sprite_scale)
+	_glow.set_heat(heat_share, hull_temperature, Vector2.UP.rotated(_heat_heading - heading), _soak_way, _sprite_scale)
 	_puffs.visible = _show_sprite
 	_puffs.set_leaks(_leak_points())
 	_puffs.set_firing(
@@ -398,6 +401,7 @@ func _on_star_heat_changed(share: float) -> void:
 func _heat_hull(delta: float) -> void:
 	var heat: float = heat_share + _star_heat
 	hull_temperature += (heat - hull_temperature) * minf(delta / design.hull_heat_seconds, 1.0)
+	_soak_up_heat(delta)
 	if hull_temperature <= 1.0:
 		_burning = false
 		_burn_energy = 0.0
@@ -418,6 +422,23 @@ func _heat_hull(delta: float) -> void:
 	_burn_energy = 0.0
 	var hot_on_art: Vector2 = hot_side.rotated(-heading)
 	_take_damage(erased, -hot_side * 30.0, _pivot + hot_on_art * body.reach(_pivot, hot_on_art), 25.0)
+
+
+# Heat soaks into the side facing it, and stays there as the ship turns or leaves the air,
+# working around slowly if a new side starts taking it.
+func _soak_up_heat(delta: float) -> void:
+	var hot_way: Vector2 = Vector2.ZERO
+	if _star_heat > heat_share and _star_heat > 0.05:
+		hot_way = Vector2(-state.x, -state.y).normalized().rotated(-heading)
+	elif heat_share > 0.03:
+		hot_way = Vector2.UP.rotated(_heat_heading - heading)
+	if hot_way == Vector2.ZERO:
+		return
+	if hull_temperature < 0.05:
+		_soak_way = hot_way
+	else:
+		var turned: float = clampf(_soak_way.angle_to(hot_way), -soak_turn_rate * delta, soak_turn_rate * delta)
+		_soak_way = _soak_way.rotated(turned)
 
 
 # How much of a forward or back push the working nozzles can give. The tail nozzles push
@@ -890,6 +911,8 @@ func _place_art() -> void:
 		queue_redraw()
 	_puffs.position = offset
 	_glow.position = offset
+	for i in range(body.layer_count()):
+		_glow.place_layer(i, body.layer_center(i), body.layer_fold(i), _sprite_scale)
 	_flame.position = _flame_position * _sprite_scale + offset
 
 

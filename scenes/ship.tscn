@@ -12,9 +12,6 @@
 script = ExtResource("1_2gnfn")
 design = ExtResource("5_design")
 
-[node name="ReentryGlow" type="Node2D" parent="." unique_id=1720448106]
-script = ExtResource("7_glow")
-
 [node name="RcsPuffs" type="Node2D" parent="." unique_id=1577203968]
 script = ExtResource("6_puffs")
 
@@ -28,6 +25,9 @@ hframes = 3
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1258765799]
 texture = ExtResource("2_4tobq")
+
+[node name="ReentryGlow" type="Node2D" parent="." unique_id=1720448106]
+script = ExtResource("7_glow")
 
 [node name="Icon" type="Sprite2D" parent="." unique_id=1117364092]
 visible = false

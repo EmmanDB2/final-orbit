@@ -10,6 +10,7 @@ extends Resource
 @export var hull_lighter: Color
 @export var hull_lightest: Color
 @export var agency_orange: Color
+@export var agency_orange_dark: Color
 @export var agency_red: Color
 @export var telemetry_cyan: Color
 @export var telemetry_green: Color
