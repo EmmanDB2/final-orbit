@@ -322,6 +322,34 @@ func nozzle_share(module_index: int) -> float:
 	return float(_nozzle_left[module_index]) / start if start > 0 else 0.0
 
 
+## Where the flame leaves the engines right now: the "middle" of their lowest working pixels and
+## their "half_width", from the middle of the grid. Only counts modules still working, so a lost
+## engine moves it off to one side, and a crushed bell moves it up. Empty if there's nothing left.
+func engine_exit(dead_share: float) -> Dictionary:
+	var works := PackedByteArray()
+	works.resize(modules.size())
+	for i in range(modules.size()):
+		works[i] = 1 if modules[i].kind == "engine" and working_share(i) >= dead_share else 0
+
+	var lowest: float = -INF
+	for index in range(_density.size()):
+		if _density[index] > 0.0 and _is_working[index] == 1 and works[_module_of[index]] == 1:
+			lowest = maxf(lowest, _home[index].y)
+	if lowest == -INF:
+		return {}
+
+	# The bell's mouth is the widest part near the bottom.
+	var left: float = INF
+	var right: float = -INF
+	for index in range(_density.size()):
+		if _density[index] > 0.0 and _is_working[index] == 1 and works[_module_of[index]] == 1:
+			var at: Vector2 = _home[index]
+			if at.y > lowest - 4.0:
+				left = minf(left, at.x)
+				right = maxf(right, at.x)
+	return {"middle": Vector2((left + right) / 2.0, lowest + 0.5), "half_width": (right - left + 1.0) / 2.0}
+
+
 ## Where gas leaves a module's RCS nozzle, from the middle of the grid.
 func nozzle_point(module_index: int) -> Vector2:
 	var module: ModuleData = modules[module_index]

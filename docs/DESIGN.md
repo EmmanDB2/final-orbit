@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Engine flame now drawn by code from throttle, air, and damage, replacing the sprite. Procedural burn animation leaves the parking lot \[Leaning\] |
 | 2026-11-06 | Re-entry rebuilt: the hull visibly heats from the hot side, hot air hugs its real outline, and flames stream off its edges, replacing a fixed arc \[Leaning\] |
 | 2026-11-06 | Surfaces rebuilt up close: a pixel grid fixed to the ground, a seeded skyline that ships really collide with, new detail at each zoom, a cross-section of the ground, dithered sky bands, surface props by biome, engine dust, a ship shadow, and far-off mountains \[Leaning\] |
 | 2026-11-06 | Planets reworked to read as pixel art: flat colors, clean clusters, and bigger pixels from far out, which is a second exception to the fixed pixel size \[Leaning\] |
@@ -170,6 +171,7 @@ Construction:
 - A pixel's material goes by its art color, from a table in `data/materials/`, so drawing a part in gold foil makes it light. \[Leaning\]
 - Fuel has mass and burns off, so ships get lighter and more agile as they fly. \[Locked\]
 - The main engine and RCS both burn fuel, so ASS, STAB, and turning all cost fuel. With none left, neither fires. \[Leaning\]
+- The engine's flame is drawn by code in chunky pixels and the fire colors, from what the engine is doing: long with a white-hot core flat out, short and orange throttled back, spreading wide in a vacuum, held narrow by air with bright knots in it, and stopped by the ground. It comes out of what's left of the bell, so a lost engine moves it to one side, and a damaged one sputters. \[Leaning\]
 - RCS puffs show from the nozzles on the art. The nozzle opposite the push fires, so the left one turns the nose clockwise or moves the ship right. The two tail nozzles move it forward, and the side nozzles angled forward back it up. Puffs only show on the sprite, and tiny corrections while holding steady don't show. \[Leaning\]
 - The lander, as the all-rounder: about 19.5 t dry, 40 t of fuel, 300 m/s² of thrust when full and about 916 when empty, about 16,700 m/s of delta-v, and about 34 seconds of full-throttle burn. Engine and RCS strength are set so a full tank feels the same as it did with half the fuel. These live in `data/lander_design.tres`. \[Leaning\]
 - Until stations exist, landing on the planet refills the tanks, and a ship stranded with no fuel means restarting. \[Leaning\]
@@ -578,6 +580,5 @@ Parking lot:
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
 - Water: the sea is only a color for now, so you can land on it like ground. It could splash down, sink, or be off limits \[For later: Manny's call\]
-- Procedural burn animation: a ship's engine flame drawn in the same style as the rest of the game, replacing the current flame sprite \[Next up soon: Manny's call\]
 - Time warp: speeding up coasting, which orbits make cheap, since a moon lap takes about 23 minutes at normal speed \[For later: Manny's call on when\]
 - Dim line past a moon's sphere of influence: the rest of the orbit keeps drawing faintly beyond the ring, so you can watch it shrink during a capture burn \[Not built: capture is meant to take some skill\]

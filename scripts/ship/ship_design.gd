@@ -10,6 +10,8 @@ extends Resource
 @export var materials: Array[MaterialData] = []
 ## Main engine thrust, in newtons, with one world unit counting as one meter.
 @export var engine_force: float = 0.0
+## How long the engine's flame gets flat out, in art pixels.
+@export var flame_length: float = 150.0
 ## RCS turning strength, as force times distance.
 @export var rcs_torque: float = 0.0
 ## How fast the main engine throws its exhaust, in meters per second. Higher is thriftier.

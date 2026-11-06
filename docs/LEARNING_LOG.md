@@ -325,3 +325,10 @@ Files: `shaders/reentry.gdshader`, `scripts/reentry_glow.gd`, `scripts/ship.gd`,
 - using a texture as a mask in a shader
 - marching along a direction in a shader
 - inner classes that extend a node
+
+## 2026-11-06: Procedural burn animation
+
+Files: `shaders/engine_flame.gdshader`, `scripts/engine_flame.gd`, `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/ship/ship_design.gd`, `scenes/ship.tscn`, `tests/test_ship_body.gd`, `docs/DESIGN.md`
+
+- shaping an effect from game state with uniforms
+- easing a value toward a target over time

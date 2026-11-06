@@ -14,6 +14,7 @@ func _initialize() -> void:
 	_test_lander_damage()
 	_test_depth()
 	_test_no_floaters()
+	_test_engine_exit()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -357,3 +358,42 @@ func _test_no_floaters() -> void:
 	beaten._needs_split_check = true
 	beaten.split_off()
 	print("a beating dropped %d loose pixels, slowest check %d us, a check with nothing loose %d us" % [dropped, worst_usec, Time.get_ticks_usec() - started_empty])
+
+
+func _test_engine_exit() -> void:
+	var design: ShipDesign = load("res://data/lander_design.tres")
+	var body: ShipBody = ShipBody.measure(design)
+	var whole: Dictionary = body.engine_exit(0.25)
+	_check("the flame starts near the ship's middle", whole["middle"].x, 0.0, 4.0)
+	_check("at the bottom of the bell", 1.0 if whole["middle"].y > 90.0 else 0.0, 1.0, 0.0)
+	_check("as wide as a bell", 1.0 if whole["half_width"] > 5.0 else 0.0, 1.0, 0.0)
+
+	# Shave the bottom off the bell, and the flame moves up to what's left.
+	var shaved: ShipBody = ShipBody.measure(design)
+	for index in range(shaved._density.size()):
+		if shaved._is_working[index] == 1 and shaved._home[index].y > whole["middle"].y - 6.0:
+			var kind: String = design.modules[shaved._module_of[index]].kind
+			if kind == "engine":
+				shaved._density[index] = 0.0
+	var shorter: Dictionary = shaved.engine_exit(0.25)
+	_check("a crushed bell moves it up", shorter["middle"].y, whole["middle"].y - 6.0, 1.0)
+
+	# Take out one engine module, and the flame goes off to the other side.
+	var engines: Array[int] = []
+	for i in range(design.modules.size()):
+		if design.modules[i].kind == "engine":
+			engines.append(i)
+	_check("the lander has two engine modules", engines.size(), 2.0, 0.0)
+	var one: ShipBody = ShipBody.measure(design)
+	for index in range(one._density.size()):
+		if one._module_of[index] == engines[0]:
+			one._density[index] = 0.0
+	var off_side: Dictionary = one.engine_exit(0.25)
+	_check("losing one engine narrows it", 1.0 if off_side["half_width"] < whole["half_width"] else 0.0, 1.0, 0.0)
+	_check("and moves it aside", 1.0 if absf(off_side["middle"].x - whole["middle"].x) > 2.0 else 0.0, 1.0, 0.0)
+
+	# With no engines left, there's no flame.
+	for index in range(one._density.size()):
+		if one._module_of[index] == engines[1]:
+			one._density[index] = 0.0
+	_check("no engines, no flame", one.engine_exit(0.25).size(), 0.0, 0.0)

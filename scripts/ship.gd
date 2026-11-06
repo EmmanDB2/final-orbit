@@ -83,8 +83,6 @@ signal flight_data_changed(data: Dictionary)
 
 ## What this ship is built from. Thrust and turning come from its engines and its mass.
 @export var design: ShipDesign
-## How many times per second the engine flame changes frame.
-@export var flame_fps: float = 15.0
 ## True starts the ship in ASS, false in RAW.
 @export var assist_enabled: bool = true
 ## Below this zoom the ship is drawn as a dot.
@@ -142,13 +140,14 @@ var hull_temperature: float = 0.0
 
 var _show_sprite: bool = true
 var _sprite_scale: float = 1.0
-var _flame_position: Vector2 = Vector2.ZERO
+var _flame_at: Vector2 = Vector2.ZERO
+var _flame_room: float = 100000.0
+var _air_density: float = 0.0
 var _show_dot: bool = false
 var _point_active: bool = false
 var _point_heading: float = 0.0
 var _stab_needs_pick: bool = true
 var _stab_direction: int = 0
-var _flame_time: float = 0.0
 var _spin_firing: float = 0.0
 var _star_heat: float = 0.0
 var _burn_energy: float = 0.0
@@ -183,7 +182,7 @@ var _soak_way: Vector2 = Vector2.UP
 var _translate_forward: float = 0.0
 var _translate_right: float = 0.0
 
-@onready var _flame: Sprite2D = $Flame
+@onready var _flame: EngineFlame = $Flame
 @onready var _puffs: RcsPuffs = $RcsPuffs
 @onready var _glow: ReentryGlow = $ReentryGlow
 @onready var _sprite: Sprite2D = $Sprite2D
@@ -191,7 +190,7 @@ var _translate_right: float = 0.0
 
 
 func _ready() -> void:
-	_flame_position = _flame.position
+	_flame.setup(design.flame_length)
 	body = ShipBody.measure(design)
 	_whole_center = body.center_of_mass
 	_wave = DamageWave.new(body)
@@ -207,6 +206,7 @@ func _ready() -> void:
 	fuel = body.fuel_capacity
 	_update_performance()
 	_puffs.set_nozzles(body)
+	_aim_flame()
 	# Nothing flies until start_flight hands over gravity and a starting state.
 	set_physics_process(false)
 	assist_changed.emit(assist_enabled)
@@ -295,6 +295,7 @@ func _physics_process(delta: float) -> void:
 	_move_legs(delta)
 	_touch_terrain()
 	_gravity_model.propagate(state, delta)
+	_find_flame_room()
 
 	var on_surface: bool = state.is_on_surface()
 	if _thrusting or translating or venting or in_air or on_surface != _was_on_surface:
@@ -324,9 +325,7 @@ func _physics_process(delta: float) -> void:
 
 # Runs once per rendered frame. Cosmetic only, so it doesn't touch the flight.
 func _process(delta: float) -> void:
-	_flame_time += delta
-	_flame.frame = floori(_flame_time * flame_fps) % _flame.hframes
-	_flame.visible = _thrusting and _show_sprite
+	_flame.set_burn(_engine_reported if _show_sprite else 0.0, minf(_air_density, 1.0), 1.0 - _engine_share, _flame_room)
 	# Small corrections while holding steady don't show, so the nozzles don't flicker.
 	var turning_clockwise: bool = _spin_firing > 0.2
 	var turning_back: bool = _spin_firing < -0.2
@@ -354,9 +353,10 @@ func _burn_fuel(amount: float) -> void:
 # whether there was any air to push through.
 func _push_through_air(delta: float) -> bool:
 	heat_share = 0.0
+	var density: float = _gravity_model.get_air_density(state.x, state.y, state.time)
+	_air_density = density
 	if state.is_on_surface():
 		return false
-	var density: float = _gravity_model.get_air_density(state.x, state.y, state.time)
 	if density <= 0.0:
 		return false
 
@@ -501,6 +501,21 @@ func _move_legs(delta: float) -> void:
 		legs_changed.emit(legs_down, false)
 
 
+# How far the flame can reach before the ground stops it, along the way it's pointing.
+func _find_flame_room() -> void:
+	_flame_room = 100000.0
+	# It takes a moment to die after the engine stops, and it shouldn't go through the ground then.
+	if not _thrusting and not _flame.visible:
+		return
+	var height: float = _gravity_model.get_altitude(state.x, state.y, state.time)
+	if height > design.flame_length * 2.0 + state.ground_clearance:
+		return
+	var aim: float = Vector2.DOWN.dot(_local_down())
+	if aim > 0.2:
+		var exit_below: float = (_flame_at - _pivot).dot(_local_down())
+		_flame_room = maxf((height - exit_below) / aim, 0.0)
+
+
 # The ground isn't flat, so whichever of the ship's pixels is first to meet it is what touches.
 # That only matters low down. It also works out which way the ground under the ship leans.
 func _touch_terrain() -> void:
@@ -638,6 +653,14 @@ func _show_damage() -> void:
 	_place_art()
 
 
+# The flame comes out of whatever's left of the bell.
+func _aim_flame() -> void:
+	var exit: Dictionary = body.engine_exit(engine_dead_share)
+	if not exit.is_empty():
+		_flame_at = exit["middle"]
+		_flame.set_exit(exit["half_width"])
+
+
 func _update_for_damage() -> void:
 	if _wave.is_idle():
 		_wave.show_body(body)
@@ -705,6 +728,7 @@ func _update_for_damage() -> void:
 			_warned_modules[i] = true
 			warning_raised.emit("%s LOST" % module.display_name.to_upper().replace(",", ""))
 	_engine_share = engine_total / engine_count if engine_count > 0 else 0.0
+	_aim_flame()
 	_tail_share = float(tail_nozzles) / engine_count if engine_count > 0 else 0.0
 	_thrust_x = engine_sideways / engine_total if engine_total > 0.0 else 0.0
 	_update_performance()
@@ -913,7 +937,7 @@ func _place_art() -> void:
 	_glow.position = offset
 	for i in range(body.layer_count()):
 		_glow.place_layer(i, body.layer_center(i), body.layer_fold(i), _sprite_scale)
-	_flame.position = _flame_position * _sprite_scale + offset
+	_flame.position = _flame_at * _sprite_scale + offset
 
 
 func _draw() -> void:
