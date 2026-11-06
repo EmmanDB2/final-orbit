@@ -135,3 +135,11 @@ Files: `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/ship/ship_design
 - the rocket equation and delta-v
 - exhaust velocity and burn rate
 - why a ship gets quicker as it empties
+
+## 2026-11-05: Tier 1, ticket 3: RCS pad and translation
+
+Files: `scripts/ui/rcs_button.gd`, `scripts/ui/flight_hud.gd`, `scripts/ui/ui_button.gd`, `scripts/ship.gd`, `scripts/ship/ship_design.gd`, `data/lander_design.tres`, `project.godot`, `docs/DESIGN.md`
+
+- directions relative to the ship: forward and right vectors from the heading
+- buttons that hold an input action down
+- one layout function serving two screens

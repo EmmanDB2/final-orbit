@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | RCS pad and translation built. The inner screen's right panel widens to 140 game pixels to fit 44-pixel buttons, and its pad needs no ROT / TRANS switch, since it shows rotate and translate at once. The cover screen's panel only rises as far as its controls need \[Leaning\] |
 | 2026-11-05 | Fuel built: it has mass and burns off, and the main engine and RCS both use it, so ASS and STAB cost fuel. Lander numbers set \[Leaning\]. Fuel gauge and delta-v readout added. Landing on the planet refills the tanks until stations exist \[Leaning\] |
 | 2026-11-05 | Tier 0 finished and Tier 1 started. Module grid set at 64 x 64 px \[Leaning\]. Ships are defined in data, with mass, center of mass, and spin resistance measured from pixels. Materials go by art color \[Leaning\] |
 | 2026-11-05 | The view center now follows the zoom directly, so zooming has no jumps. The ship icon only shows at the Orbit view and farther. Closer in, the sprite scales to true size, which is an exception to the never-change-pixel-size rule, at Manny's request, so the zoom reads as one clean move \[Leaning\] |
@@ -369,9 +370,10 @@ Turning and RCS controls: \[Leaning\]
 - Two fingers on open space pinch to zoom. \[Leaning\]
 - RCS pad (right panel, inner screen): rotate left, rotate right, and four translate arrows (forward, back, left, right).
 - Translation moves the ship without turning it and is required for docking and precise landings.
-- A ROT / TRANS switch sits above the pad. On the cover screen, the compact pad uses it to flip four arrows between rotation and translation, with STAB in the middle.
+- A ROT / TRANS switch sits above the cover screen's compact pad, flipping its four arrows between rotation and translation, with STAB in the middle. The inner screen's pad shows rotate and translate at once, so it has no switch.
 - Heading dial above the pad: nose direction, prograde (cyan) and retrograde (orange) markers, and a rate bar showing spin speed. Inner screen only.
-- The right panel on the inner screen is full height: heading dial, RCS pad, modes, then BURN at the bottom.
+- The right panel on the inner screen is full height and 140 game pixels wide: heading dial, RCS pad, modes, then BURN at the bottom. On the cover screen it only rises as far as its controls need.
+- Translation gives the lander about 30 m/s² when full and uses RCS fuel. It's too weak to lift off from the planet or the moon, and ASS doesn't cancel it. \[Leaning\]
 
 Edge markers: \[Leaning\]
 

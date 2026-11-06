@@ -40,5 +40,7 @@ func _draw() -> void:
 	UiStyle.draw_button(self, rect, _pressed)
 	var palette: AgencyPalette = UiStyle.palette()
 	var text_color: Color = lamp_color if lamp_on else palette.hull_lighter
-	var left: float = floorf((size.x - UiStyle.text_width(label)) / 2.0) + 1.0
-	UiStyle.draw_text(self, label, Vector2(left, floorf((size.y - 14.0) / 2.0)), text_color)
+	# Long labels on small buttons drop to the smaller text size.
+	var pixel_size: int = 2 if UiStyle.text_width(label) <= size.x - 6.0 else 1
+	var left: float = floorf((size.x - UiStyle.text_width(label, pixel_size)) / 2.0) + 1.0
+	UiStyle.draw_text(self, label, Vector2(left, floorf((size.y - 7.0 * pixel_size) / 2.0)), text_color, pixel_size)

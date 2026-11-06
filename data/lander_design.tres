@@ -69,3 +69,4 @@ engine_force = 11845000.0
 rcs_torque = 147100000.0
 exhaust_velocity = 15000.0
 rcs_fuel_rate = 20.0
+rcs_translate_force = 1185000.0

@@ -13,6 +13,10 @@
 # the path or toward the body, nose first or thruster first). All of them use the RCS,
 # at turn_acceleration. Thrust is the throttle setting while BURN is held.
 #
+# The RCS can also translate, moving the ship in any of four directions without turning
+# it, for docking and precise landings. ASS doesn't cancel this, and it's too weak to lift
+# off from anything.
+#
 # Fuel has mass. Burning it makes the ship lighter and quicker, and the main engine and
 # RCS both stop when it runs out. Landing on the planet refills it until stations exist.
 #
@@ -72,6 +76,8 @@ var fuel: float = 0.0
 var thrust_acceleration: float = 0.0
 ## How quickly the RCS changes the spin right now, in radians per second squared.
 var turn_acceleration: float = 0.0
+## RCS translation acceleration right now, in world units per second squared.
+var translate_acceleration: float = 0.0
 ## How fast the nose is turning, in radians per second.
 var angular_velocity: float = 0.0
 ## How much of the engine's thrust BURN uses, from 0 to 1.
@@ -159,10 +165,20 @@ func _physics_process(delta: float) -> void:
 		state.velocity_x += sin(heading) * thrust_acceleration * throttle * delta
 		state.velocity_y -= cos(heading) * thrust_acceleration * throttle * delta
 		_burn_fuel(design.engine_force * throttle / design.exhaust_velocity * delta)
+	var translate_forward: float = Input.get_axis("translate_back", "translate_forward")
+	var translate_right: float = Input.get_axis("translate_left", "translate_right")
+	var translating: bool = fuel > 0.0 and (translate_forward != 0.0 or translate_right != 0.0)
+	if translating:
+		var along: float = translate_forward * translate_acceleration * delta
+		var across: float = translate_right * translate_acceleration * delta
+		state.velocity_x += sin(heading) * along + cos(heading) * across
+		state.velocity_y += -cos(heading) * along + sin(heading) * across
+		_burn_fuel(design.rcs_fuel_rate * (absf(translate_forward) + absf(translate_right)) * delta)
+
 	_gravity_model.propagate(state, delta)
 
 	var on_surface: bool = state.is_on_surface()
-	if _thrusting or on_surface != _was_on_surface:
+	if _thrusting or translating or on_surface != _was_on_surface:
 		orbit_changed.emit()
 	if on_surface and not _was_on_surface:
 		var tilt: float = absf(angle_difference(heading, _local_up_heading()))
@@ -198,6 +214,7 @@ func _update_performance() -> void:
 	var now: Dictionary = body.with_fuel(fuel)
 	thrust_acceleration = design.engine_force / now["mass"]
 	turn_acceleration = design.rcs_torque / now["spin_resistance"]
+	translate_acceleration = design.rcs_translate_force / now["mass"]
 
 
 ## How much more speed the fuel aboard can give, from the rocket equation.

@@ -1,6 +1,9 @@
 # flight_hud.gd: builds the flight UI, lays it out for each screen, hides the side panels
 # when idle, and decides what each finger is doing. From DESIGN.md, "UI".
 #
+# The inner screen's RCS pad has rotate buttons and four translate arrows at once. The cover
+# screen's compact pad has only the four arrows, and a ROT / TRANS switch flips what they do.
+#
 # A finger on a widget works that widget. A finger on open space points the ship, and two
 # fingers on open space pinch to zoom, so the center of the screen stays clear of hardware.
 class_name FlightHud
@@ -13,7 +16,9 @@ signal point_released
 
 const BAR_HEIGHT: float = 44.0
 const LEFT_WIDTH: float = 56.0
-const RIGHT_WIDTH: float = 72.0
+const RIGHT_WIDTH: float = 140.0
+const PAD_BUTTON: float = 44.0
+const PAD_MARGIN: float = 4.0
 const ZOOM_WIDTH: float = 68.0
 const BUTTON_HEIGHT: float = 44.0
 const BURN_HEIGHT: float = 76.0
@@ -32,6 +37,15 @@ var _zoom_row: Control
 var _lever: ThrottleLever
 var _burn: BurnButton
 var _dial: HeadingDial
+var _pad_up: RcsButton
+var _pad_down: RcsButton
+var _pad_left: RcsButton
+var _pad_right: RcsButton
+var _rotate_left: RcsButton
+var _rotate_right: RcsButton
+var _rot_trans_switch: UiButton
+var _compact_pad_rotates: bool = false
+var _right_height: float = 0.0
 var _assist_button: UiButton
 var _stab_button: UiButton
 var _left_tab: SideTab
@@ -95,6 +109,18 @@ func _build() -> void:
 	_assist_button = UiButton.new().setup("ASS", palette.telemetry_green)
 	_stab_button = UiButton.new().setup("STAB", palette.telemetry_green)
 	_right_panel.add_child(_stab_button)
+	_pad_up = RcsButton.new().setup(Vector2.UP, 0, &"translate_forward")
+	_pad_down = RcsButton.new().setup(Vector2.DOWN, 0, &"translate_back")
+	_pad_left = RcsButton.new().setup(Vector2.LEFT, 0, &"translate_left")
+	_pad_right = RcsButton.new().setup(Vector2.RIGHT, 0, &"translate_right")
+	_rotate_left = RcsButton.new().setup(Vector2.ZERO, -1, &"turn_left")
+	_rotate_right = RcsButton.new().setup(Vector2.ZERO, 1, &"turn_right")
+	for button: RcsButton in [_pad_up, _pad_down, _pad_left, _pad_right, _rotate_left, _rotate_right]:
+		_right_panel.add_child(button)
+	_rot_trans_switch = UiButton.new().setup("TRANS", palette.telemetry_cyan)
+	_rot_trans_switch.lamp_on = true
+	_rot_trans_switch.tapped.connect(_toggle_compact_pad)
+	_right_panel.add_child(_rot_trans_switch)
 	_burn = BurnButton.new()
 	_right_panel.add_child(_burn)
 	_assist_button.tapped.connect(_tap_action.bind(&"toggle_assist"))
@@ -148,29 +174,61 @@ func _layout() -> void:
 		_zoom_buttons[i].position = Vector2(i * ZOOM_WIDTH, 0.0)
 		_zoom_buttons[i].size = Vector2(ZOOM_WIDTH, BUTTON_HEIGHT)
 
-	_right_panel.size = Vector2(RIGHT_WIDTH, body_height)
-	var inner_width: float = RIGHT_WIDTH - 8.0
-	_burn.position = Vector2(4.0, body_height - BURN_HEIGHT - 4.0)
+	# The inner screen's panel is full height. The cover screen has fewer controls, so its
+	# panel only rises as far as they need, leaving more of the view clear.
+	_right_height = body_height
+	if not _is_inner_screen:
+		_right_height = PAD_MARGIN * 4.0 + BUTTON_HEIGHT + PAD_BUTTON * 3.0 + BURN_HEIGHT
+	_right_panel.size = Vector2(RIGHT_WIDTH, _right_height)
+	var inner_width: float = RIGHT_WIDTH - PAD_MARGIN * 2.0
+	_burn.position = Vector2(PAD_MARGIN, _right_height - BURN_HEIGHT - PAD_MARGIN)
 	_burn.size = Vector2(inner_width, BURN_HEIGHT)
-	_stab_button.position = Vector2(4.0, _burn.position.y - BUTTON_HEIGHT - 4.0)
-	_stab_button.size = Vector2(inner_width, BUTTON_HEIGHT)
 	(_right_panel as PlatePanel).burn_mark = Rect2(0.0, _burn.position.y, 2.0, BURN_HEIGHT)
+
+	var half_width: float = floorf(inner_width / 2.0)
+	var modes_y: float = _burn.position.y - BUTTON_HEIGHT - PAD_MARGIN
+	var pad_y: float = 0.0
+	if _is_inner_screen:
+		_stab_button.position = Vector2(PAD_MARGIN + half_width, modes_y)
+		_stab_button.size = Vector2(half_width, BUTTON_HEIGHT)
+		_dial.position = Vector2(floorf((RIGHT_WIDTH - 64.0) / 2.0), 6.0)
+		_dial.size = Vector2(64.0, 76.0)
+		_rotate_left.position = Vector2(PAD_MARGIN, 88.0)
+		_rotate_right.position = Vector2(PAD_MARGIN + half_width, 88.0)
+		_rotate_left.size = Vector2(half_width, PAD_BUTTON)
+		_rotate_right.size = Vector2(half_width, PAD_BUTTON)
+		pad_y = 88.0 + PAD_BUTTON + PAD_MARGIN
+		_compact_pad_rotates = false
+	else:
+		pad_y = _burn.position.y - PAD_MARGIN - PAD_BUTTON * 3.0
+		_rot_trans_switch.position = Vector2(PAD_MARGIN, pad_y - PAD_MARGIN - BUTTON_HEIGHT)
+		_rot_trans_switch.size = Vector2(inner_width, BUTTON_HEIGHT)
+		_stab_button.position = Vector2(PAD_MARGIN + PAD_BUTTON, pad_y + PAD_BUTTON)
+		_stab_button.size = Vector2(PAD_BUTTON, PAD_BUTTON)
+	_rotate_left.visible = _is_inner_screen
+	_rotate_right.visible = _is_inner_screen
+	_rot_trans_switch.visible = not _is_inner_screen
+	_pad_up.position = Vector2(PAD_MARGIN + PAD_BUTTON, pad_y)
+	_pad_left.position = Vector2(PAD_MARGIN, pad_y + PAD_BUTTON)
+	_pad_right.position = Vector2(PAD_MARGIN + PAD_BUTTON * 2.0, pad_y + PAD_BUTTON)
+	_pad_down.position = Vector2(PAD_MARGIN + PAD_BUTTON, pad_y + PAD_BUTTON * 2.0)
+	for button: RcsButton in [_pad_up, _pad_down, _pad_left, _pad_right]:
+		button.size = Vector2(PAD_BUTTON, PAD_BUTTON)
+	_apply_compact_pad()
 
 	# ASS sits with the modes on the inner screen, and in the top bar on the cover screen.
 	if _assist_button.get_parent() != null:
 		_assist_button.get_parent().remove_child(_assist_button)
 	if _is_inner_screen:
 		_right_panel.add_child(_assist_button)
-		_assist_button.position = Vector2(4.0, _stab_button.position.y - BUTTON_HEIGHT - 4.0)
-		_assist_button.size = Vector2(inner_width, BUTTON_HEIGHT)
+		_assist_button.position = Vector2(PAD_MARGIN, modes_y)
+		_assist_button.size = Vector2(half_width, BUTTON_HEIGHT)
 	else:
 		_top_bar.add_child(_assist_button)
-		_assist_button.position = Vector2(view.x - inner_width, 0.0)
-		_assist_button.size = Vector2(inner_width, BAR_HEIGHT)
+		_assist_button.position = Vector2(view.x - 64.0, 0.0)
+		_assist_button.size = Vector2(64.0, BAR_HEIGHT)
 
 	_dial.visible = _is_inner_screen
-	_dial.position = Vector2(4.0, 6.0)
-	_dial.size = Vector2(inner_width, inner_width + 12.0)
 
 	_left_tab.size = Vector2(12.0, 44.0)
 	_right_tab.size = Vector2(12.0, 44.0)
@@ -185,7 +243,7 @@ func _place_panels() -> void:
 	var left_offset: float = -(LEFT_WIDTH - STRIP) * _hide_amount
 	var right_offset: float = (RIGHT_WIDTH - STRIP) * _hide_amount
 	_left_panel.position = Vector2(left_offset, BAR_HEIGHT)
-	_right_panel.position = Vector2(view.x - RIGHT_WIDTH + right_offset, BAR_HEIGHT)
+	_right_panel.position = Vector2(view.x - RIGHT_WIDTH + right_offset, view.y - _right_height)
 	_zoom_row.position = Vector2(LEFT_WIDTH + 4.0, view.y - BUTTON_HEIGHT - 4.0 + (BUTTON_HEIGHT + 8.0) * _hide_amount)
 	_left_tab.visible = _hidden
 	_right_tab.visible = _hidden
@@ -210,6 +268,27 @@ func _physics_process(_delta: float) -> void:
 		Input.action_release(action)
 	_actions_to_release = _tapped_actions
 	_tapped_actions = []
+
+
+func _toggle_compact_pad() -> void:
+	_compact_pad_rotates = not _compact_pad_rotates
+	_apply_compact_pad()
+
+
+# Sets what the four arrows do. Rotating only uses left and right, so up and down go blank.
+func _apply_compact_pad() -> void:
+	if _compact_pad_rotates and not _is_inner_screen:
+		_pad_up.set_action(&"", Vector2.UP, 0)
+		_pad_down.set_action(&"", Vector2.DOWN, 0)
+		_pad_left.set_action(&"turn_left", Vector2.ZERO, -1)
+		_pad_right.set_action(&"turn_right", Vector2.ZERO, 1)
+		_rot_trans_switch.set_lamp(true, UiStyle.palette().telemetry_amber, "ROT")
+	else:
+		_pad_up.set_action(&"translate_forward", Vector2.UP, 0)
+		_pad_down.set_action(&"translate_back", Vector2.DOWN, 0)
+		_pad_left.set_action(&"translate_left", Vector2.LEFT, 0)
+		_pad_right.set_action(&"translate_right", Vector2.RIGHT, 0)
+		_rot_trans_switch.set_lamp(true, UiStyle.palette().telemetry_cyan, "TRANS")
 
 
 func _show_panels() -> void:
@@ -275,6 +354,7 @@ func _widgets_in_reach() -> Array[UiWidget]:
 		widgets.append(_lever)
 		widgets.append(_burn)
 		widgets.append(_stab_button)
+		widgets.append_array([_pad_up, _pad_down, _pad_left, _pad_right, _rotate_left, _rotate_right, _rot_trans_switch])
 		widgets.append_array(_zoom_buttons)
 	widgets.append(_assist_button)
 	return widgets
