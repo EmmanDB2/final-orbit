@@ -22,8 +22,21 @@ uniform float cloud_cos = 1.0;
 uniform float cloud_sin = 0.0;
 // The way to the star from here, as a unit direction on screen.
 uniform vec2 light_way = vec2(1.0, 0.0);
-// How many screen pixels wide each of the planet's own pixels is.
+// How many screen pixels wide each of the planet's own pixels is, from far out.
 uniform float block_px = 1.0;
+// How big the smallest pixel is here, in world units, which sets how fine the detail can be.
+uniform float detail_units = 1.0;
+// Close to the surface, pixels are laid out along the rim instead, in columns around the planet
+// and rows up from it, on a grid fixed to the ground. These say where the middle of the view is
+// on that grid. They're worked out in 64-bit, so the grid stays steady anywhere on the planet.
+uniform bool on_surface_grid = false;
+uniform vec2 screen_middle = vec2(0.0);
+uniform vec2 view_from_body = vec2(0.0, -1.0);
+uniform float view_height_px = 0.0;
+uniform float view_column_share = 0.0;
+uniform int view_column = 0;
+uniform float cell_px = 1.0;
+uniform float cell_units = 2.0;
 // How high the air reaches on screen, in pixels. Zero means airless.
 uniform float air_px = 0.0;
 
@@ -113,7 +126,7 @@ float terrain_height(vec2 world) {
 	float total = 0.0;
 	float feature = largest_feature;
 	for (int layer = 0; layer < 6; layer++) {
-		if (feature < units_per_px * block_px * 7.0) {
+		if (feature < detail_units * 7.0) {
 			break;
 		}
 		height += value_noise(warped / feature, seed + uint(layer)) * weight;
@@ -183,7 +196,7 @@ float cloud_cover(vec2 offset, float share_out, int most_layers) {
 	float total = 0.0;
 	float size = 1.0;
 	for (int layer = 0; layer < most_layers; layer++) {
-		if (largest / size < units_per_px * block_px * 7.0) {
+		if (largest / size < detail_units * 7.0) {
 			break;
 		}
 		cover += value_noise(place * size, seed + uint(layer)) * weight;
@@ -201,12 +214,37 @@ void vertex() {
 
 
 void fragment() {
-	// Everything below works on the planet's own pixels, counted out from its middle, so the
-	// disc is a clean shape however big they are.
+	// Far out, everything below works on the planet's own pixels, counted out from its middle,
+	// so the disc is a clean shape however big they are.
 	vec2 middle = round(center_px);
 	vec2 block_at = floor((floor(pixel) + vec2(0.5) - middle) / block_px);
 	vec2 offset = (block_at + vec2(0.5)) * block_px;
 	vec2 whole = block_at + vec2(4096.0);
+
+	// Close up, it works on the grid fixed to the ground instead. Near the pole that grid would
+	// pinch together, so the middle of the disc stays on the far-out pixels.
+	bool on_grid = false;
+	float height_px = 0.0;
+	vec2 grid_ground = vec2(0.0);
+	if (on_surface_grid) {
+		vec2 from_view = floor(pixel) + vec2(0.5) - screen_middle;
+		vec2 from_body = view_from_body + from_view;
+		float distance_now = length(from_body);
+		if (distance_now > radius_px * 0.6) {
+			on_grid = true;
+			// Measured against the middle of the view, which keeps the numbers small and exact.
+			float turn = atan(view_from_body.x * from_view.y - view_from_body.y * from_view.x, dot(view_from_body, from_body));
+			float column = floor(view_column_share + turn * radius_px / cell_px);
+			height_px = view_height_px + (2.0 * dot(view_from_body, from_view) + dot(from_view, from_view)) / (distance_now + length(view_from_body));
+			float row = floor(height_px / cell_px);
+			whole = vec2(column + 4096.0, row + 4096.0);
+			float at_angle = (float(view_column) + column + 0.5) * cell_px / radius_px;
+			float at_radius = (radius_px + (row + 0.5) * cell_px) * units_per_px;
+			grid_ground = vec2(sin(at_angle), -cos(at_angle)) * at_radius;
+			// The planet's own pixel, for the things that don't care about the grid.
+			offset = from_body;
+		}
+	}
 	float distance_px = length(offset);
 	float pattern = dither(whole);
 	float from_far = clamp(units_per_px / 256.0, 0.0, 1.0);
@@ -214,8 +252,8 @@ void fragment() {
 	float facing = dot(outward, light_way);
 	float air_day = clamp(floor(clamp(facing * 1.4 + 0.45, 0.0, 1.0) * 3.0 + 0.5), 0.0, 3.0) / 3.0;
 
-	if (distance_px > radius_px) {
-		float above_ground = distance_px - radius_px;
+	if (on_grid ? height_px > 0.0 : distance_px > radius_px) {
+		float above_ground = on_grid ? height_px : distance_px - radius_px;
 		if (above_ground < air_px) {
 			// The air glows on the day side and turns warm around sunrise and sunset.
 			float reach = 1.0 - above_ground / air_px;
@@ -229,14 +267,17 @@ void fragment() {
 	} else {
 		// Turn the screen offset back by the spin to find which ground is under this pixel.
 		vec2 ground = vec2(spin_cos * offset.x + spin_sin * offset.y, spin_cos * offset.y - spin_sin * offset.x) * units_per_px;
+		if (on_grid) {
+			ground = grid_ground;
+		}
 		vec2 light_on_ground = vec2(spin_cos * light_way.x + spin_sin * light_way.y, spin_cos * light_way.y - spin_sin * light_way.x);
 		float height = terrain_height(ground);
 		if (crater_amount > 0.0) {
 			uint seed = uint(terrain_seed) + 80u;
-			if (largest_feature * 0.32 > units_per_px * block_px * 5.0) {
+			if (largest_feature * 0.32 > detail_units * 5.0) {
 				height += crater_change(ground, largest_feature * 0.32, seed, light_on_ground);
 			}
-			if (largest_feature * 0.08 > units_per_px * block_px * 5.0) {
+			if (largest_feature * 0.08 > detail_units * 5.0) {
 				height += crater_change(ground, largest_feature * 0.08, seed + 8u, light_on_ground);
 			}
 		}
@@ -244,7 +285,7 @@ void fragment() {
 		// Flat colors with hard edges, the way the ship is drawn.
 		int index = int(clamp(height_to_band(height), 0.0, 5.999));
 		if (units_per_px < speckle_last_zoom_out) {
-			float size = max(speckle_size, units_per_px * speckle_screen_size);
+			float size = max(speckle_size, cell_units * 8.0);
 			float speckle = value_noise(ground / size, uint(terrain_seed) + 16u);
 			if (speckle < speckle_amount) {
 				// The last color of the sea and of the land step back, so sea stays sea.

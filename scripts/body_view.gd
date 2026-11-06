@@ -6,6 +6,10 @@ extends ColorRect
 
 ## Far out, a body stays at least this big on screen so it can be found, in pixels.
 @export var smallest_radius: float = 2.0
+## How wide a pixel of the ground is at the closest zoom, in world units.
+@export var world_pixel: float = 2.0
+## Once a body is at least this big on screen, in pixels, its surface goes on the ground's grid.
+@export var surface_grid_radius: float = 300.0
 ## A moon whose orbit shrinks to less than this on screen is hidden, in pixels.
 @export var smallest_orbit: float = 8.0
 
@@ -53,6 +57,29 @@ func _block_size(radius_px: float, units_per_px: float) -> float:
 	return float(clampi(mini(by_zoom, roundi(radius_px / 60.0)), 1, 4))
 
 
+# Works out where the middle of the view is on the ground's grid. Grid cells double in size as
+# you zoom out, so each is always 2 to 4 pixels wide, and cells of one size nest inside the next,
+# so colors don't swim while zooming.
+func _feed_surface_grid(from_body_x: float, from_body_y: float, radius_px: float, pixels_per_unit: float) -> void:
+	var distance: float = sqrt(from_body_x * from_body_x + from_body_y * from_body_y)
+	var use_grid: bool = radius_px >= surface_grid_radius and distance > _radius * 0.7
+	_material.set_shader_parameter("on_surface_grid", use_grid)
+	if not use_grid:
+		return
+	var cell: float = world_pixel * pow(2.0, maxf(ceilf(log(1.0 / pixels_per_unit) / log(2.0)), 0.0))
+	var angle: float = fposmod(atan2(from_body_x, -from_body_y) - _spin_rate * _state.time, TAU)
+	var columns: float = angle * _radius / cell
+	var column: float = floorf(columns)
+	_material.set_shader_parameter("screen_middle", size / 2.0)
+	_material.set_shader_parameter("view_from_body", Vector2(from_body_x, from_body_y) * pixels_per_unit)
+	_material.set_shader_parameter("view_height_px", (distance - _radius) * pixels_per_unit)
+	_material.set_shader_parameter("view_column", int(column))
+	_material.set_shader_parameter("view_column_share", columns - column)
+	_material.set_shader_parameter("cell_px", cell * pixels_per_unit)
+	_material.set_shader_parameter("cell_units", cell)
+	_material.set_shader_parameter("detail_units", cell)
+
+
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
 	var position_now: PackedFloat64Array = _gravity_model.get_body_position(_index, _state.time)
 	var from_middle_x: float = (position_now[0] - center_x) * pixels_per_unit
@@ -70,7 +97,10 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 			screen_center.x + from_middle_x,
 			screen_center.y + from_middle_y))
 	_material.set_shader_parameter("radius_px", radius_px)
-	_material.set_shader_parameter("block_px", _block_size(radius_px, 1.0 / pixels_per_unit))
+	var block: float = _block_size(radius_px, 1.0 / pixels_per_unit)
+	_material.set_shader_parameter("block_px", block)
+	_material.set_shader_parameter("detail_units", block / pixels_per_unit)
+	_feed_surface_grid(center_x - position_now[0], center_y - position_now[1], radius_px, pixels_per_unit)
 	_material.set_shader_parameter("air_px", air_px)
 	var turned: float = fposmod(_spin_rate * _state.time, TAU)
 	_material.set_shader_parameter("spin_cos", cos(turned))

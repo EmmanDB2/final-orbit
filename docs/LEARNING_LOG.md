@@ -266,3 +266,10 @@ Files: `shaders/planet.gdshader`, `scripts/body_view.gd`, `docs/DESIGN.md`
 
 - limiting a palette so art reads as pixels
 - snapping a shader's pixels to bigger blocks
+
+## 2026-11-06: Terrain ticket 1: pixel snapping
+
+Files: `shaders/planet.gdshader`, `scripts/body_view.gd`
+
+- polar coordinates for a rim
+- keeping shader numbers small by measuring from the view
