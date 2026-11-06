@@ -98,8 +98,12 @@ var _point_heading: float = 0.0
 var _stab_needs_pick: bool = true
 var _stab_direction: int = 0
 var _flame_time: float = 0.0
+var _spin_firing: float = 0.0
+var _translate_forward: float = 0.0
+var _translate_right: float = 0.0
 
 @onready var _flame: Sprite2D = $Flame
+@onready var _puffs: RcsPuffs = $RcsPuffs
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _icon: Sprite2D = $Icon
 
@@ -109,6 +113,7 @@ func _ready() -> void:
 	body = ShipBody.measure(design)
 	fuel = body.fuel_capacity
 	_update_performance()
+	_puffs.set_nozzles(design)
 	# Nothing flies until start_flight hands over gravity and a starting state.
 	set_physics_process(false)
 	assist_changed.emit(assist_enabled)
@@ -135,6 +140,7 @@ func _physics_process(delta: float) -> void:
 		_stab_needs_pick = true
 		stab_changed.emit(stab_enabled)
 
+	_spin_firing = 0.0
 	if state.is_on_surface():
 		angular_velocity = 0.0
 		heading = rotate_toward(heading, _local_up_heading(), settle_speed * delta)
@@ -157,6 +163,7 @@ func _physics_process(delta: float) -> void:
 			angular_velocity = move_toward(angular_velocity, 0.0, turn_acceleration * delta)
 		var firing: float = absf(angular_velocity - spin_before) / (turn_acceleration * delta)
 		_burn_fuel(design.rcs_fuel_rate * firing * delta)
+		_spin_firing = signf(angular_velocity - spin_before) * firing
 		heading += angular_velocity * delta
 	rotation = heading
 
@@ -168,6 +175,8 @@ func _physics_process(delta: float) -> void:
 	var translate_forward: float = Input.get_axis("translate_back", "translate_forward")
 	var translate_right: float = Input.get_axis("translate_left", "translate_right")
 	var translating: bool = fuel > 0.0 and (translate_forward != 0.0 or translate_right != 0.0)
+	_translate_forward = translate_forward if translating else 0.0
+	_translate_right = translate_right if translating else 0.0
 	if translating:
 		var along: float = translate_forward * translate_acceleration * delta
 		var across: float = translate_right * translate_acceleration * delta
@@ -201,6 +210,16 @@ func _process(delta: float) -> void:
 	_flame_time += delta
 	_flame.frame = floori(_flame_time * flame_fps) % _flame.hframes
 	_flame.visible = _thrusting and _show_sprite
+	# Small corrections while holding steady don't show, so the nozzles don't flicker.
+	var turning_clockwise: bool = _spin_firing > 0.2
+	var turning_back: bool = _spin_firing < -0.2
+	_puffs.visible = _show_sprite
+	_puffs.set_firing(
+			turning_clockwise or _translate_right > 0.0,
+			turning_back or _translate_right < 0.0,
+			_translate_forward > 0.0,
+			_translate_forward < 0.0,
+			_sprite_scale)
 	_icon.frame = 1 if _thrusting else 0
 
 

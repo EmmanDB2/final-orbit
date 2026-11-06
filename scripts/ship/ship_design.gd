@@ -17,5 +17,9 @@ extends Resource
 @export var exhaust_velocity: float = 1.0
 ## RCS translation thrust, in newtons, for moving without turning.
 @export var rcs_translate_force: float = 0.0
+## Where the RCS nozzles sit on the art, in pixels, for drawing their puffs.
+@export var rcs_left_nozzle: Vector2 = Vector2.ZERO
+@export var rcs_right_nozzle: Vector2 = Vector2.ZERO
+@export var rcs_rear_nozzles: PackedVector2Array = PackedVector2Array()
 ## How much fuel the RCS burns while firing flat out, in kilograms per second.
 @export var rcs_fuel_rate: float = 0.0

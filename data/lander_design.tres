@@ -70,3 +70,6 @@ rcs_torque = 147100000.0
 exhaust_velocity = 15000.0
 rcs_fuel_rate = 20.0
 rcs_translate_force = 1185000.0
+rcs_left_nozzle = Vector2(15, 61)
+rcs_right_nozzle = Vector2(95, 61)
+rcs_rear_nozzles = PackedVector2Array(27, 190, 80.5, 190)

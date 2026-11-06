@@ -143,3 +143,10 @@ Files: `scripts/ui/rcs_button.gd`, `scripts/ui/flight_hud.gd`, `scripts/ui/ui_bu
 - directions relative to the ship: forward and right vectors from the heading
 - buttons that hold an input action down
 - one layout function serving two screens
+
+## 2026-11-05: Tier 1, ticket 4: RCS puffs
+
+Files: `scripts/rcs_puffs.gd`, `scripts/ship.gd`, `scripts/ship/ship_design.gd`, `scenes/ship.tscn`, `data/lander_design.tres`, `docs/DESIGN.md`
+
+- why a thruster above the center of mass turns the ship
+- child nodes that follow their parent's rotation
