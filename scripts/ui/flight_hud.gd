@@ -66,6 +66,7 @@ func connect_flight(ship: Node2D, view: Node, turn_guide: Node) -> void:
 	_ship = ship
 	ship.flight_data_changed.connect(_top_bar.on_flight_data)
 	ship.flight_data_changed.connect(_dial.on_flight_data)
+	ship.flight_data_changed.connect((_left_panel as PlatePanel).on_flight_data)
 	ship.assist_changed.connect(_on_assist_changed)
 	ship.stab_changed.connect(_on_stab_changed)
 	_lever.throttle_changed.connect(ship._on_throttle_changed)
@@ -85,6 +86,7 @@ func _build() -> void:
 	_top_bar = TopBar.new()
 	add_child(_top_bar)
 
+	(_left_panel as PlatePanel).shows_fuel = true
 	_lever = ThrottleLever.new()
 	_left_panel.add_child(_lever)
 
@@ -138,7 +140,7 @@ func _layout() -> void:
 	_top_bar.size = Vector2(view.x, BAR_HEIGHT)
 
 	_left_panel.size = Vector2(LEFT_WIDTH, body_height)
-	_lever.position = Vector2(8.0, 10.0)
+	_lever.position = Vector2(6.0, 10.0)
 	_lever.size = Vector2(LEFT_WIDTH - 16.0, body_height - 20.0)
 
 	_zoom_row.size = Vector2(ZOOM_WIDTH * 3.0, BUTTON_HEIGHT)

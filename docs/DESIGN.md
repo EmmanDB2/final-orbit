@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Fuel built: it has mass and burns off, and the main engine and RCS both use it, so ASS and STAB cost fuel. Lander numbers set \[Leaning\]. Fuel gauge and delta-v readout added. Landing on the planet refills the tanks until stations exist \[Leaning\] |
 | 2026-11-05 | Tier 0 finished and Tier 1 started. Module grid set at 64 x 64 px \[Leaning\]. Ships are defined in data, with mass, center of mass, and spin resistance measured from pixels. Materials go by art color \[Leaning\] |
 | 2026-11-05 | The view center now follows the zoom directly, so zooming has no jumps. The ship icon only shows at the Orbit view and farther. Closer in, the sprite scales to true size, which is an exception to the never-change-pixel-size rule, at Manny's request, so the zoom reads as one clean move \[Leaning\] |
 | 2026-11-05 | First real UI built for Tier 0: top bar, throttle lever, BURN under its cover, ASS and STAB buttons, zoom buttons, heading dial, drag to point, and auto-hide with side tabs. Replaces the throwaway touch controls and rough readout. Smooth zoom built \[Leaning\]. Gravity interface gains `get_body_velocity` and `get_orbit_apsides` |
@@ -147,6 +148,9 @@ Construction:
 - Each material has a density; the ship's total mass, center of mass, and spin resistance are summed from its pixels. \[Locked\]
 - A pixel's material goes by its art color, from a table in `data/materials/`, so drawing a part in gold foil makes it light. \[Leaning\]
 - Fuel has mass and burns off, so ships get lighter and more agile as they fly. \[Locked\]
+- The main engine and RCS both burn fuel, so ASS, STAB, and turning all cost fuel. With none left, neither fires. \[Leaning\]
+- The lander, as the all-rounder: about 19.5 t dry, 20 t of fuel, 300 m/s² of thrust when full and about 608 when empty, about 10,600 m/s of delta-v, and about 25 seconds of full-throttle burn. These live in `data/lander_design.tres`. \[Leaning\]
+- Until stations exist, landing on the planet refills the tanks, and a ship stranded with no fuel means restarting. \[Leaning\]
 - Staging: drop empty tanks or used heat shields to save mass; dropped parts become debris. \[Leaning\]
 - Repairs and customization happen at the pixel level, so patched plating shows on the hull. Liveries and paint use the agency palette. \[Leaning\]
 

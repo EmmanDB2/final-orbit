@@ -13,3 +13,7 @@ extends Resource
 @export var engine_force: float = 0.0
 ## RCS turning strength, as force times distance.
 @export var rcs_torque: float = 0.0
+## How fast the main engine throws its exhaust, in meters per second. Higher is thriftier.
+@export var exhaust_velocity: float = 1.0
+## How much fuel the RCS burns while firing flat out, in kilograms per second.
+@export var rcs_fuel_rate: float = 0.0

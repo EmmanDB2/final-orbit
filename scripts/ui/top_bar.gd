@@ -1,5 +1,5 @@
 # top_bar.gd: the always-visible bar of flight readouts. From DESIGN.md, "UI" (top bar).
-# Tier 0 has no comms, delta-v, cautions, or pay yet, so those join it in later tiers.
+# Comms, cautions, and pay join it as those systems arrive.
 class_name TopBar
 extends Control
 
@@ -19,6 +19,7 @@ func on_flight_data(data: Dictionary) -> void:
 		["SPD", "%d" % roundi(data["speed"])],
 		["AP", "ESC" if data["apoapsis"] < 0.0 else _distance(data["apoapsis"])],
 		["PE", "HIT" if data["periapsis"] < 0.0 else _distance(data["periapsis"])],
+		["DV", "%d" % roundi(data["delta_v"])],
 		["T", "%02d %02d" % [total / 60, total % 60]],
 	]
 	if cells != _cells:

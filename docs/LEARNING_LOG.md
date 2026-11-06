@@ -127,3 +127,11 @@ Files: `scripts/ship/*`, `data/materials/*`, `data/lander_design.tres`, `scripts
 - custom resources that hold other resources
 - center of mass and moment of inertia
 - reading an image's pixels with `Image.get_pixel`
+
+## 2026-11-05: Tier 1, ticket 2: fuel
+
+Files: `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/ship/ship_design.gd`, `scripts/ship/module_data.gd`, `scripts/ui/plate_panel.gd`, `scripts/ui/top_bar.gd`, `scripts/ui/flight_hud.gd`, `data/lander_design.tres`, `tests/test_ship_body.gd`, `docs/DESIGN.md`
+
+- the rocket equation and delta-v
+- exhaust velocity and burn rate
+- why a ship gets quicker as it empties

@@ -13,6 +13,9 @@
 # the path or toward the body, nose first or thruster first). All of them use the RCS,
 # at turn_acceleration. Thrust is the throttle setting while BURN is held.
 #
+# Fuel has mass. Burning it makes the ship lighter and quicker, and the main engine and
+# RCS both stop when it runs out. Landing on the planet refills it until stations exist.
+#
 # On the ground the ship settles upright and the turn keys do nothing, so thrust always
 # lifts it straight off. Tier 0 has no damage, so a touchdown only reports how it went.
 #
@@ -63,6 +66,8 @@ signal flight_data_changed(data: Dictionary)
 var heading: float = 0.0
 ## The ship's mass, center of mass, and spin resistance, measured from its pixels.
 var body: ShipBody
+## Fuel aboard, in kilograms.
+var fuel: float = 0.0
 ## Main engine acceleration right now, in world units per second squared.
 var thrust_acceleration: float = 0.0
 ## How quickly the RCS changes the spin right now, in radians per second squared.
@@ -96,8 +101,8 @@ var _flame_time: float = 0.0
 func _ready() -> void:
 	_flame_position = _flame.position
 	body = ShipBody.measure(design)
-	thrust_acceleration = design.engine_force / body.mass
-	turn_acceleration = design.rcs_torque / body.spin_resistance
+	fuel = body.fuel_capacity
+	_update_performance()
 	# Nothing flies until start_flight hands over gravity and a starting state.
 	set_physics_process(false)
 	assist_changed.emit(assist_enabled)
@@ -128,8 +133,11 @@ func _physics_process(delta: float) -> void:
 		angular_velocity = 0.0
 		heading = rotate_toward(heading, _local_up_heading(), settle_speed * delta)
 	else:
+		var spin_before: float = angular_velocity
 		var turn_input: float = Input.get_axis("turn_left", "turn_right")
-		if turn_input != 0.0:
+		if fuel <= 0.0:
+			pass
+		elif turn_input != 0.0:
 			angular_velocity += turn_input * turn_acceleration * delta
 			_stab_needs_pick = true
 		elif _point_active:
@@ -141,13 +149,16 @@ func _physics_process(delta: float) -> void:
 			# Same thrusters as manual turning, so the same strength. move_toward stops
 			# exactly at zero instead of overshooting into a tiny spin the other way.
 			angular_velocity = move_toward(angular_velocity, 0.0, turn_acceleration * delta)
+		var firing: float = absf(angular_velocity - spin_before) / (turn_acceleration * delta)
+		_burn_fuel(design.rcs_fuel_rate * firing * delta)
 		heading += angular_velocity * delta
 	rotation = heading
 
-	_thrusting = Input.is_action_pressed("thrust") and throttle > 0.0
+	_thrusting = Input.is_action_pressed("thrust") and throttle > 0.0 and fuel > 0.0
 	if _thrusting:
 		state.velocity_x += sin(heading) * thrust_acceleration * throttle * delta
 		state.velocity_y -= cos(heading) * thrust_acceleration * throttle * delta
+		_burn_fuel(design.engine_force * throttle / design.exhaust_velocity * delta)
 	_gravity_model.propagate(state, delta)
 
 	var on_surface: bool = state.is_on_surface()
@@ -156,6 +167,9 @@ func _physics_process(delta: float) -> void:
 	if on_surface and not _was_on_surface:
 		var tilt: float = absf(angle_difference(heading, _local_up_heading()))
 		touched_down.emit(state.get_touchdown_speed(), tilt <= upright_tolerance)
+		if _gravity_model.get_dominant_body(state.x, state.y, state.time) == 0:
+			fuel = body.fuel_capacity
+			_update_performance()
 	elif _was_on_surface and not on_surface:
 		lifted_off.emit()
 	_was_on_surface = on_surface
@@ -172,6 +186,23 @@ func _process(delta: float) -> void:
 	_flame.frame = floori(_flame_time * flame_fps) % _flame.hframes
 	_flame.visible = _thrusting and _show_sprite
 	_icon.frame = 1 if _thrusting else 0
+
+
+func _burn_fuel(amount: float) -> void:
+	if amount > 0.0:
+		fuel = maxf(fuel - amount, 0.0)
+		_update_performance()
+
+
+func _update_performance() -> void:
+	var now: Dictionary = body.with_fuel(fuel)
+	thrust_acceleration = design.engine_force / now["mass"]
+	turn_acceleration = design.rcs_torque / now["spin_resistance"]
+
+
+## How much more speed the fuel aboard can give, from the rocket equation.
+func delta_v() -> float:
+	return design.exhaust_velocity * log((body.mass + fuel) / body.mass)
 
 
 ## Starts or updates drag to point, turning the nose toward this heading.
@@ -245,6 +276,8 @@ func _report_telemetry() -> void:
 		"heading": heading,
 		"prograde": atan2(relative_x, -relative_y),
 		"spin": angular_velocity,
+		"fuel_share": fuel / body.fuel_capacity,
+		"delta_v": delta_v(),
 	})
 
 

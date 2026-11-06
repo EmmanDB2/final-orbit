@@ -8,3 +8,5 @@ extends Resource
 @export var kind: String = ""
 ## Which grid cell it fills, counted from the ship's top-left cell.
 @export var cell: Vector2i = Vector2i.ZERO
+## How much fuel it holds, in kilograms, if it's a tank.
+@export var fuel_capacity: float = 0.0
