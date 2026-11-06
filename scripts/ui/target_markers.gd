@@ -84,16 +84,19 @@ func _edge_point(middle: Vector2, direction: Vector2, area: Rect2) -> Vector2:
 	return (middle + direction * maxf(reach, 0.0)).round()
 
 
+# A dart with a notch in its tail, so it's clear which way it points even at this size.
 func _draw_arrow(tip: Vector2, direction: Vector2) -> void:
 	var palette: AgencyPalette = UiStyle.palette()
 	var side: Vector2 = direction.orthogonal()
 	var back: Vector2 = tip - direction * arrow_length
 	var half_width: float = arrow_length * 0.45
+	var dart := PackedVector2Array([tip, back + side * half_width, tip - direction * arrow_length * 0.65, back - side * half_width])
 	# The 1 px dark outline all human-made things get.
-	draw_colored_polygon(PackedVector2Array([
-		tip + direction * 2.0, back + side * (half_width + 2.0) - direction, back - side * (half_width + 2.0) - direction,
-	]), palette.hull_darkest)
-	draw_colored_polygon(PackedVector2Array([tip, back + side * half_width, back - side * half_width]), palette.agency_orange)
+	for offset: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
+		draw_set_transform(offset)
+		draw_colored_polygon(dart, palette.hull_darkest)
+	draw_set_transform(Vector2.ZERO)
+	draw_colored_polygon(dart, palette.agency_orange)
 
 
 func _draw_label(text: String, top_left: Vector2, area: Rect2) -> void:
