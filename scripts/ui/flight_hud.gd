@@ -13,6 +13,8 @@ signal zoom_button_pressed(button_name: String)
 signal zoom_scaled(factor: float)
 signal point_changed(screen_position: Vector2)
 signal point_released
+## Emitted when the panels move, with the part of the view they leave clear.
+signal clear_area_changed(area: Rect2)
 
 const BAR_HEIGHT: float = 44.0
 const LEFT_WIDTH: float = 56.0
@@ -269,6 +271,9 @@ func _place_panels() -> void:
 	_zoom_row.position = Vector2(LEFT_WIDTH + 4.0, view.y - BUTTON_HEIGHT - 4.0 + (BUTTON_HEIGHT + 8.0) * _hide_amount)
 	_left_tab.visible = _hidden
 	_right_tab.visible = _hidden
+	var clear_left: float = _left_panel.position.x + LEFT_WIDTH
+	clear_area_changed.emit(Rect2(clear_left, BAR_HEIGHT, _right_panel.position.x - clear_left,
+			minf(_zoom_row.position.y, view.y) - BAR_HEIGHT))
 
 
 func _process(delta: float) -> void:

@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/surface_props.gd" id="25_props"]
 [ext_resource type="Script" path="res://scripts/ground_effects.gd" id="26_ground"]
 [ext_resource type="Script" path="res://scripts/station/station_view.gd" id="27_station"]
+[ext_resource type="Script" path="res://scripts/ui/target_markers.gd" id="29_markers"]
 [ext_resource type="Resource" path="res://data/station_1.tres" id="28_station_data"]
 [ext_resource type="Resource" path="res://data/home_star.tres" id="7_star"]
 [ext_resource type="Script" uid="uid://drw8htpqo2g5a" path="res://scripts/main.gd" id="8_main"]
@@ -134,6 +135,9 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("19_safe")
 
+[node name="TargetMarkers" type="Node2D" parent="Hud/SafeArea" unique_id=1124785904]
+script = ExtResource("29_markers")
+
 [node name="FlightHud" type="Control" parent="Hud/SafeArea" unique_id=1124785903]
 layout_mode = 1
 anchors_preset = 15
@@ -159,6 +163,8 @@ script = ExtResource("17_readout")
 [connection signal="view_changed" from="Camera2D" to="SurfaceProps" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="GroundEffects" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Station" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Hud/SafeArea/TargetMarkers" method="_on_view_changed"]
+[connection signal="clear_area_changed" from="Hud/SafeArea/FlightHud" to="Hud/SafeArea/TargetMarkers" method="_on_clear_area_changed"]
 [connection signal="engine_changed" from="Ship" to="GroundEffects" method="_on_ship_engine_changed"]
 [connection signal="part_detached" from="Ship" to="Debris" method="_on_ship_part_detached"]
 [connection signal="pixels_scattered" from="Ship" to="Sparks" method="_on_ship_pixels_scattered"]

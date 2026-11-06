@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | First edge marker, for the station, with its label beside the dot when zoomed out \[Leaning\] |
 | 2026-11-06 | Home Station in orbit: on rails with no gravity, holding still, with its room layout and start position \[Leaning\] |
 | 2026-11-06 | Station art cut into clean sprites by a new tool, with stations drawn at 2 game pixels per art pixel as a third exception to the fixed pixel size \[Leaning\]. All 25 listed agency colors now in the palette data |
 | 2026-11-06 | Engine flame now drawn by code from throttle, air, and damage, replacing the sprite. Procedural burn animation leaves the parking lot \[Leaning\] |
@@ -453,6 +454,7 @@ Turning and RCS controls: \[Leaning\]
 Edge markers: \[Leaning\]
 
 - Off-screen targets (gig destinations, stations, bodies) show at the screen edge as small agency-orange arrows with a callsign and distance (for example "HOME 236 km").
+- Only the station has one so far, and it stays inside the part of the view the panels leave clear. Zoomed out far enough that the station is a dot, its callsign and distance show beside the dot. \[Leaning\]
 
 Control reference: the old mobile game Space Agency (rotate and translate button pads, off-screen target markers).
 

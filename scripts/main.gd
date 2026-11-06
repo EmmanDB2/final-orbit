@@ -40,6 +40,8 @@ func _ready() -> void:
 	$Background/BodyGuides.start_guides(gravity_model, state)
 	$Trajectory.start_preview(gravity_model, state)
 	$Station.start_station(gravity_model, state, station, station_index)
+	$Hud/SafeArea/TargetMarkers.start_markers(gravity_model, state)
+	$Hud/SafeArea/TargetMarkers.add_satellite_target(station.callsign, station_index)
 	$Sparks.start_sparks(gravity_model, state)
 	$Debris.start_debris(gravity_model, state, $Ship, $Sparks)
 	var bodies: Dictionary = {planet_index: planet, moon_index: moon}

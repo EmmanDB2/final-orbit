@@ -348,3 +348,10 @@ Files: `native/src/gravity_model.*`, `native/src/patched_conics_model.*`, `scrip
 - Kepler rails computed from the time
 - nested resources in a data file
 - turning pixel art in quarter turns
+
+## 2026-11-06: Edge marker for the station
+
+Files: `scripts/ui/target_markers.gd`, `scripts/ui/flight_hud.gd`, `scripts/ui/ui_style.gd`, `scripts/main.gd`, `scenes/main.tscn`, `docs/DESIGN.md`
+
+- clipping a line to a rectangle
+- a signal carrying layout from one UI system to another
