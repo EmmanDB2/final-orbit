@@ -213,3 +213,11 @@ Files: `scripts/ship.gd`, `scripts/debris_field.gd`, `scripts/telemetry_readout.
 Files: `scripts/ship.gd`, `scripts/ui/heading_dial.gd`, `docs/DESIGN.md`
 
 - atan2 and floating-point noise near zero
+
+## 2026-11-06: Damage polish
+
+Files: `scripts/ship/damage_wave.gd`, `scripts/spark_field.gd`, `scripts/debris_field.gd`, `scripts/ship.gd`, `scripts/main.gd`, `scenes/main.tscn`, `docs/DESIGN.md`
+
+- separating what's simulated from what's drawn
+- inner classes and parallel arrays for many small things
+- process priority for keeping systems in step

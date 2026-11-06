@@ -1,17 +1,15 @@
-# debris_field.gd: everything that's come off the ship: chunks with their own orbits, and
-# single pixels as short-lived sparks.
+# debris_field.gd: chunks that have come off the ship, each with its own orbit.
 # From DESIGN.md, "Destruction" (detached chunks become physics bodies with their own orbits,
 # single pixels are visual particles only, and a debris budget caps active pieces).
 #
 # Chunks coast on the gravity model like the ship does, feel the air, and can hit the ship,
-# which does damage from both their masses and the speed. Sparks only ever get drawn.
+# which does damage from both their masses and the speed. A chunk never just vanishes: when
+# its time is up, it burns up, or it hits the ground hard, it crumbles into sparks.
 class_name DebrisField
 extends Node2D
 
 ## Most chunks in flight. Past this, the oldest small one goes.
 @export var chunk_budget: int = 12
-## Most sparks at once.
-@export var spark_budget: int = 240
 ## A piece with fewer pixels than this is just sparks.
 @export var smallest_chunk: int = 30
 ## A chunk with fewer pixels than this fades after small_chunk_seconds, and can burn up.
@@ -23,6 +21,8 @@ extends Node2D
 @export var clear_seconds: float = 1.5
 ## How much a hit's speed survives as a bounce, from 0 to 1.
 @export var bounce: float = 0.2
+## A chunk hitting the ground faster than this breaks up, in world units per second.
+@export var crumble_speed: float = 120.0
 ## Energy it takes to destroy each pixel of a chunk, in joules.
 @export var chunk_strength: float = 500000.0
 ## How far from its middle the ship can have a pixel, for a quick check before a close look.
@@ -36,21 +36,15 @@ var _chunks: Array[Dictionary] = []
 var _center_x: float = 0.0
 var _center_y: float = 0.0
 var _pixels_per_unit: float = 1.0
-# Sparks, side by side in these arrays. Positions and speeds are relative to a body.
-var _spark_body := PackedInt32Array()
-var _spark_x := PackedFloat64Array()
-var _spark_y := PackedFloat64Array()
-var _spark_vx := PackedFloat64Array()
-var _spark_vy := PackedFloat64Array()
-var _spark_life := PackedFloat64Array()
-var _spark_color := PackedColorArray()
+var _sparks: SparkField
 
 
 ## Starts watching a flight.
-func start_debris(gravity_model: GravityModel, state: ShipState, ship: Node2D) -> void:
+func start_debris(gravity_model: GravityModel, state: ShipState, ship: Node2D, sparks: SparkField) -> void:
 	_gravity_model = gravity_model
 	_state = state
 	_ship = ship
+	_sparks = sparks
 	_rng.seed = 1
 
 
@@ -58,16 +52,12 @@ func chunk_count() -> int:
 	return _chunks.size()
 
 
-func spark_count() -> int:
-	return _spark_life.size()
-
-
 func _on_ship_part_detached(piece: Dictionary, x: float, y: float, velocity_x: float, velocity_y: float, angle: float, spin: float, kick: Vector2) -> void:
 	if piece["pixel_count"] < smallest_chunk:
 		var offsets := PackedVector2Array()
 		for point: Vector2 in piece["points"]:
 			offsets.append((point - piece["center"]).rotated(angle))
-		_on_ship_pixels_scattered(offsets, piece["colors"], x, y, velocity_x, velocity_y, kick)
+		_sparks.scatter(offsets, piece["colors"], 1, x, y, velocity_x, velocity_y, kick, Vector2.ZERO, 40.0)
 		return
 
 	var away: Vector2 = Vector2.UP.rotated(_rng.randf() * TAU) * _rng.randf_range(5.0, 25.0)
@@ -103,29 +93,14 @@ func _on_ship_part_detached(piece: Dictionary, x: float, y: float, velocity_x: f
 		"radius": image.get_size().length() / 2.0,
 		"width": float(image.get_width()),
 		"points": points,
+		"all_points": all_points,
+		"colors": piece["colors"],
+		"center": piece["center"],
 		"age": 0.0,
 		"landed": 0.0,
 	})
 	_place_chunk(_chunks[_chunks.size() - 1])
 	_keep_to_budget()
-
-
-func _on_ship_pixels_scattered(offsets: PackedVector2Array, colors: PackedColorArray, x: float, y: float, velocity_x: float, velocity_y: float, kick: Vector2) -> void:
-	var body: int = _gravity_model.get_dominant_body(x, y, _state.time)
-	var at: PackedFloat64Array = _gravity_model.get_body_position(body, _state.time)
-	var moving: PackedFloat64Array = _gravity_model.get_body_velocity(body, _state.time)
-	var step: int = maxi(offsets.size() / 80, 1)
-	for i in range(0, offsets.size(), step):
-		if _spark_life.size() >= spark_budget:
-			_remove_spark(0)
-		var away: Vector2 = Vector2.UP.rotated(_rng.randf() * TAU) * _rng.randf_range(10.0, 90.0)
-		_spark_body.append(body)
-		_spark_x.append(x - at[0] + offsets[i].x)
-		_spark_y.append(y - at[1] + offsets[i].y)
-		_spark_vx.append(velocity_x - moving[0] + kick.x + away.x)
-		_spark_vy.append(velocity_y - moving[1] + kick.y + away.y)
-		_spark_life.append(_rng.randf_range(0.4, 1.4))
-		_spark_color.append(colors[i])
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
@@ -151,8 +126,12 @@ func _physics_process(delta: float) -> void:
 		chunk["age"] += delta
 		var burned_up: bool = _push_through_air(chunk, delta)
 		var state: ShipState = chunk["state"]
+		var speed_before: float = _ground_speed(state)
+		var was_down: bool = state.is_on_surface()
 		_gravity_model.propagate(state, delta)
+		var smashed: bool = false
 		if state.is_on_surface():
+			smashed = not was_down and speed_before > crumble_speed
 			chunk["spin"] = 0.0
 			chunk["landed"] += delta
 		else:
@@ -160,8 +139,15 @@ func _physics_process(delta: float) -> void:
 		(chunk["sprite"] as Sprite2D).rotation = chunk["angle"]
 
 		var too_old: bool = chunk["pixels"] < small_chunk and chunk["age"] > small_chunk_seconds
-		if burned_up or too_old or chunk["landed"] > landed_seconds or _hits_ship(chunk):
-			_remove_chunk(i)
+		if burned_up or too_old or smashed or chunk["landed"] > landed_seconds or _hits_ship(chunk):
+			_crumble_chunk(i, speed_before * 0.25 if smashed else 40.0)
+
+
+func _ground_speed(state: ShipState) -> float:
+	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+	var x: float = state.velocity_x - ground[0]
+	var y: float = state.velocity_y - ground[1]
+	return sqrt(x * x + y * y)
 
 
 # Slows a chunk in the air. Returns true if it's small and hot enough to burn up.
@@ -237,41 +223,25 @@ func _keep_to_budget() -> void:
 		for i in range(_chunks.size()):
 			if _chunks[i]["pixels"] < _chunks[smallest]["pixels"]:
 				smallest = i
-		_remove_chunk(smallest)
+		_crumble_chunk(smallest, 40.0)
 
 
-func _remove_chunk(index: int) -> void:
-	(_chunks[index]["sprite"] as Sprite2D).queue_free()
+# Turns a chunk into sparks where it is, using blocks of pixels if it's big.
+func _crumble_chunk(index: int, blast: float) -> void:
+	var chunk: Dictionary = _chunks[index]
+	var state: ShipState = chunk["state"]
+	var points: PackedVector2Array = chunk["all_points"]
+	var colors: PackedColorArray = chunk["colors"]
+	var block: int = 1
+	if points.size() > DamageWave.DOUBLE_SPARK_LIMIT:
+		block = 3
+	elif points.size() > DamageWave.SINGLE_SPARK_LIMIT / 2:
+		block = 2
+	var offsets := PackedVector2Array()
+	var spark_colors := PackedColorArray()
+	for i in range(0, points.size(), block * block):
+		offsets.append((points[i] - chunk["center"]).rotated(chunk["angle"]))
+		spark_colors.append(colors[i])
+	_sparks.scatter(offsets, spark_colors, block, state.x, state.y, state.velocity_x, state.velocity_y, Vector2.ZERO, Vector2.ZERO, blast)
+	(chunk["sprite"] as Sprite2D).queue_free()
 	_chunks.remove_at(index)
-
-
-func _remove_spark(index: int) -> void:
-	_spark_body.remove_at(index)
-	_spark_x.remove_at(index)
-	_spark_y.remove_at(index)
-	_spark_vx.remove_at(index)
-	_spark_vy.remove_at(index)
-	_spark_life.remove_at(index)
-	_spark_color.remove_at(index)
-
-
-func _process(delta: float) -> void:
-	if _spark_life.is_empty():
-		return
-	for i in range(_spark_life.size() - 1, -1, -1):
-		_spark_life[i] -= delta
-		if _spark_life[i] <= 0.0:
-			_remove_spark(i)
-		else:
-			_spark_x[i] += _spark_vx[i] * delta
-			_spark_y[i] += _spark_vy[i] * delta
-	queue_redraw()
-
-
-func _draw() -> void:
-	for i in range(_spark_life.size()):
-		var at: PackedFloat64Array = _gravity_model.get_body_position(_spark_body[i], _state.time)
-		var spot := Vector2(
-				(at[0] + _spark_x[i] - _center_x) * _pixels_per_unit,
-				(at[1] + _spark_y[i] - _center_y) * _pixels_per_unit).round()
-		draw_rect(Rect2(spot, Vector2.ONE), _spark_color[i])

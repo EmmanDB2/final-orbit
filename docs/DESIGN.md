@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Damage reads better: hits spread across the art with a glowing edge instead of blinking out, every lost pixel flies off as a longer-lived spark, and chunks crumble into sparks instead of vanishing \[Leaning\] |
 | 2026-11-05 | Damage built: pixels are collision, hits and heat erase them, pieces break off as debris with their own orbits, lost modules change how the ship flies, and tanks leak. Losing the cockpit loses the ship. RESTART added. CRASH now starts at 250 units/s instead of 500 \[Leaning\] |
 | 2026-11-05 | The lander's fuel doubled to 40 t, with engine and RCS raised so a full tank feels the same \[Leaning\] |
 | 2026-11-05 | Re-entry heat built, shown as hot gas around the ship. It does no damage yet \[Leaning\] |
@@ -181,7 +182,9 @@ How it works in Tier 1: \[Leaning\]
 - Flat ground crushes from the side that hits, in a jagged line. Debris knocks a dent around where it touches.
 - As a guide, with a light tank: 100 units/s scratches the engine bell, 150 takes about 3% of the ship, and 250 takes the engine. A full tank hits about three times as hard.
 - A connectivity check groups pixels into 3 x 3 cells, and touching cells count as attached, so the art's small gaps hold together. The piece with the most cockpit stays the ship.
-- Pieces under 30 pixels are just sparks. There can be 12 chunks at once. Under 200 pixels, one fades after 30 seconds or burns up in the air, and any chunk on the ground goes after 60 seconds.
+- A hit counts at once for mass, thrust, and everything else, but the art catches up over up to about 0.4 seconds: pixels go a few at a time from where the hit landed, and the edge about to go glows in the thrust and fire colors. A crushed ship sinks to where it now rests, and the art shakes briefly. \[Leaning\]
+- Every lost pixel becomes a spark, thrown away from the hit, up to 800 pixels in one hit. Past that, sparks stand in for 2 x 2 blocks, and past 3,000 for 3 x 3 blocks. Sparks live 1.6 to 4.5 seconds and flicker out at the end. Near the ground they fall and bounce, and elsewhere they drift, slowed by any air. There can be 1,500 at once. \[Leaning\]
+- Pieces under 30 pixels are just sparks. There can be 12 chunks at once. Under 200 pixels, one crumbles into sparks after 30 seconds or burns up in the air. Any chunk crumbles after 60 seconds on the ground, or at once if it hits the ground faster than 120 units/s.
 - The ship turns around its new center of mass, which moves as pixels go.
 - A module under half its pixels stops working, and the pilot gets a message. Left RCS gone means no clockwise turn or moving right, and right RCS gone means the reverse. An engine module gone means half the thrust, off-center, so the ship spins.
 - Fuel is shared across the tanks. A tank can only hold as much as is left of it, so losing pixels loses that share of its fuel at once. What remains leaks at up to 2,000 kg/s depending on the hole, and pushes the ship away from the hole. Lost capacity stays lost, and landing only refills tanks with no holes.

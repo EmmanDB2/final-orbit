@@ -35,6 +35,9 @@
 # go of the turn keys. ASS never touches velocity, since that would break orbits.
 extends Node2D
 
+## How long a hit shakes the art, in ticks.
+const JOLT_TICKS: int = 18
+
 ## Emitted every physics tick with the ship's real position in the world.
 signal world_position_changed(x: float, y: float)
 ## Emitted when the flight mode changes: true for ASS, false for RAW.
@@ -51,8 +54,9 @@ signal lifted_off
 ## Emitted when a piece breaks off, with where it is, how it's moving, how it's turned, and
 ## the push it gets from the hit, in world units per second.
 signal part_detached(piece: Dictionary, x: float, y: float, velocity_x: float, velocity_y: float, angle: float, spin: float, kick: Vector2)
-## Emitted when pixels are destroyed, with where they were relative to the ship in the world.
-signal pixels_scattered(offsets: PackedVector2Array, colors: PackedColorArray, x: float, y: float, velocity_x: float, velocity_y: float, kick: Vector2)
+## Emitted as destroyed pixels come off: where they are relative to the ship in the world, how
+## big a spark each one is, how the ship's moving, and how the hit throws them.
+signal pixels_scattered(offsets: PackedVector2Array, colors: PackedColorArray, size: int, x: float, y: float, velocity_x: float, velocity_y: float, kick: Vector2, hit_offset: Vector2, blast: float)
 ## Emitted with a short warning for the pilot, such as a module going down.
 signal warning_raised(text: String)
 ## Emitted when the cockpit is lost, and the ship with it.
@@ -137,7 +141,11 @@ var _rcs_right: bool = true
 var _lost: bool = false
 var _stranded: bool = false
 var _warned_modules: Dictionary = {}
-var _texture: ImageTexture
+var _wave: DamageWave
+var _sink: Vector2 = Vector2.ZERO
+var _sink_per_tick: float = 0.0
+var _jolt_ticks: int = 0
+var _jolt_size: float = 0.0
 var _heat_heading: float = 0.0
 var _translate_forward: float = 0.0
 var _translate_right: float = 0.0
@@ -153,8 +161,8 @@ func _ready() -> void:
 	_flame_position = _flame.position
 	body = ShipBody.measure(design)
 	_whole_center = body.center_of_mass
-	_texture = ImageTexture.create_from_image(body.image)
-	_sprite.texture = _texture
+	_wave = DamageWave.new(body.image)
+	_sprite.texture = _wave.texture
 	_rest_height = body.reach(_pivot, Vector2.DOWN)
 	fuel = body.fuel_capacity
 	_update_performance()
@@ -259,6 +267,7 @@ func _physics_process(delta: float) -> void:
 		lifted_off.emit()
 	_was_on_surface = on_surface
 	_check_stranded()
+	_show_damage()
 
 	world_position_changed.emit(state.x, state.y)
 
@@ -364,7 +373,8 @@ func _heat_hull(delta: float) -> void:
 		hot_side = Vector2(-state.x, -state.y).normalized()
 	var erased: Dictionary = body.crush(hot_side.rotated(-heading), _burn_energy, int(state.time * 1000.0))
 	_burn_energy = 0.0
-	_take_damage(erased, -hot_side * 30.0)
+	var hot_on_art: Vector2 = hot_side.rotated(-heading)
+	_take_damage(erased, -hot_side * 30.0, _pivot + hot_on_art * body.reach(_pivot, hot_on_art), 25.0)
 
 
 # How much of a forward or back push the working nozzles can give. The tail nozzles push
@@ -392,6 +402,11 @@ func _art_to_world(point: Vector2) -> Vector2:
 	return (point - _pivot).rotated(heading)
 
 
+# A point on the art as it's drawn right now, which a crushed ship is still sinking toward.
+func _shown_to_world(point: Vector2) -> Vector2:
+	return (point - _pivot + _sink).rotated(heading)
+
+
 # The ground takes all the ship's energy above the safe speed, since it's far heavier. The
 # star takes everything, whatever the speed.
 func _hit_ground(speed: float, landed_on: int) -> void:
@@ -401,7 +416,9 @@ func _hit_ground(speed: float, landed_on: int) -> void:
 	if energy <= 0.0:
 		return
 	var up: Vector2 = Vector2.UP.rotated(_local_up_heading())
-	_take_damage(body.crush(_local_down(), energy, int(state.time * 1000.0)), up * minf(speed * 0.25, 120.0))
+	var down: Vector2 = _local_down()
+	var touching: Vector2 = _pivot + down * body.reach(_pivot, down)
+	_take_damage(body.crush(down, energy, int(state.time * 1000.0)), up * minf(speed * 0.4, 200.0), touching, clampf(speed * 0.7, 60.0, 320.0))
 
 
 ## Puts every pixel back, as a station's repair bay will.
@@ -410,7 +427,10 @@ func repair() -> void:
 	state.x += moved.x
 	state.y += moved.y
 	_pivot = Vector2.ZERO
+	_sink = Vector2.ZERO
+	_jolt_ticks = 0
 	body = ShipBody.measure(design)
+	_wave.show_image(body.image)
 	_lost = false
 	_warned_modules.clear()
 	_update_for_damage()
@@ -428,26 +448,49 @@ func current_mass() -> float:
 
 ## Something has hit the ship at this offset from it in the world, with this much energy.
 func take_hit(world_offset: Vector2, energy: float) -> void:
-	var erased: Dictionary = body.dent(world_offset.rotated(-heading) + _pivot, energy, int(state.time * 1000.0))
-	_take_damage(erased, world_offset.normalized() * 40.0)
+	var point: Vector2 = world_offset.rotated(-heading) + _pivot
+	var erased: Dictionary = body.dent(point, energy, int(state.time * 1000.0))
+	_take_damage(erased, world_offset.normalized() * 40.0, point, clampf(sqrt(energy / 500000.0) * 6.0, 40.0, 200.0))
 
 
-# Sends off what a hit destroyed and broke loose, then updates everything damage changes.
-func _take_damage(erased: Dictionary, kick: Vector2) -> void:
+# Starts showing what a hit destroyed, sends off what broke loose, and updates everything
+# damage changes. The pieces fly away from where the hit landed.
+func _take_damage(erased: Dictionary, kick: Vector2, hit_point: Vector2, blast: float) -> void:
 	if erased["points"].is_empty():
 		return
-	var offsets := PackedVector2Array()
-	for point: Vector2 in erased["points"]:
-		offsets.append(_art_to_world(point))
-	pixels_scattered.emit(offsets, erased["colors"], state.x, state.y, state.velocity_x, state.velocity_y, kick)
+	_wave.add_hit(erased["points"], erased["colors"], hit_point, kick, blast)
+	_jolt_size = maxf(_jolt_size, clampf(erased["points"].size() / 120.0, 0.5, 5.0))
+	_jolt_ticks = JOLT_TICKS
+	var hit_at: Vector2 = _art_to_world(hit_point)
 	for piece: Dictionary in body.split_off():
+		_wave.remove_now(piece["points"])
 		var at: Vector2 = _art_to_world(piece["center"])
-		part_detached.emit(piece, state.x + at.x, state.y + at.y, state.velocity_x, state.velocity_y, heading, angular_velocity, kick)
+		var thrown: Vector2 = kick + (at - hit_at).normalized() * blast * 0.4
+		part_detached.emit(piece, state.x + at.x, state.y + at.y, state.velocity_x, state.velocity_y, heading, angular_velocity, thrown)
 	_update_for_damage()
 
 
+# Plays out damage on the art one tick further: pixels come off as sparks, a crushed ship
+# sinks to where it now rests, and the whole thing shakes briefly.
+func _show_damage() -> void:
+	if _wave.is_idle() and _sink == Vector2.ZERO and _jolt_ticks <= 0:
+		return
+	var palette: AgencyPalette = UiStyle.palette()
+	for spray: Dictionary in _wave.advance(palette.thrust_white, palette.thrust_yellow, palette.thrust_red):
+		var offsets := PackedVector2Array()
+		for point: Vector2 in spray["points"]:
+			offsets.append(_shown_to_world(point))
+		pixels_scattered.emit(offsets, spray["colors"], spray["size"], state.x, state.y, state.velocity_x, state.velocity_y, spray["kick"], _shown_to_world(spray["hit_point"]), spray["blast"])
+	_sink = _sink.move_toward(Vector2.ZERO, _sink_per_tick)
+	_jolt_ticks -= 1
+	if _jolt_ticks <= 0:
+		_jolt_size = 0.0
+	_place_art()
+
+
 func _update_for_damage() -> void:
-	_texture.update(body.image)
+	if _wave.is_idle():
+		_wave.show_image(body.image)
 
 	# The ship now turns around its new center of mass, which stays put in the world.
 	if body.pixel_count > 0:
@@ -516,7 +559,11 @@ func _update_for_damage() -> void:
 	_rest_height = body.reach(_pivot, Vector2.DOWN)
 	state.ground_clearance = body.reach(_pivot, _local_down())
 	if state.is_on_surface():
+		var was_x: float = state.x
+		var was_y: float = state.y
 		_rest_on_ground()
+		_sink += Vector2(was_x - state.x, was_y - state.y).rotated(-heading)
+		_sink_per_tick = maxf(_sink.length() / _wave.ticks_left(), 0.5)
 
 	if cockpit_count > 0 and cockpit_total / cockpit_count < module_dead_share and not _lost:
 		_lost = true
@@ -695,7 +742,10 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 
 # The art hangs off the ship's real center, which moves on the art as damage shifts it.
 func _place_art() -> void:
-	var offset: Vector2 = -_pivot * _sprite_scale
+	var offset: Vector2 = (_sink - _pivot) * _sprite_scale
+	if _jolt_ticks > 0:
+		var fading: float = float(_jolt_ticks) / JOLT_TICKS
+		offset += Vector2(sin(_jolt_ticks * 2.1), cos(_jolt_ticks * 1.3)) * _jolt_size * fading * _sprite_scale
 	_sprite.position = offset
 	_puffs.position = offset
 	_glow.position = offset
