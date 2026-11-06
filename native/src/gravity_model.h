@@ -42,6 +42,10 @@ public:
 	virtual godot::PackedFloat64Array find_encounter(const godot::Ref<ShipState> &p_state, double p_duration) const = 0;
 
 	virtual int get_body_count() const = 0;
+	// The body this one orbits. -1 for body 0, which orbits nothing.
+	virtual int get_body_parent(int p_index) const = 0;
+	// The planet a body belongs to: itself, or the planet a moon circles. Body 0 is its own.
+	int get_local_root(int p_index) const;
 	// Where a body is at a moment in time, as [x, y]. Bodies move on rails, computed from
 	// the time, so this works for any moment without simulating up to it.
 	virtual godot::PackedFloat64Array get_body_position(int p_index, double p_time) const = 0;
@@ -60,7 +64,8 @@ public:
 	// How fast the ground of the dominant body is moving under this point, as [x, y]. This
 	// is the one place ground speed comes from, so planet spin only has to change this.
 	virtual godot::PackedFloat64Array get_surface_velocity(double p_x, double p_y, double p_time) const = 0;
-	// One lap of a body's rails, flat [x0, y0, x1, y1, ...]. Empty for body 0.
+	// One lap of a body's rails around its parent, relative to the parent, flat
+	// [x0, y0, x1, y1, ...]. Empty for body 0.
 	virtual godot::PackedFloat64Array get_body_orbit_path(int p_index, int p_samples) const = 0;
 
 protected:

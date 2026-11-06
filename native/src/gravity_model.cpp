@@ -6,6 +6,14 @@ using namespace godot;
 
 namespace final_orbit {
 
+int GravityModel::get_local_root(int p_index) const {
+	int index = p_index;
+	while (index > 0 && get_body_parent(index) > 0) {
+		index = get_body_parent(index);
+	}
+	return index;
+}
+
 void GravityModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_acceleration", "x", "y", "time"), &GravityModel::get_acceleration);
 	ClassDB::bind_method(D_METHOD("propagate", "state", "dt"), &GravityModel::propagate);
@@ -15,6 +23,8 @@ void GravityModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_altitude", "x", "y", "time"), &GravityModel::get_altitude);
 	ClassDB::bind_method(D_METHOD("get_surface_velocity", "x", "y", "time"), &GravityModel::get_surface_velocity);
 	ClassDB::bind_method(D_METHOD("get_body_count"), &GravityModel::get_body_count);
+	ClassDB::bind_method(D_METHOD("get_body_parent", "index"), &GravityModel::get_body_parent);
+	ClassDB::bind_method(D_METHOD("get_local_root", "index"), &GravityModel::get_local_root);
 	ClassDB::bind_method(D_METHOD("get_body_position", "index", "time"), &GravityModel::get_body_position);
 	ClassDB::bind_method(D_METHOD("get_body_velocity", "index", "time"), &GravityModel::get_body_velocity);
 	ClassDB::bind_method(D_METHOD("get_orbit_apsides", "state"), &GravityModel::get_orbit_apsides);

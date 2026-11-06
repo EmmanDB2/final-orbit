@@ -7,8 +7,9 @@
 // equations. It doesn't add up small steps, so a time step of any size lands on the
 // same orbit, and orbits don't drift over time.
 //
-// Inside a moon's sphere of influence the ship's orbit is solved around the moon, in
-// the moon's moving frame. World position and velocity carry straight across the switch.
+// Bodies nest: a star at the center, planets on rails around it, moons on rails around
+// those. Inside a body's sphere of influence the ship's orbit is solved around that body,
+// in its moving frame. World position and velocity carry straight across each switch.
 #pragma once
 
 #include "gravity_model.h"
@@ -26,9 +27,10 @@ public:
 	// landing zone starts.
 	void set_central_body(double p_mu, double p_radius, double p_entry_altitude = 0.0);
 
-	// Adds a moon on rails around body 0. Call set_central_body first. Angles are in
-	// radians, and the moon goes clockwise on screen, the same way the ship starts.
-	void add_moon(double p_mu, double p_radius, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start, double p_entry_altitude = 0.0);
+	// Adds a body on rails around an existing one and returns its index. Call
+	// set_central_body first. Angles are in radians, and the body goes clockwise on screen,
+	// the same way the ship starts.
+	int add_body(int p_parent, double p_mu, double p_radius, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start, double p_entry_altitude = 0.0);
 
 	godot::PackedFloat64Array get_acceleration(double p_x, double p_y, double p_time) const override;
 	void propagate(const godot::Ref<ShipState> &p_state, double p_dt) const override;
@@ -38,6 +40,7 @@ public:
 	double get_altitude(double p_x, double p_y, double p_time) const override;
 	godot::PackedFloat64Array get_surface_velocity(double p_x, double p_y, double p_time) const override;
 	int get_body_count() const override;
+	int get_body_parent(int p_index) const override;
 	godot::PackedFloat64Array get_body_position(int p_index, double p_time) const override;
 	godot::PackedFloat64Array get_body_velocity(int p_index, double p_time) const override;
 	godot::PackedFloat64Array get_orbit_apsides(const godot::Ref<ShipState> &p_state) const override;
@@ -63,7 +66,8 @@ private:
 		double entry_altitude = 0.0;
 		// Radians per second. Zero for now: spinning planets are Tier 1.
 		double spin_rate = 0.0;
-		// Rails around body 0. Body 0 itself doesn't use these.
+		// The body this one orbits, and its rails around it. Body 0 doesn't use these.
+		int parent = -1;
 		double semi_major_axis = 0.0;
 		double eccentricity = 0.0;
 		double argument_of_periapsis = 0.0;
@@ -116,7 +120,9 @@ private:
 	// Fastest the ship can go on this conic above the body's surface.
 	double peak_speed(const State2D &p_state, const Body &p_body) const;
 
-	// Where a body is and how it's moving, computed from the time.
+	// Where a body is and how it's moving relative to its parent, computed from the time.
+	State2D rail_state(int p_index, double p_time) const;
+	// The same in the world, adding up its parents.
 	State2D body_state(int p_index, double p_time) const;
 	int dominant_body(double p_x, double p_y, double p_time) const;
 	// The longest jump that can't skip over a sphere of influence.

@@ -3,8 +3,9 @@
 #
 # Zoom moves smoothly and has no outer limit. The stops are where the buttons and keys
 # land. What stays centered depends only on the zoom, so the view can't jump: the ship up
-# close, the body you're orbiting at the ORBIT zoom, and the middle of the system at the
-# SYS zoom. In between, the ship or body slides steadily toward the middle as you zoom.
+# close, the body you're orbiting at the ORBIT zoom, its planet at the SYS zoom, and the
+# star at the whole system zoom. In between, one slides steadily into the next. Out in
+# deep space the ship stands in for the body and planet, since the star's too far to fit.
 #
 # Zooming changes what gets drawn, never the pixel size, so the Camera2D's own zoom stays
 # at 1 and its position stays at 0,0. Instead, this signals the current view and each
@@ -21,8 +22,11 @@ signal view_changed(center_x: float, center_y: float, pixels_per_unit: float)
 @export var zoom_out_step: float = 3.0
 ## The zoom the ORBIT button goes to, and the one the game starts at.
 @export var orbit_zoom: float = 1.0 / 800.0
-## The zoom the SYS button goes to.
+## The zoom the SYS button goes to first: a planet and its moons. Pressing it again shows
+## the whole star system.
 @export var system_zoom: float = 1.0 / 2400.0
+## How much of the screen's height the widest planet orbit fills at the whole system zoom.
+@export var whole_system_fill: float = 0.8
 ## The ship is fully centered at this zoom and closer.
 @export var ship_focus_zoom: float = 1.0 / 128.0
 ## How quickly zoom closes in on its target. Higher is snappier.
@@ -38,6 +42,7 @@ signal view_changed(center_x: float, center_y: float, pixels_per_unit: float)
 var _gravity_model: GravityModel
 var _state: ShipState
 var _far_fit: float = 1.0
+var _whole_system_zoom: float = 1.0 / 160000.0
 var _zoom: float = 1.0 / 800.0
 var _target_zoom: float = 1.0 / 800.0
 var _body: int = 0
@@ -51,6 +56,13 @@ func start_view(gravity_model: GravityModel, state: ShipState) -> void:
 	_state = state
 	_zoom = orbit_zoom
 	_target_zoom = orbit_zoom
+	var widest: float = 0.0
+	for index in range(1, gravity_model.get_body_count()):
+		if gravity_model.get_body_parent(index) == 0:
+			var at: PackedFloat64Array = gravity_model.get_body_position(index, 0.0)
+			widest = maxf(widest, sqrt(at[0] * at[0] + at[1] * at[1]))
+	if widest > 0.0:
+		_whole_system_zoom = whole_system_fill * design_height / (2.0 * widest)
 
 
 ## Jumps straight to a zoom, with no easing.
@@ -72,7 +84,9 @@ func _on_screen_fitted(view_size: Vector2, _inset_top_left: Vector2, _inset_bott
 func _on_zoom_button_pressed(button_name: String) -> void:
 	match button_name:
 		"SYS":
-			_target_zoom = system_zoom * _far_fit
+			var local: float = system_zoom * _far_fit
+			var at_local: bool = absf(_target_zoom / local - 1.0) < 0.01
+			_target_zoom = _whole_system_zoom * _far_fit if at_local or _body == 0 else local
 		"ORBIT":
 			_target_zoom = orbit_zoom * _far_fit
 		"SHIP":
@@ -105,31 +119,37 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 		_body_blend = 0.0
 	_body_blend = minf(_body_blend + delta / focus_blend_seconds, 1.0)
 
-	var now: PackedFloat64Array = _gravity_model.get_body_position(_body, _state.time)
-	var body_x: float = now[0]
-	var body_y: float = now[1]
-	if _body_blend < 1.0:
-		var before: PackedFloat64Array = _gravity_model.get_body_position(_previous_body, _state.time)
-		var share: float = smoothstep(0.0, 1.0, _body_blend)
-		body_x = lerpf(before[0], body_x, share)
-		body_y = lerpf(before[1], body_y, share)
+	var share: float = smoothstep(0.0, 1.0, _body_blend)
+	var ship := PackedFloat64Array([x, y])
+	var orbit_center: PackedFloat64Array = _mix(_body_center(_previous_body, ship), _body_center(_body, ship), share)
+	var planet_center: PackedFloat64Array = _mix(
+			_body_center(_gravity_model.get_local_root(_previous_body), ship),
+			_body_center(_gravity_model.get_local_root(_body), ship), share)
 
 	var orbit: float = orbit_zoom * _far_fit
 	var system: float = system_zoom * _far_fit
-	var center_x: float = 0.0
-	var center_y: float = 0.0
+	var whole: float = _whole_system_zoom * _far_fit
+	var center: PackedFloat64Array = ship
 	if _zoom >= ship_focus_zoom:
-		center_x = x
-		center_y = y
+		center = ship
 	elif _zoom >= orbit:
-		var keep: float = _share_left(_zoom, orbit, ship_focus_zoom)
-		center_x = x + (body_x - x) * keep
-		center_y = y + (body_y - y) * keep
+		center = _mix(ship, orbit_center, _share_left(_zoom, orbit, ship_focus_zoom))
 	elif _zoom >= system:
-		var keep: float = _share_left(_zoom, system, orbit)
-		center_x = body_x - body_x * keep
-		center_y = body_y - body_y * keep
-	view_changed.emit(center_x, center_y, _zoom)
+		center = _mix(orbit_center, planet_center, _share_left(_zoom, system, orbit))
+	elif _zoom >= whole:
+		center = _mix(planet_center, PackedFloat64Array([0.0, 0.0]), _share_left(_zoom, whole, system))
+	else:
+		center = PackedFloat64Array([0.0, 0.0])
+	view_changed.emit(center[0], center[1], _zoom)
+
+
+# Where a body is, or the ship for the star, which is too far off to center on up close.
+func _body_center(body: int, ship: PackedFloat64Array) -> PackedFloat64Array:
+	return ship if body == 0 else _gravity_model.get_body_position(body, _state.time)
+
+
+func _mix(from: PackedFloat64Array, to: PackedFloat64Array, share: float) -> PackedFloat64Array:
+	return PackedFloat64Array([lerpf(from[0], to[0], share), lerpf(from[1], to[1], share)])
 
 
 # How much of the old center remains at this zoom, between a far zoom and a near one. It's

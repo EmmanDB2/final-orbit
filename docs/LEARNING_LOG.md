@@ -156,3 +156,11 @@ Files: `scripts/rcs_puffs.gd`, `scripts/ship.gd`, `scripts/ship/ship_design.gd`,
 Files: `scripts/ship.gd`, `docs/DESIGN.md`
 
 - scaling a sprite with the zoom
+
+## 2026-11-05: Tier 1, ticket 5: the real star and nested rails
+
+Files: `native/src/patched_conics_model.*`, `native/src/gravity_model.*`, `tests/test_gravity_model.gd`, `scripts/main.gd`, `scripts/flight_view.gd`, `scripts/trajectory_preview.gd`, `scripts/body_guides.gd`, `scripts/body_view.gd`, `scripts/star_view.gd`, `scripts/star_light.gd`, `scripts/star_data.gd`, `scripts/starfield.gd`, `scripts/ship.gd`, `shaders/star.gdshader`, `scenes/main.tscn`, `data/home_star.tres`, `data/home_planet.tres`, `docs/DESIGN.md`
+
+- nested reference frames
+- spheres of influence inside spheres of influence
+- 32-bit screen coordinates and floating origins

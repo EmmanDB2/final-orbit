@@ -18,7 +18,7 @@ extends Resource
 @export var landing_line_altitude: float = 0.0
 
 @export_group("Rails")
-## Average distance from the center of the system. Zero for the body at the center.
+## Average distance from the body this one orbits. Zero for the body at the center.
 @export var orbit_semi_major_axis: float = 0.0
 ## How stretched the orbit is: 0 is a circle, close to 1 is a long ellipse.
 @export var orbit_eccentricity: float = 0.0

@@ -1,35 +1,44 @@
-# body_guides.gd: draws each moon's rails and the edge of its sphere of influence.
-# From DESIGN.md, "Camera, zoom, and landing" (far zooms show local orbits and spheres
-# of influence).
+# body_guides.gd: draws each body's rails and the edge of its sphere of influence.
+# From DESIGN.md, "Camera, zoom, and landing" (far zooms show orbits and spheres of
+# influence).
+#
+# Each body's rails are drawn around its parent as it is now, since moons ride along with
+# their planet. An orbit or ring too small to read on screen is left out.
 extends Node2D
 
 ## Canopy glass dark from the agency palette, so these sit behind the telemetry line.
 @export var guide_color: Color = Color("2A4A55")
 ## The guides show at this zoom and farther out.
 @export var closest_zoom: float = 0.01
-## Points along each moon's orbit.
-@export var orbit_samples: int = 256
+## Points along each orbit.
+@export var orbit_samples: int = 512
 ## Points around each sphere of influence.
 @export var ring_points: int = 96
+## An orbit whose radius on screen is smaller than this isn't drawn, in pixels.
+@export var smallest_orbit: float = 12.0
+## A sphere of influence whose radius on screen is smaller than this isn't drawn, in pixels.
+@export var smallest_ring: float = 5.0
 
 var _gravity_model: GravityModel
 var _state: ShipState
-var _world_orbits: Array[PackedFloat64Array] = []
+var _rails: Array[PackedFloat64Array] = []
 var _screen_orbits: Array[PackedVector2Array] = []
+var _center_x: float = 0.0
+var _center_y: float = 0.0
 var _pixels_per_unit: float = 0.0
 
 
-## Starts drawing the guides for every moon in the gravity model.
+## Starts drawing the guides for every body with rails in the gravity model.
 func start_guides(gravity_model: GravityModel, state: ShipState) -> void:
 	_gravity_model = gravity_model
 	_state = state
 	for index in range(1, gravity_model.get_body_count()):
-		_world_orbits.append(gravity_model.get_body_orbit_path(index, orbit_samples))
+		_rails.append(gravity_model.get_body_orbit_path(index, orbit_samples))
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
-	# This sits in the background layer, behind the bodies, where the origin is the screen's corner.
-	position = (get_viewport_rect().size / 2.0 + Vector2(-center_x * pixels_per_unit, -center_y * pixels_per_unit)).round()
+	_center_x = center_x
+	_center_y = center_y
 	visible = pixels_per_unit <= closest_zoom
 	if pixels_per_unit != _pixels_per_unit:
 		_pixels_per_unit = pixels_per_unit
@@ -40,25 +49,37 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 
 func _rebuild_orbits() -> void:
 	_screen_orbits.clear()
-	for world: PackedFloat64Array in _world_orbits:
+	for rail: PackedFloat64Array in _rails:
 		var screen := PackedVector2Array()
-		screen.resize(world.size() / 2)
+		screen.resize(rail.size() / 2)
 		for i in range(screen.size()):
-			screen[i] = Vector2(world[i * 2] * _pixels_per_unit, world[i * 2 + 1] * _pixels_per_unit)
+			screen[i] = Vector2(rail[i * 2] * _pixels_per_unit, rail[i * 2 + 1] * _pixels_per_unit)
 		_screen_orbits.append(screen)
 
 
 func _draw() -> void:
+	# This sits in the background layer, behind the bodies, where the origin is the screen's corner.
+	var middle: Vector2 = get_viewport_rect().size / 2.0
 	for i in range(_screen_orbits.size()):
 		var index: int = i + 1
-		var now: PackedFloat64Array = _gravity_model.get_body_position(index, _state.time)
-		var center := Vector2(now[0] * _pixels_per_unit, now[1] * _pixels_per_unit)
+		var parent_now: PackedFloat64Array = _gravity_model.get_body_position(_gravity_model.get_body_parent(index), _state.time)
+		var body_now: PackedFloat64Array = _gravity_model.get_body_position(index, _state.time)
+		var parent_on_screen := Vector2(
+				(parent_now[0] - _center_x) * _pixels_per_unit,
+				(parent_now[1] - _center_y) * _pixels_per_unit)
+		draw_set_transform((middle + parent_on_screen).round())
+
+		var center := Vector2(
+				(body_now[0] - parent_now[0]) * _pixels_per_unit,
+				(body_now[1] - parent_now[1]) * _pixels_per_unit)
 		var radius: float = _gravity_model.get_sphere_of_influence(index) * _pixels_per_unit
-		_draw_outside_ring(_screen_orbits[i], center, radius)
-		draw_arc(center, radius, 0.0, TAU, ring_points, guide_color, -1.0)
+		if center.length() >= smallest_orbit:
+			_draw_outside_ring(_screen_orbits[i], center, radius)
+		if radius >= smallest_ring and center.length() >= smallest_orbit:
+			draw_arc(center, radius, 0.0, TAU, ring_points, guide_color, -1.0)
 
 
-# Draws a moon's orbit line, stopping where it meets the ring around that moon.
+# Draws a body's orbit line, stopping where it meets the ring around that body.
 func _draw_outside_ring(points: PackedVector2Array, center: Vector2, radius: float) -> void:
 	var run := PackedVector2Array()
 	for i in range(points.size()):

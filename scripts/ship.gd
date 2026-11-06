@@ -190,7 +190,8 @@ func _physics_process(delta: float) -> void:
 	if on_surface and not _was_on_surface:
 		var tilt: float = absf(angle_difference(heading, _local_up_heading()))
 		touched_down.emit(state.get_touchdown_speed(), tilt <= upright_tolerance)
-		if _gravity_model.get_dominant_body(state.x, state.y, state.time) == 0:
+		var landed_on: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
+		if _gravity_model.get_body_parent(landed_on) == 0:
 			fuel = body.fuel_capacity
 			_update_performance()
 	elif _was_on_surface and not on_surface:

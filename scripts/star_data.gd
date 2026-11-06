@@ -1,13 +1,11 @@
-# star_data.gd: the numbers that describe one star's light.
+# star_data.gd: the numbers that describe a star: a body at the center of the system,
+# plus its light.
 # From DESIGN.md, "Universe generation" (a star's type sets its light color and
-# luminosity) and the star tint idea in the parking lot.
+# luminosity) and "Art direction" (star tint).
 class_name StarData
-extends Resource
+extends BodyData
 
 ## The color of the star's light, which tints the space around it.
 @export var color: Color = Color.WHITE
-## Where the star sits in the world, in pixels.
-@export var world_x: float = 0.0
-@export var world_y: float = 0.0
 ## Distance at which the star's light has dropped to half. Bigger means a brighter star.
 @export var falloff_distance: float = 4000.0

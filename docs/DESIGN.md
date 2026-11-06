@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Real star built: it's body 0, with the planet on rails around it and the moon on rails around the planet. Star tint now comes from it. SYS shows a planet and its moons, and a second press shows the whole system \[Leaning\]. Reaching the star takes about 40 minutes without time warp |
 | 2026-11-05 | The ship sprite has no minimum size: it stays at true scale until the icon takes over at the Orbit view \[Leaning\] |
 | 2026-11-05 | RCS puffs built, firing from the side nubs and tail nozzles on the art \[Leaning\] |
 | 2026-11-05 | Time warp put in the parking lot for now |
@@ -191,7 +192,7 @@ Gravity model interface: \[Locked\]
 - `GravityModel.propagate(ship_state, dt)`
 - `GravityModel.predict_trajectory(ship_state, duration, samples)`
 - `GravityModel.find_encounter(ship_state, duration)`: when the coast next falls under another body's gravity.
-- Body queries: `get_body_count`, `get_body_position(index, time)`, `get_body_radius`, `get_dominant_body(x, y, time)`, `get_sphere_of_influence`, `get_body_orbit_path`. Body 0 is the center of the system, fixed at the world origin.
+- Body queries: `get_body_count`, `get_body_parent`, `get_local_root`, `get_body_position(index, time)`, `get_body_radius`, `get_dominant_body(x, y, time)`, `get_sphere_of_influence`, `get_body_orbit_path`. Body 0 is the star at the center of the system, fixed at the world origin. Planets orbit it, and moons orbit planets.
 - Positions are separate 64-bit x and y, in `ShipState` or as plain floats, because Godot's Vector2 is 32-bit.
 - `PatchedConicsModel` ships first; `NBodyModel` (ship feels every body, planets stay on rails) plugs in later. Nothing else in the game knows which is running.
 
@@ -233,15 +234,16 @@ Scale and precision: \[Leaning\]
 
 - Planets around 1/10 real scale, tuned for play.
 - Readouts show 1 world unit as 1 m, so distances read big, with bigger planets and distances to come. \[Leaning\]
+- Tier 1's star has 5,000 times the planet's mass and sits 45 million units away, so a lap of the planet around it takes about 3.5 hours at about 22,000 units/s. A full tank can drop from low orbit almost to the star, in about 40 minutes. That's the longest trip that works without time warp. These live in `data/home_star.tres` and `data/home_planet.tres`. \[Leaning\]
 - The Tier 0 planet is far smaller for now, so a low orbit takes under 4 minutes without time warp: radius 150,000 px and surface gravity 200 px/s², or about 1/850 real scale if the 35 px pilot is 1.75 m. Revisit once time warp exists. These live in `data/home_planet.tres`. \[Leaning\]
 - Floating origin re-centered on the ship to avoid jitter.
 - Physics math in 64-bit, either in native code or a double-precision engine build.
 
 Trajectory preview: computed on a background thread, in chunks, and cached while the player drags a maneuver. \[Leaning\]
 
-Tier 0's preview draws the ship's current path as a 1 px telemetry cyan line: one full lap on a closed orbit, otherwise up to an hour ahead or until it hits a surface. Closed-form paths are cheap, so it runs on the main thread. It updates on a burn, on a change of dominant body, and every tick while orbiting a moving body or on a path that doesn't close, so no flown part lingers behind the ship. A closed orbit updates twice a second, to catch encounters as the moon moves. The background thread can wait until maneuvers exist. \[Leaning\]
+The preview draws the ship's current path as a 1 px telemetry cyan line: one full lap on a closed orbit, otherwise up to six hours ahead or until it hits a surface. Closed-form paths are cheap, so it runs on the main thread. It updates on a burn, on a change of dominant body, and every tick while orbiting a moving body or on a path that doesn't close, so no flown part lingers behind the ship. A closed orbit updates twice a second, to catch encounters as the moon moves. The background thread can wait until maneuvers exist. \[Leaning\]
 
-Around a moon, the line is drawn around the moon as it is now. An upcoming encounter is drawn around the moon as it will be on arrival, with a ring showing where that is, so the line has a kink where it enters the moon's frame. The line ends on leaving the moon's sphere; the path after that shows once you get there. \[Leaning\]
+Around a moon, the line is drawn around the moon as it is now. An upcoming encounter is drawn around the moon as it will be on arrival, with a ring showing where that is, so the line has a kink where it enters the moon's frame. The line ends on leaving a moon's or planet's sphere; the path after that shows once you get there. \[Leaning\]
 
 Landing line: the part of the line inside a body's landing zone, and everything below it, is drawn in telemetry amber, so you can see where a path starts coming down. The zone starts at the top of the atmosphere, or at a set height on an airless body, and both live in the body's data file. \[Leaning\]
 
@@ -307,8 +309,8 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 | 7 | Surface | Flat ground, terrain, pads, the pilot through the canopy |
 
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
-- Tier 0 builds tiers 3 to 7. Planet centers on the middle of the system, Orbit centers on whichever body you're orbiting, and Approach, Descent, and Surface center on the ship. In between, the center slides steadily with the zoom. \[Leaning\]
-- The far tiers draw each moon's rails and sphere of influence in dark canopy glass from the agency palette, behind the planet and moons. A moon's orbit line stops at its sphere of influence ring. \[Leaning\]
+- Tiers 2 to 7 are built. Star system centers on the star, Planet on the planet you're around, Orbit on whichever body you're orbiting, and Approach, Descent, and Surface on the ship. In between, the center slides steadily with the zoom. Out in deep space, the ship stands in for the planet and orbited body. \[Leaning\]
+- The far tiers draw each body's rails and sphere of influence in dark canopy glass from the agency palette, behind the bodies. An orbit line stops at that body's sphere of influence ring, and rails or rings too small to read aren't drawn. \[Leaning\]
 - A ship rests on its engine bell, and on the ground it settles upright and the turn keys do nothing, so thrust always lifts it straight off. \[Leaning\]
 - Tier 0 has no damage: a touchdown only reports LANDED (up to 50 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 500 units/s). \[Leaning\]
 - Up close, patches of the next color speckle the ground so you can see drift. \[Leaning\]
@@ -340,7 +342,7 @@ Top bar: \[Locked\]
 Side panels: \[Locked\]
 
 - Left edge: LED bar gauges for fuel, hull, and heat, plus a notched throttle lever.
-- Bottom-left, next to the left panel: zoom buttons. SYS shows the local system, ORBIT shows what you're orbiting, and SHIP goes to the closest view of the ship.
+- Bottom-left, next to the left panel: zoom buttons. SYS shows the local system, and pressing it again shows the whole star system. ORBIT shows what you're orbiting, and SHIP goes to the closest view of the ship.
 - Right side, at the bottom: flight mode buttons (ASS, STAB, NODE) and the BURN button under a red flip-up safety cover.
 - The throttle lever sets thrust power, and BURN activates it.
 - The first touch lifts BURN's cover and the button fires while held. The cover drops again after 6 seconds with no burning. \[Leaning\]
@@ -425,7 +427,8 @@ Space palette (generated per system): \[Locked\]
 - Each system rolls a small palette from its seed; each planet uses about 6 colors from it.
 - Star colors come from real temperature; anomaly systems may roll colors that make no physical sense.
 - Backgrounds are always very dark. Pure black only happens far from any star. \[Leaning\]
-- Star tint: space takes on a slight tint of the system star's color, deeper near the star and fading toward black far from it, so the color of space shows your distance from the star. Faint stars wash out in the glare near the star and reappear far from it. The full version needs real stars in Tier 1; until then it's a prototype behind `FeatureFlags.STAR_TINT` with an invisible fake star in `data/test_star.tres`. \[Leaning\]
+- Star tint: space takes on a slight tint of the system star's color, deeper near the star and fading toward black far from it, so the color of space shows your distance from the star. Faint stars wash out in the glare near the star and reappear far from it. It's measured from the real star at the center of the system. \[Leaning\]
+- The star is a boiling disc, white hot in the middle and taking on its color toward the rim, with a stepped glow. Far out it stays at least 3 px in radius, and planets at least 2 px, so they can be found. \[Leaning\]
 - Background stars are a seeded shader with three parallax layers. Real stars would barely shift; the parallax is there so motion reads in empty space. \[Leaning\]
 
 Readability rules: \[Locked\]

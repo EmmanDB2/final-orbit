@@ -46,7 +46,7 @@ func _initialize() -> void:
 
 	var with_moon := PatchedConicsModel.new()
 	with_moon.set_central_body(MU, RADIUS)
-	with_moon.add_moon(MOON_MU, MOON_RADIUS, MOON_ORBIT, MOON_ECCENTRICITY, 0.5, 0.3)
+	with_moon.add_body(0, MOON_MU, MOON_RADIUS, MOON_ORBIT, MOON_ECCENTRICITY, 0.5, 0.3)
 	_model = with_moon
 
 	_test_rails()
@@ -59,6 +59,8 @@ func _initialize() -> void:
 	_test_encounter_prediction()
 	_test_prediction_inside_soi()
 	_test_moon_ground_speed_and_altitude()
+
+	_test_nested_system()
 
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -617,3 +619,137 @@ func _test_precision_far_from_body() -> void:
 	for i in range(60):
 		_model.propagate(state, 1.0 / 60.0)
 	_check("1 px/s still moves at x = 1e12", state.x - start, 1.0, 1e-2)
+
+
+# A star, a planet on rails around it, and a moon on rails around the planet.
+func _test_nested_system() -> void:
+	const STAR_MU := 2.25e16
+	const PLANET_ORBIT := 4.53e7
+	const NEST_MOON_ORBIT := 6.0e5
+	var system := PatchedConicsModel.new()
+	system.set_central_body(STAR_MU, 2.5e6)
+	var planet: int = system.add_body(0, MU, RADIUS, PLANET_ORBIT, 0.0, 0.0, 0.0)
+	var moon: int = system.add_body(planet, MOON_MU, MOON_RADIUS, NEST_MOON_ORBIT, 0.0, 0.0, 0.0)
+	_check("planet is body 1", planet, 1, 0.0)
+	_check("moon is body 2", moon, 2, 0.0)
+	_check("body 0 orbits nothing", system.get_body_parent(0), -1, 0.0)
+	_check("the moon orbits the planet", system.get_body_parent(moon), planet, 0.0)
+	_check("the moon belongs to the planet", system.get_local_root(moon), planet, 0.0)
+	_check("the planet belongs to itself", system.get_local_root(planet), planet, 0.0)
+	_check("the star belongs to itself", system.get_local_root(0), 0, 0.0)
+
+	var planet_soi: float = PLANET_ORBIT * pow(MU / STAR_MU, 0.4)
+	var moon_soi: float = NEST_MOON_ORBIT * pow(MOON_MU / MU, 0.4)
+	_check("planet's sphere comes from the star", system.get_sphere_of_influence(planet), planet_soi, 1e-6)
+	_check("moon's sphere comes from the planet", system.get_sphere_of_influence(moon), moon_soi, 1e-6)
+
+	# Rails add up.
+	var t := 1234.5
+	var planet_at: PackedFloat64Array = system.get_body_position(planet, t)
+	var moon_at: PackedFloat64Array = system.get_body_position(moon, t)
+	_check("planet stays on its rails", _length(planet_at[0], planet_at[1]), PLANET_ORBIT, 1e-6)
+	_check("moon stays on its rails around the moving planet", _length(moon_at[0] - planet_at[0], moon_at[1] - planet_at[1]), NEST_MOON_ORBIT, 1e-6)
+	var before: PackedFloat64Array = system.get_body_position(moon, t - 0.5)
+	var after: PackedFloat64Array = system.get_body_position(moon, t + 0.5)
+	var moon_velocity: PackedFloat64Array = system.get_body_velocity(moon, t)
+	_check("moon's velocity includes the planet's, x", moon_velocity[0], after[0] - before[0], 0.01)
+	_check("moon's velocity includes the planet's, y", moon_velocity[1], after[1] - before[1], 0.01)
+	var moon_path: PackedFloat64Array = system.get_body_orbit_path(moon, 33)
+	_check("moon's rails are relative to the planet", _length(moon_path[0], moon_path[1]), NEST_MOON_ORBIT, 1e-6)
+	var planet_path: PackedFloat64Array = system.get_body_orbit_path(planet, 33)
+	_check("planet's rails are relative to the star", _length(planet_path[8], planet_path[9]), PLANET_ORBIT, 1e-6)
+
+	# Which gravity applies.
+	_check("near the moon means the moon", system.get_dominant_body(moon_at[0] + moon_soi * 0.5, moon_at[1], t), moon, 0.0)
+	_check("in the planet's sphere means the planet", system.get_dominant_body(planet_at[0] + planet_soi * 0.9, planet_at[1], t), planet, 0.0)
+	_check("past the planet's sphere means the star", system.get_dominant_body(planet_at[0] + planet_soi * 1.1, planet_at[1], t), 0, 0.0)
+	var ground: PackedFloat64Array = system.get_surface_velocity(moon_at[0] + moon_soi * 0.5, moon_at[1], t)
+	_check("ground speed comes with the parents", ground[0], moon_velocity[0], 1e-6)
+
+	# A low orbit around the moving planet closes in the planet's frame.
+	var start_at: PackedFloat64Array = system.get_body_position(planet, 0.0)
+	var start_velocity: PackedFloat64Array = system.get_body_velocity(planet, 0.0)
+	var low := RADIUS + 30000.0
+	var orbit := ShipState.new()
+	orbit.x = start_at[0]
+	orbit.y = start_at[1] - low
+	orbit.velocity_x = start_velocity[0] + sqrt(MU / low)
+	orbit.velocity_y = start_velocity[1]
+	var points: PackedFloat64Array = system.predict_trajectory(orbit, 3600.0, 65)
+	_check("predicted lap starts at the ship", points[0], orbit.x, 1e-6)
+	_check("predicted lap ends where it starts", points[points.size() - 1], points[1], 1e-3)
+	var period: float = TAU * sqrt(low * low * low / MU)
+	for i in range(200):
+		system.propagate(orbit, period / 200.0)
+	var end_at: PackedFloat64Array = system.get_body_position(planet, period)
+	_check("one lap later it's back above the planet, x", orbit.x - end_at[0], 0.0, 0.01)
+	_check("one lap later it's back above the planet, y", orbit.y - end_at[1], -low, 0.01)
+
+	# Leaving the planet: world position carries across, and the star takes over.
+	var escape := ShipState.new()
+	var escape_at: PackedFloat64Array = system.get_body_position(planet, 0.0)
+	var escape_velocity: PackedFloat64Array = system.get_body_velocity(planet, 0.0)
+	escape.x = escape_at[0] - low
+	escape.y = escape_at[1]
+	escape.velocity_x = escape_velocity[0]
+	escape.velocity_y = escape_velocity[1] + sqrt(MU / low) * 2.0
+	var path_out: PackedFloat64Array = system.predict_trajectory(escape, 40000.0, 33)
+	var path_end_x: float = path_out[path_out.size() - 2]
+	var path_end_y: float = path_out[path_out.size() - 1]
+	_check("the line ends at the planet's sphere", _length(path_end_x - escape_at[0], path_end_y - escape_at[1]), planet_soi, 1.0)
+	var left_at := -1.0
+	while left_at < 0.0 and escape.time < 40000.0:
+		system.propagate(escape, 5.0)
+		if system.get_dominant_body(escape.x, escape.y, escape.time) == 0:
+			left_at = escape.time
+	_check("the ship leaves the planet's sphere", left_at > 0.0, true, 0.0)
+	var r_out: float = _length(escape.x, escape.y)
+	var energy: float = 0.5 * (escape.velocity_x * escape.velocity_x + escape.velocity_y * escape.velocity_y) - STAR_MU / r_out
+	system.propagate(escape, 3000.0)
+	if system.get_dominant_body(escape.x, escape.y, escape.time) == 0:
+		var r_later: float = _length(escape.x, escape.y)
+		var energy_later: float = 0.5 * (escape.velocity_x * escape.velocity_x + escape.velocity_y * escape.velocity_y) - STAR_MU / r_later
+		_check("the orbit around the star holds", energy_later / energy, 1.0, 1e-9)
+
+	# Coming in from deep space: the planet shows up as an encounter.
+	var inbound := ShipState.new()
+	var in_at: PackedFloat64Array = system.get_body_position(planet, 0.0)
+	var in_velocity: PackedFloat64Array = system.get_body_velocity(planet, 0.0)
+	inbound.x = in_at[0]
+	inbound.y = in_at[1] - planet_soi * 3.0
+	inbound.velocity_x = in_velocity[0]
+	inbound.velocity_y = in_velocity[1] + 3000.0
+	var encounter: PackedFloat64Array = system.find_encounter(inbound, 7200.0)
+	_check("the planet shows as an encounter", encounter.size(), 2, 0.0)
+	if encounter.size() == 2:
+		_check("it's the planet", int(encounter[1]), planet, 0.0)
+		system.propagate(inbound, encounter[0] + 1.0)
+		_check("flying there arrives in the planet's sphere", system.get_dominant_body(inbound.x, inbound.y, inbound.time), planet, 0.0)
+
+	# Inside the planet's sphere: the moon shows as an encounter, with the flyby drawn in
+	# the planet's frame even though the planet moves a long way meanwhile.
+	var aimed := ShipState.new()
+	var moon_now: PackedFloat64Array = system.get_body_position(moon, 0.0)
+	var moon_velocity_now: PackedFloat64Array = system.get_body_velocity(moon, 0.0)
+	aimed.x = moon_now[0] - moon_soi * 1.3
+	aimed.y = moon_now[1]
+	aimed.velocity_x = moon_velocity_now[0] + 2000.0
+	aimed.velocity_y = moon_velocity_now[1]
+	var moon_encounter: PackedFloat64Array = system.find_encounter(aimed, 3600.0)
+	_check("the moon shows as an encounter", moon_encounter.size(), 2, 0.0)
+	if moon_encounter.size() == 2:
+		_check("it's the moon", int(moon_encounter[1]), moon, 0.0)
+		var samples := 64
+		var predicted: PackedFloat64Array = system.predict_trajectory(aimed, moon_encounter[0] + 200.0, samples)
+		var seam: int = (samples * 2 / 3 - 1) * 2
+		var planet_then: PackedFloat64Array = system.get_body_position(planet, 0.0)
+		var predicted_x: float = predicted[seam] - planet_then[0]
+		var predicted_y: float = predicted[seam + 1] - planet_then[1]
+		system.propagate(aimed, moon_encounter[0])
+		var planet_arrival: PackedFloat64Array = system.get_body_position(planet, moon_encounter[0])
+		_check("the flyby starts where the ship really arrives, x", predicted_x, aimed.x - planet_arrival[0], 0.5)
+		_check("the flyby starts where the ship really arrives, y", predicted_y, aimed.y - planet_arrival[1], 0.5)
+
+
+func _length(x: float, y: float) -> float:
+	return sqrt(x * x + y * y)

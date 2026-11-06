@@ -3,8 +3,14 @@
 # move on Kepler rails, computed from time).
 extends ColorRect
 
+## Far out, a body stays at least this big on screen so it can be found, in pixels.
+@export var smallest_radius: float = 2.0
+## A moon whose orbit shrinks to less than this on screen is hidden, in pixels.
+@export var smallest_orbit: float = 8.0
+
 var _index: int = 0
 var _radius: float = 0.0
+var _moon_orbit: float = 0.0
 var _gravity_model: GravityModel
 var _state: ShipState
 
@@ -15,6 +21,7 @@ var _state: ShipState
 func show_body(index: int, body: BodyData, gravity_model: GravityModel, state: ShipState) -> void:
 	_index = index
 	_radius = body.radius
+	_moon_orbit = body.orbit_semi_major_axis if gravity_model.get_body_parent(index) > 0 else 0.0
 	_gravity_model = gravity_model
 	_state = state
 	_material.set_shader_parameter("surface_colors", body.surface_colors)
@@ -24,9 +31,18 @@ func show_body(index: int, body: BodyData, gravity_model: GravityModel, state: S
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
 	var position_now: PackedFloat64Array = _gravity_model.get_body_position(_index, _state.time)
+	var from_middle_x: float = (position_now[0] - center_x) * pixels_per_unit
+	var from_middle_y: float = (position_now[1] - center_y) * pixels_per_unit
+	var radius_px: float = maxf(_radius * pixels_per_unit, smallest_radius)
+	var distance: float = sqrt(from_middle_x * from_middle_x + from_middle_y * from_middle_y)
+	var on_screen: bool = distance - radius_px < size.length() / 2.0
+	visible = on_screen and (_moon_orbit == 0.0 or _moon_orbit * pixels_per_unit >= smallest_orbit)
+	if not visible:
+		return
+
 	var screen_center: Vector2 = size / 2.0
 	_material.set_shader_parameter("center_px", Vector2(
-			screen_center.x + (position_now[0] - center_x) * pixels_per_unit,
-			screen_center.y + (position_now[1] - center_y) * pixels_per_unit))
-	_material.set_shader_parameter("radius_px", _radius * pixels_per_unit)
+			screen_center.x + from_middle_x,
+			screen_center.y + from_middle_y))
+	_material.set_shader_parameter("radius_px", radius_px)
 	_material.set_shader_parameter("units_per_px", 1.0 / pixels_per_unit)

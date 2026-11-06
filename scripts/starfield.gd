@@ -16,19 +16,36 @@ const TILE_PIXELS: float = 16384.0
 ## many pixels per tick. Slow motion is nearly unaffected.
 @export var scroll_speed_limit: float = 20.0
 
+var _gravity_model: GravityModel
+var _state: ShipState
 var _scroll_x: PackedFloat64Array = PackedFloat64Array([0.0, 0.0, 0.0])
 var _scroll_y: PackedFloat64Array = PackedFloat64Array([0.0, 0.0, 0.0])
 var _last_center_x: float = 0.0
 var _last_center_y: float = 0.0
-var _last_pixels_per_unit: float = 0.0
+var _last_frame_body: int = -1
 
 @onready var _material: ShaderMaterial = material
 
 
-func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
-	# The very first view has nothing to compare with. After that the view never jumps,
-	# so the stars keep moving through zooms too.
-	if _last_pixels_per_unit > 0.0:
+## Starts following a flight.
+func start_stars(gravity_model: GravityModel, state: ShipState) -> void:
+	_gravity_model = gravity_model
+	_state = state
+
+
+func _on_view_changed(world_x: float, world_y: float, pixels_per_unit: float) -> void:
+	# Motion is measured from the planet the ship is around, or from the star out in deep
+	# space. Otherwise the planet's fast trip around the star would drag the stars along
+	# even while the ship sits on the ground.
+	var dominant: int = _gravity_model.get_dominant_body(_state.x, _state.y, _state.time)
+	var frame_body: int = _gravity_model.get_local_root(dominant)
+	var frame: PackedFloat64Array = _gravity_model.get_body_position(frame_body, _state.time)
+	var center_x: float = world_x - frame[0]
+	var center_y: float = world_y - frame[1]
+
+	# The first view, or a new frame, has nothing to compare with. Otherwise the view never
+	# jumps, so the stars keep moving through zooms too.
+	if frame_body == _last_frame_body:
 		var moved_x: float = (center_x - _last_center_x) * pixels_per_unit
 		var moved_y: float = (center_y - _last_center_y) * pixels_per_unit
 		var speed: float = sqrt(moved_x * moved_x + moved_y * moved_y)
@@ -42,7 +59,7 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 
 	_last_center_x = center_x
 	_last_center_y = center_y
-	_last_pixels_per_unit = pixels_per_unit
+	_last_frame_body = frame_body
 
 
 func _on_star_light_changed(color: Color, level: float) -> void:
