@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/star_view.gd" id="22_star_view"]
 [ext_resource type="Script" path="res://scripts/debris_field.gd" id="23_debris"]
 [ext_resource type="Script" path="res://scripts/spark_field.gd" id="24_sparks"]
+[ext_resource type="Script" path="res://scripts/surface_props.gd" id="25_props"]
 [ext_resource type="Resource" path="res://data/home_star.tres" id="7_star"]
 [ext_resource type="Script" uid="uid://drw8htpqo2g5a" path="res://scripts/main.gd" id="8_main"]
 [ext_resource type="Resource" path="res://data/home_planet.tres" id="9_planet"]
@@ -94,6 +95,9 @@ star = ExtResource("7_star")
 [node name="Trajectory" type="Node2D" parent="." unique_id=1942087613]
 script = ExtResource("13_path")
 
+[node name="SurfaceProps" type="Node2D" parent="." unique_id=1604418233]
+script = ExtResource("25_props")
+
 [node name="Debris" type="Node2D" parent="." unique_id=1436605912]
 script = ExtResource("23_debris")
 
@@ -142,6 +146,7 @@ script = ExtResource("17_readout")
 [connection signal="view_changed" from="Camera2D" to="Ship" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Trajectory" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Debris" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="SurfaceProps" method="_on_view_changed"]
 [connection signal="part_detached" from="Ship" to="Debris" method="_on_ship_part_detached"]
 [connection signal="pixels_scattered" from="Ship" to="Sparks" method="_on_ship_pixels_scattered"]
 [connection signal="view_changed" from="Camera2D" to="Sparks" method="_on_view_changed"]

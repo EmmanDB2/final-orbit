@@ -37,6 +37,7 @@ func _ready() -> void:
 	$Trajectory.start_preview(gravity_model, state)
 	$Sparks.start_sparks(gravity_model, state)
 	$Debris.start_debris(gravity_model, state, $Ship, $Sparks)
+	$SurfaceProps.start_props(gravity_model, state, {planet_index: planet, moon_index: moon})
 	$TurnGuide.ship = $Ship
 	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide)
 	$Ship.start_flight(gravity_model, state, PI / 2.0)

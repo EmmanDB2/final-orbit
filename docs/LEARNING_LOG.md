@@ -302,3 +302,10 @@ Files: `shaders/planet.gdshader`, `scripts/body_data.gd`, `scripts/body_view.gd`
 
 - ordered dithering for bands of color
 - alpha blending over a background
+
+## 2026-11-06: Terrain ticket 6: surface props
+
+Files: `scripts/surface_props.gd`, `scripts/body_data.gd`, `scripts/main.gd`, `scenes/main.tscn`, `data/home_planet.tres`, `data/moon.tres`
+
+- placing things from a seed so they're always the same
+- caching what's expensive to work out

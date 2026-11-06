@@ -59,6 +59,12 @@ extends Resource
 ## What's under the ground, from the top down: dirt, rock, deep rock, and the dark core.
 @export var strata_colors: PackedColorArray = PackedColorArray()
 
+@export_group("Props")
+## What stands on the low, middle, and high ground: boulder, plant, ice, crater, or lava.
+@export var prop_kinds: PackedStringArray = PackedStringArray()
+## How many stretches of the rim have a prop on them, from 0 to 1.
+@export var prop_density: float = 0.0
+
 @export_group("Rails")
 ## Average distance from the body this one orbits. Zero for the body at the center.
 @export var orbit_semi_major_axis: float = 0.0
