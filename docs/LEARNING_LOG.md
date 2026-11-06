@@ -164,3 +164,10 @@ Files: `native/src/patched_conics_model.*`, `native/src/gravity_model.*`, `tests
 - nested reference frames
 - spheres of influence inside spheres of influence
 - 32-bit screen coordinates and floating origins
+
+## 2026-11-05: Tier 1, ticket 6: spinning planets
+
+Files: `native/src/patched_conics_model.*`, `native/src/gravity_model.h`, `tests/test_gravity_model.gd`, `scripts/main.gd`, `scripts/body_data.gd`, `scripts/body_view.gd`, `shaders/planet.gdshader`, `data/home_planet.tres`, `data/moon.tres`, `docs/DESIGN.md`
+
+- rotating a coordinate in a shader
+- velocity of a point on a turning body

@@ -61,6 +61,7 @@ func _initialize() -> void:
 	_test_moon_ground_speed_and_altitude()
 
 	_test_nested_system()
+	_test_spin()
 
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -753,3 +754,47 @@ func _test_nested_system() -> void:
 
 func _length(x: float, y: float) -> float:
 	return sqrt(x * x + y * y)
+
+
+# Spinning: the ground moves, a landed ship rides along, and touchdown is against the ground.
+func _test_spin() -> void:
+	const SPIN := 0.0022
+	const ZONE := 15000.0
+	var spinning := PatchedConicsModel.new()
+	spinning.set_central_body(MU, RADIUS, ZONE)
+	spinning.set_body_spin(0, SPIN)
+
+	var ground: PackedFloat64Array = spinning.get_surface_velocity(0.0, -RADIUS, 0.0)
+	_check("the top of the planet moves clockwise", ground[0], SPIN * RADIUS, 1e-9)
+	_check("and not up or down", ground[1], 0.0, 1e-9)
+	var high: PackedFloat64Array = spinning.get_surface_velocity(0.0, -(RADIUS + ZONE * 2.0), 0.0)
+	_check("above the landing zone spin doesn't count", high[0], 0.0, 0.0)
+
+	var landed := ShipState.new()
+	landed.ground_clearance = 100.0
+	landed.x = 0.0
+	landed.y = -(RADIUS + 100.0)
+	landed.velocity_x = SPIN * (RADIUS + 100.0)
+	for i in range(3600):
+		spinning.propagate(landed, 1.0 / 60.0)
+	_check("a landed ship stays on the ground", 1.0 if landed.is_on_surface() else 0.0, 1.0, 0.0)
+	var turned: float = SPIN * landed.time
+	_check("and rides around with it, x", landed.x, sin(turned) * (RADIUS + 100.0), 1.0)
+	_check("and rides around with it, y", landed.y, -cos(turned) * (RADIUS + 100.0), 1.0)
+	var under: PackedFloat64Array = spinning.get_surface_velocity(landed.x, landed.y, landed.time)
+	_check("it's still against the ground, x", landed.velocity_x, under[0], 1e-6)
+	_check("it's still against the ground, y", landed.velocity_y, under[1], 1e-6)
+
+	var along := ShipState.new()
+	along.ground_clearance = 100.0
+	along.y = -(RADIUS + 110.0)
+	along.velocity_x = SPIN * RADIUS
+	var against := ShipState.new()
+	against.ground_clearance = 100.0
+	against.y = -(RADIUS + 110.0)
+	against.velocity_x = -SPIN * RADIUS
+	for i in range(240):
+		spinning.propagate(along, 1.0 / 60.0)
+		spinning.propagate(against, 1.0 / 60.0)
+	_check("coming down with the spin only hits at the fall speed", along.get_touchdown_speed(), sqrt(2.0 * MU / (RADIUS * RADIUS) * 10.0), 15.0)
+	_check("coming down against it, the ground hits at twice the spin", against.get_touchdown_speed(), 2.0 * SPIN * RADIUS, 30.0)

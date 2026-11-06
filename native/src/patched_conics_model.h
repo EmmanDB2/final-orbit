@@ -32,6 +32,10 @@ public:
 	// the same way the ship starts.
 	int add_body(int p_parent, double p_mu, double p_radius, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start, double p_entry_altitude = 0.0);
 
+	// Sets how fast a body turns, in radians per second. Positive is clockwise on screen, the
+	// way the ship starts, so launching that way gets a boost.
+	void set_body_spin(int p_index, double p_rate);
+
 	godot::PackedFloat64Array get_acceleration(double p_x, double p_y, double p_time) const override;
 	void propagate(const godot::Ref<ShipState> &p_state, double p_dt) const override;
 	godot::PackedFloat64Array predict_trajectory(const godot::Ref<ShipState> &p_state, double p_duration, int p_samples) const override;
@@ -64,7 +68,7 @@ private:
 		double mu = 1.0;
 		double radius = 0.0;
 		double entry_altitude = 0.0;
-		// Radians per second. Zero for now: spinning planets are Tier 1.
+		// Radians per second.
 		double spin_rate = 0.0;
 		// The body this one orbits, and its rails around it. Body 0 doesn't use these.
 		int parent = -1;

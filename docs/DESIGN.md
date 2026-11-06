@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Planets and moons spin. Landing now means matching the ground's speed, and launching with the spin gives a boost \[Leaning\] |
 | 2026-11-05 | Real star built: it's body 0, with the planet on rails around it and the moon on rails around the planet. Star tint now comes from it. SYS shows a planet and its moons, and a second press shows the whole system \[Leaning\]. Reaching the star takes about 40 minutes without time warp |
 | 2026-11-05 | The ship sprite has no minimum size: it stays at true scale until the icon takes over at the Orbit view \[Leaning\] |
 | 2026-11-05 | RCS puffs built, firing from the side nubs and tail nozzles on the art \[Leaning\] |
@@ -204,7 +205,8 @@ Celestial bodies: \[Locked\]
 
 Rotating planets and atmospheres: \[Leaning, Tier 1\]
 
-- Planets spin, and their atmospheres rotate with them.
+- Planets spin, and their atmospheres rotate with them. The home planet turns once in about 48 minutes, with its ground moving at 330 units/s, clockwise like the ship's starting orbit. The moon is tidally locked, with its ground moving at 137 units/s. \[Leaning\]
+- The speed readout measures against the turning ground inside the landing zone, and against the body itself higher up, so it jumps by the ground speed at the top of the zone. \[Leaning\]
 - Inside an atmosphere, air resistance is computed relative to the moving air, so a hovering ship gets dragged along with the rotation.
 - Landing means matching the ground's rotational speed.
 - Launching in the direction of spin gives a free speed boost, like real rockets launching east.

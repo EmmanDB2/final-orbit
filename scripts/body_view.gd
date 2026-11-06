@@ -11,6 +11,7 @@ extends ColorRect
 var _index: int = 0
 var _radius: float = 0.0
 var _moon_orbit: float = 0.0
+var _spin_rate: float = 0.0
 var _gravity_model: GravityModel
 var _state: ShipState
 
@@ -21,6 +22,7 @@ var _state: ShipState
 func show_body(index: int, body: BodyData, gravity_model: GravityModel, state: ShipState) -> void:
 	_index = index
 	_radius = body.radius
+	_spin_rate = body.spin_rate
 	_moon_orbit = body.orbit_semi_major_axis if gravity_model.get_body_parent(index) > 0 else 0.0
 	_gravity_model = gravity_model
 	_state = state
@@ -45,4 +47,7 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 			screen_center.x + from_middle_x,
 			screen_center.y + from_middle_y))
 	_material.set_shader_parameter("radius_px", radius_px)
+	var turned: float = fposmod(_spin_rate * _state.time, TAU)
+	_material.set_shader_parameter("spin_cos", cos(turned))
+	_material.set_shader_parameter("spin_sin", sin(turned))
 	_material.set_shader_parameter("units_per_px", 1.0 / pixels_per_unit)

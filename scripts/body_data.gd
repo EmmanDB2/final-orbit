@@ -13,6 +13,8 @@ extends Resource
 @export var surface_colors: PackedColorArray = PackedColorArray()
 ## Seed for the surface pattern. The same seed always draws the same planet.
 @export var terrain_seed: int = 1
+## How fast the body turns, in radians per second. Positive is clockwise on screen.
+@export var spin_rate: float = 0.0
 ## Height where the path line turns amber: the top of the atmosphere, or a set height on
 ## an airless body. In world units.
 @export var landing_line_altitude: float = 0.0

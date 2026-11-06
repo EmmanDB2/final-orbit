@@ -47,6 +47,7 @@ void stumpff(double p_z, double &r_c, double &r_s) {
 void PatchedConicsModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_central_body", "mu", "radius", "entry_altitude"), &PatchedConicsModel::set_central_body, DEFVAL(0.0));
 	ClassDB::bind_method(D_METHOD("add_body", "parent", "mu", "radius", "semi_major_axis", "eccentricity", "argument_of_periapsis", "mean_anomaly_at_start", "entry_altitude"), &PatchedConicsModel::add_body, DEFVAL(0.0));
+	ClassDB::bind_method(D_METHOD("set_body_spin", "index", "rate"), &PatchedConicsModel::set_body_spin);
 }
 
 void PatchedConicsModel::set_central_body(double p_mu, double p_radius, double p_entry_altitude) {
@@ -71,6 +72,11 @@ int PatchedConicsModel::add_body(int p_parent, double p_mu, double p_radius, dou
 	body.sphere_of_influence = p_semi_major_axis * std::pow(p_mu / parent_mu, 0.4);
 	bodies.push_back(body);
 	return static_cast<int>(bodies.size()) - 1;
+}
+
+void PatchedConicsModel::set_body_spin(int p_index, double p_rate) {
+	ERR_FAIL_INDEX(p_index, static_cast<int>(bodies.size()));
+	bodies[p_index].spin_rate = p_rate;
 }
 
 PatchedConicsModel::State2D PatchedConicsModel::body_state(int p_index, double p_time) const {
@@ -636,9 +642,13 @@ double PatchedConicsModel::get_altitude(double p_x, double p_y, double p_time) c
 PackedFloat64Array PatchedConicsModel::get_surface_velocity(double p_x, double p_y, double p_time) const {
 	const int index = dominant_body(p_x, p_y, p_time);
 	const State2D body = body_state(index, p_time);
-	double ground_vx;
-	double ground_vy;
-	ground_velocity_on_body(bodies[index], p_x - body.x, p_y - body.y, ground_vx, ground_vy);
+	const double dx = p_x - body.x;
+	const double dy = p_y - body.y;
+	double ground_vx = 0.0;
+	double ground_vy = 0.0;
+	if (std::sqrt(dx * dx + dy * dy) - bodies[index].radius <= bodies[index].entry_altitude) {
+		ground_velocity_on_body(bodies[index], dx, dy, ground_vx, ground_vy);
+	}
 
 	PackedFloat64Array result;
 	result.push_back(body.vx + ground_vx);

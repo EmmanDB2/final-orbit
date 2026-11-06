@@ -11,6 +11,9 @@ shader_type canvas_item;
 uniform vec2 center_px;
 uniform float radius_px = 100.0;
 uniform float units_per_px = 1.0;
+// How far the body has turned, set by the same script.
+uniform float spin_cos = 1.0;
+uniform float spin_sin = 0.0;
 // Set by planet_view.gd from the planet's data.
 uniform vec4 surface_colors[6] : source_color;
 uniform int terrain_seed = 1;
@@ -80,12 +83,14 @@ void fragment() {
 	if (dot(offset, offset) > radius_px * radius_px) {
 		COLOR = vec4(0.0);
 	} else {
-		float height = terrain_height(offset * units_per_px);
+		// Turn the screen offset back by the spin to find which ground is under this pixel.
+		vec2 ground = vec2(spin_cos * offset.x + spin_sin * offset.y, spin_cos * offset.y - spin_sin * offset.x) * units_per_px;
+		float height = terrain_height(ground);
 		// Noise bunches up around the middle, so stretch it to reach all six colors.
 		int index = int(clamp((height - 0.25) * 2.0, 0.0, 0.999) * 6.0);
 		if (units_per_px < speckle_last_zoom_out) {
 			float size = max(speckle_size, units_per_px * speckle_screen_size);
-			float speckle = value_noise(offset * units_per_px / size, uint(terrain_seed) + 16u);
+			float speckle = value_noise(ground / size, uint(terrain_seed) + 16u);
 			if (speckle < speckle_amount) {
 				index = min(index + 1, 5);
 			}

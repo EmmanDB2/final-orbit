@@ -41,6 +41,8 @@ func _ready() -> void:
 
 
 func _add_body(gravity_model: PatchedConicsModel, parent: int, body: BodyData) -> int:
-	return gravity_model.add_body(parent, body.get_mu(), body.radius, body.orbit_semi_major_axis,
-			body.orbit_eccentricity, body.orbit_argument_of_periapsis, body.orbit_start_angle,
-			body.landing_line_altitude)
+	var index: int = gravity_model.add_body(parent, body.get_mu(), body.radius,
+			body.orbit_semi_major_axis, body.orbit_eccentricity, body.orbit_argument_of_periapsis,
+			body.orbit_start_angle, body.landing_line_altitude)
+	gravity_model.set_body_spin(index, body.spin_rate)
+	return index

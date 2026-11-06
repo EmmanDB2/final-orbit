@@ -62,7 +62,8 @@ public:
 	// Height above the dominant body's surface.
 	virtual double get_altitude(double p_x, double p_y, double p_time) const = 0;
 	// How fast the ground of the dominant body is moving under this point, as [x, y]. This
-	// is the one place ground speed comes from, so planet spin only has to change this.
+	// is the one place ground speed comes from. Spin only counts inside the body's landing
+	// zone: higher up, this is just how the body itself is moving.
 	virtual godot::PackedFloat64Array get_surface_velocity(double p_x, double p_y, double p_time) const = 0;
 	// One lap of a body's rails around its parent, relative to the parent, flat
 	// [x0, y0, x1, y1, ...]. Empty for body 0.
