@@ -259,3 +259,10 @@ Files: `shaders/planet.gdshader`, `scripts/body_view.gd`, `scripts/body_data.gd`
 - domain warping noise
 - lighting a disc as if it were a ball
 - ordered dithering with screen-space derivatives
+
+## 2026-11-06: Pixel-art planets from far out
+
+Files: `shaders/planet.gdshader`, `scripts/body_view.gd`, `docs/DESIGN.md`
+
+- limiting a palette so art reads as pixels
+- snapping a shader's pixels to bigger blocks

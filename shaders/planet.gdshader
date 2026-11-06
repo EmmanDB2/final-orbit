@@ -22,6 +22,8 @@ uniform float cloud_cos = 1.0;
 uniform float cloud_sin = 0.0;
 // The way to the star from here, as a unit direction on screen.
 uniform vec2 light_way = vec2(1.0, 0.0);
+// How many screen pixels wide each of the planet's own pixels is.
+uniform float block_px = 1.0;
 // How high the air reaches on screen, in pixels. Zero means airless.
 uniform float air_px = 0.0;
 
@@ -53,7 +55,7 @@ uniform float speckle_last_zoom_out = 40.0;
 uniform float speckle_amount = 0.3;
 // How many flat steps the daylight falls through, how far above the disc the star sits, and
 // what color a surface turns on the night side, as a share of its own.
-uniform float light_steps = 5.0;
+uniform float light_steps = 2.0;
 uniform float light_lift = 0.55;
 uniform vec3 night_share = vec3(0.3, 0.34, 0.48);
 // How many flat steps the air fades through, and how strong it is at the ground.
@@ -111,7 +113,7 @@ float terrain_height(vec2 world) {
 	float total = 0.0;
 	float feature = largest_feature;
 	for (int layer = 0; layer < 6; layer++) {
-		if (feature < units_per_px * 3.0) {
+		if (feature < units_per_px * block_px * 7.0) {
 			break;
 		}
 		height += value_noise(warped / feature, seed + uint(layer)) * weight;
@@ -181,7 +183,7 @@ float cloud_cover(vec2 offset, float share_out, int most_layers) {
 	float total = 0.0;
 	float size = 1.0;
 	for (int layer = 0; layer < most_layers; layer++) {
-		if (largest / size < units_per_px * 2.5) {
+		if (largest / size < units_per_px * block_px * 7.0) {
 			break;
 		}
 		cover += value_noise(place * size, seed + uint(layer)) * weight;
@@ -199,23 +201,27 @@ void vertex() {
 
 
 void fragment() {
-	vec2 whole = floor(pixel);
-	vec2 offset = whole + vec2(0.5) - center_px;
+	// Everything below works on the planet's own pixels, counted out from its middle, so the
+	// disc is a clean shape however big they are.
+	vec2 middle = round(center_px);
+	vec2 block_at = floor((floor(pixel) + vec2(0.5) - middle) / block_px);
+	vec2 offset = (block_at + vec2(0.5)) * block_px;
+	vec2 whole = block_at + vec2(4096.0);
 	float distance_px = length(offset);
 	float pattern = dither(whole);
+	float from_far = clamp(units_per_px / 256.0, 0.0, 1.0);
 	vec2 outward = distance_px > 0.0 ? offset / distance_px : vec2(0.0, -1.0);
 	float facing = dot(outward, light_way);
-	float air_day = clamp(facing * 1.4 + 0.45, 0.0, 1.0) * 4.0;
-	air_day = clamp(floor(air_day + pattern * clamp(fwidth(air_day) * 1.5, 0.0, 1.0)), 0.0, 4.0) / 4.0;
+	float air_day = clamp(floor(clamp(facing * 1.4 + 0.45, 0.0, 1.0) * 3.0 + 0.5), 0.0, 3.0) / 3.0;
 
 	if (distance_px > radius_px) {
 		float above_ground = distance_px - radius_px;
 		if (above_ground < air_px) {
 			// The air glows on the day side and turns warm around sunrise and sunset.
 			float reach = 1.0 - above_ground / air_px;
-			float checker = mod(whole.x + whole.y, 2.0) / air_steps;
-			float level = floor((reach * reach + checker * 0.5) * air_steps) / air_steps;
-			float sunset = clamp(1.0 - abs(facing + 0.05) * 3.2, 0.0, 0.85);
+			float steps = mix(air_steps, 3.0, from_far);
+			float level = ceil(reach * reach * steps) / steps;
+			float sunset = abs(facing + 0.05) < 0.18 ? 0.8 : 0.0;
 			COLOR = vec4(mix(air_color, air_sunset_color, sunset), level * air_strength * mix(0.08, 1.0, air_day));
 		} else {
 			COLOR = vec4(0.0);
@@ -227,19 +233,16 @@ void fragment() {
 		float height = terrain_height(ground);
 		if (crater_amount > 0.0) {
 			uint seed = uint(terrain_seed) + 80u;
-			if (largest_feature * 0.32 > units_per_px * 4.0) {
+			if (largest_feature * 0.32 > units_per_px * block_px * 5.0) {
 				height += crater_change(ground, largest_feature * 0.32, seed, light_on_ground);
 			}
-			if (largest_feature * 0.08 > units_per_px * 4.0) {
+			if (largest_feature * 0.08 > units_per_px * block_px * 5.0) {
 				height += crater_change(ground, largest_feature * 0.08, seed + 8u, light_on_ground);
 			}
 		}
 
-		// The edges between colors break up into a pattern of pixels, a pixel or two wide at
-		// any zoom.
-		float exact_band = height_to_band(height);
-		float band = exact_band + (pattern - 0.5) * clamp(fwidth(exact_band) * 1.5, 0.0, 0.6);
-		int index = int(clamp(band, 0.0, 5.999));
+		// Flat colors with hard edges, the way the ship is drawn.
+		int index = int(clamp(height_to_band(height), 0.0, 5.999));
 		if (units_per_px < speckle_last_zoom_out) {
 			float size = max(speckle_size, units_per_px * speckle_screen_size);
 			float speckle = value_noise(ground / size, uint(terrain_seed) + 16u);
@@ -249,46 +252,32 @@ void fragment() {
 			}
 		}
 		float share_out = distance_px / radius_px;
-		if (ice_cap > 0.0 && share_out + (height - 0.5) * 0.35 + (pattern - 0.5) * 0.015 < ice_cap) {
+		if (ice_cap > 0.0 && share_out + (height - 0.5) * 0.35 < ice_cap) {
 			index = 5;
 		}
 		vec3 color = surface_colors[index].rgb;
 
-		// The disc is a ball, so the star lights it from one side, in flat steps.
+		// Clouds are one flat color, and fade out as you get close.
+		if (cloud_amount > 0.0 && units_per_px > cloud_nearest) {
+			float fading = clamp((units_per_px - cloud_nearest) / (cloud_nearest * 3.0), 0.0, 1.0);
+			if (cloud_cover(offset, share_out, 5) > 1.0 - cloud_amount * fading) {
+				color = cloud_color;
+			}
+		}
+
+		// The disc is a ball, so the star lights it from one side, in flat steps. Far out, a
+		// checker of pixels marks each step, as a pixel artist would shade it.
 		vec2 on_ball = offset / radius_px;
 		float rise = sqrt(max(1.0 - dot(on_ball, on_ball), 0.0));
 		float sun = dot(vec3(on_ball, rise), normalize(vec3(light_way, light_lift)));
 		float exact_light = clamp(sun * 1.25 + 0.2, 0.0, 1.0) * light_steps;
-		float daylight = clamp(floor(exact_light + pattern * clamp(fwidth(exact_light) * 1.5, 0.0, 0.9)), 0.0, light_steps) / light_steps;
+		float checker = mod(whole.x + whole.y, 2.0) * 0.14 * from_far;
+		float daylight = clamp(floor(exact_light + checker), 0.0, light_steps) / light_steps;
+		color = mix(color * night_share, color, daylight);
 
-		// Clouds fade out as you get close, and throw a shadow on the side away from the star.
-		if (cloud_amount > 0.0 && units_per_px > cloud_nearest) {
-			float fading = clamp((units_per_px - cloud_nearest) / (cloud_nearest * 3.0), 0.0, 1.0);
-			float needed = 1.0 - cloud_amount * fading;
-			float cover = cloud_cover(offset, share_out, 5);
-			if (cover + (pattern - 0.5) * clamp(fwidth(cover) * 1.5, 0.0, 0.05) > needed) {
-				color = mix(color, cloud_color, cover > needed + 0.03 ? 0.92 : 0.55);
-			} else {
-				vec2 shadow_offset = offset - light_way * radius_px * 0.012;
-				if (cloud_cover(shadow_offset, share_out, 2) > needed) {
-					color *= 0.8;
-				}
-			}
-		}
-
-		vec3 lit_color = color * mix(vec3(1.0), star_color, 0.12);
-		color = mix(color * night_share, lit_color, daylight);
-
-		// Looking through more air near the rim, the ground takes on its color.
-		if (air_px > 0.0) {
-			// Only from far out: on the ground, you're not looking through much of it.
-			float from_far = clamp(units_per_px / 256.0, 0.0, 1.0);
-			float haze = 1.0 - (radius_px - distance_px) / (air_px * 0.6);
-			if (haze > 0.0 && from_far > 0.0) {
-				float exact_haze = haze * haze * 4.0;
-				float steps = floor(exact_haze + (pattern - 0.5) * clamp(fwidth(exact_haze) * 1.5, 0.0, 1.0)) / 4.0;
-				color = mix(color, air_color, clamp(steps, 0.0, 1.0) * 0.6 * air_day * from_far);
-			}
+		// A thin bright rim of air on the day side, from far out.
+		if (air_px > 0.0 && from_far > 0.0 && radius_px - distance_px < block_px * 2.5 && air_day > 0.0) {
+			color = mix(color, air_color, 0.75 * air_day);
 		}
 		COLOR = vec4(color, 1.0);
 	}

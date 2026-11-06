@@ -44,6 +44,15 @@ func show_body(index: int, body: BodyData, gravity_model: GravityModel, state: S
 	_material.set_shader_parameter("largest_feature", body.radius * 0.6)
 
 
+# Up close the ground uses the same pixels as the ship. Farther out they get bigger, in steps,
+# until a body is about 60 of its own pixels in radius.
+func _block_size(radius_px: float, units_per_px: float) -> float:
+	if units_per_px < 16.0:
+		return 1.0
+	var by_zoom: int = 2 if units_per_px < 32.0 else (3 if units_per_px < 64.0 else 4)
+	return float(clampi(mini(by_zoom, roundi(radius_px / 60.0)), 1, 4))
+
+
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
 	var position_now: PackedFloat64Array = _gravity_model.get_body_position(_index, _state.time)
 	var from_middle_x: float = (position_now[0] - center_x) * pixels_per_unit
@@ -61,6 +70,7 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 			screen_center.x + from_middle_x,
 			screen_center.y + from_middle_y))
 	_material.set_shader_parameter("radius_px", radius_px)
+	_material.set_shader_parameter("block_px", _block_size(radius_px, 1.0 / pixels_per_unit))
 	_material.set_shader_parameter("air_px", air_px)
 	var turned: float = fposmod(_spin_rate * _state.time, TAU)
 	_material.set_shader_parameter("spin_cos", cos(turned))
