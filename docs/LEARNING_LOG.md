@@ -207,3 +207,9 @@ Files: `scripts/ship.gd`, `scripts/debris_field.gd`, `scripts/telemetry_readout.
 - kinetic energy and reduced mass in a collision
 - torque from off-center forces
 - updating a texture at runtime
+
+## 2026-11-06: Heading dial steady when landed
+
+Files: `scripts/ship.gd`, `scripts/ui/heading_dial.gd`, `docs/DESIGN.md`
+
+- atan2 and floating-point noise near zero

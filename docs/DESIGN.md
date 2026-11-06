@@ -404,7 +404,7 @@ Turning and RCS controls: \[Leaning\]
 - RCS pad (right panel, inner screen): rotate left, rotate right, and four translate arrows (forward, back, left, right).
 - Translation moves the ship without turning it and is required for docking and precise landings.
 - A ROT / TRANS switch sits above the cover screen's compact pad, flipping its four arrows between rotation and translation, with STAB in the middle. The inner screen's pad shows rotate and translate at once, so it has no switch.
-- Heading dial above the pad: nose direction, prograde (cyan) and retrograde (orange) markers, and a rate bar showing spin speed. Inner screen only.
+- Heading dial above the pad: nose direction, prograde (cyan) and retrograde (orange) markers, and a rate bar showing spin speed. The markers hide when landed or barely moving, since there's no direction of travel to show. Inner screen only.
 - The right panel on the inner screen is full height and 140 game pixels wide: heading dial, RCS pad, modes, then BURN at the bottom. On the cover screen it only rises as far as its controls need.
 - Translation gives the lander about 30 m/s² when full and uses RCS fuel. It's too weak to lift off from the planet or the moon, and ASS doesn't cancel it. \[Leaning\]
 

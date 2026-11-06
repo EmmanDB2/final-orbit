@@ -667,6 +667,8 @@ func _report_telemetry() -> void:
 		"time": state.time,
 		"heading": heading,
 		"prograde": atan2(relative_x, -relative_y),
+		# Sitting still, the speed is only rounding noise, so that direction means nothing.
+		"moving": not state.is_on_surface() and relative_x * relative_x + relative_y * relative_y >= 0.25,
 		"spin": angular_velocity,
 		"fuel_share": fuel / body.original_fuel_capacity,
 		"delta_v": delta_v(),

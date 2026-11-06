@@ -8,12 +8,14 @@ extends UiWidget
 
 var _heading: float = 0.0
 var _prograde: float = 0.0
+var _moving: bool = false
 var _spin: float = 0.0
 
 
 func on_flight_data(data: Dictionary) -> void:
 	_heading = data["heading"]
 	_prograde = data["prograde"]
+	_moving = data["moving"]
 	_spin = data["spin"]
 	queue_redraw()
 
@@ -30,8 +32,9 @@ func _draw() -> void:
 	draw_arc(center, radius, 0.0, TAU, 32, palette.hull_light, -1.0)
 	for i in range(8):
 		draw_line(_point(i * TAU / 8.0, radius - 3.0, center), _point(i * TAU / 8.0, radius - 1.0, center), palette.hull_light, -1.0)
-	draw_rect(Rect2(_point(_prograde + PI, radius - 6.0, center) - Vector2(1, 1), Vector2(3, 3)), palette.agency_orange)
-	draw_rect(Rect2(_point(_prograde, radius - 6.0, center) - Vector2(1, 1), Vector2(3, 3)), palette.telemetry_cyan)
+	if _moving:
+		draw_rect(Rect2(_point(_prograde + PI, radius - 6.0, center) - Vector2(1, 1), Vector2(3, 3)), palette.agency_orange)
+		draw_rect(Rect2(_point(_prograde, radius - 6.0, center) - Vector2(1, 1), Vector2(3, 3)), palette.telemetry_cyan)
 	draw_line(center, _point(_heading, radius - 4.0, center), palette.hull_lightest, -1.0)
 
 	var bar_y: float = radius * 2.0 + 5.0
