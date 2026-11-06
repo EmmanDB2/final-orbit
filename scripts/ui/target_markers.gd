@@ -45,7 +45,7 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 
 
 func _draw() -> void:
-	if _gravity_model == null or _clear_area.size.x <= 0.0:
+	if _gravity_model == null or _clear_area.size.x <= edge_margin * 2.0 or _clear_area.size.y <= edge_margin * 2.0:
 		return
 	# The view's center is the middle of the whole screen, wherever the panels are.
 	var middle: Vector2 = get_viewport_rect().size / 2.0 - global_position

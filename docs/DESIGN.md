@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Station made solid: the ship bounces off it, and takes damage above its safe speed \[Leaning\] |
 | 2026-11-06 | First edge marker, for the station, with its label beside the dot when zoomed out \[Leaning\] |
 | 2026-11-06 | Home Station in orbit: on rails with no gravity, holding still, with its room layout and start position \[Leaning\] |
 | 2026-11-06 | Station art cut into clean sprites by a new tool, with stations drawn at 2 game pixels per art pixel as a third exception to the fixed pixel size \[Leaning\]. All 25 listed agency colors now in the palette data |
@@ -332,6 +333,7 @@ Terrain and biomes per body: \[Leaning\]
 - Stations and colonies are hubs for gigs, fuel, and repairs; NPC traffic is ambiance, not a simulated economy.
 - The first station is a hub with four ports and five rooms that bolt on port to port: comms, crew hab, EVA hab, suit room, and ship refueling. Each room has an outside and an inside sprite on the same canvas, lined up on its ports; the insides wait for Tier 3. \[Leaning\]
 - It rides rails around the home planet like a moon does, but with no gravity of its own, at the height the ship starts, 2,600 m ahead of it. It holds still rather than turning, so its ports always face the same way. Comms is on top, crew hab on the right, suit room then EVA hab on the left, and ship refueling on the bottom, leaving four ports free. \[Leaning\]
+- Its pixels are solid. The ship bounces off, keeping a quarter of its speed, and crushes on the side that hit above its safe speed of 50 m/s, the same as hitting the ground. The ship's outline is what touches, and the station can't be damaged for now. \[Leaning\]
 
 ## Hazards
 

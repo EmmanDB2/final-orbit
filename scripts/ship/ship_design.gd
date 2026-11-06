@@ -10,6 +10,8 @@ extends Resource
 @export var materials: Array[MaterialData] = []
 ## Main engine thrust, in newtons, with one world unit counting as one meter.
 @export var engine_force: float = 0.0
+## How much of its speed the ship keeps bouncing off something solid in space, from 0 to 1.
+@export var contact_bounce: float = 0.25
 ## How long the engine's flame gets flat out, in art pixels.
 @export var flame_length: float = 150.0
 ## RCS turning strength, as force times distance.

@@ -11,6 +11,29 @@ var origin: Vector2i = Vector2i.ZERO
 ## The ports with nothing on them, each with its outer "point" on the picture and its "face".
 var free_ports: Array[Dictionary] = []
 
+var _size := Vector2i.ZERO
+var _solid := PackedByteArray()
+
+
+## True if there's a solid pixel at this point on the picture.
+func is_solid(point: Vector2) -> bool:
+	var x: int = floori(point.x)
+	var y: int = floori(point.y)
+	if x < 0 or y < 0 or x >= _size.x or y >= _size.y:
+		return false
+	return _solid[y * _size.x + x] == 1
+
+
+## Which way is out of the solid near this point on the picture, from where the empty space around
+## it lies. Zero if it's all one thing around here.
+func normal_at(point: Vector2, reach: int = 8) -> Vector2:
+	var total := Vector2.ZERO
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			if dx * dx + dy * dy <= reach * reach and not is_solid(point + Vector2(dx, dy)):
+				total += Vector2(dx, dy)
+	return total.normalized()
+
 
 static func build(design: StationDesign) -> StationLayout:
 	var layout := StationLayout.new()
@@ -65,7 +88,16 @@ static func build(design: StationDesign) -> StationLayout:
 					"point": entry["at"] - low + _turned_point(room.port_points[port], entry["size"], entry["turns"]),
 					"face": _turned_face(room.port_faces[port], entry["turns"]),
 				})
+	layout._remember_solid()
 	return layout
+
+
+func _remember_solid() -> void:
+	_size = image.get_size()
+	_solid.resize(_size.x * _size.y)
+	var data: PackedByteArray = image.get_data()
+	for i in range(_solid.size()):
+		_solid[i] = 1 if data[i * 4 + 3] > 127 else 0
 
 
 # Where a pixel of a picture goes when the picture turns clockwise that many quarter turns.

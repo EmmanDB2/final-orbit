@@ -569,6 +569,36 @@ func _hit_ground(speed: float, landed_on: int) -> void:
 	_take_damage(body.crush(down, energy, int(state.time * 1000.0)), up * minf(speed * 0.4, 200.0), touching, clampf(speed * 0.7, 60.0, 320.0))
 
 
+## Something solid stopped the ship, at this offset from it in the world. The normal points out of
+## the solid, the ship moves out along it by this much, and the solid is moving at this velocity.
+## It bounces, and takes damage above the safe speed, as with hitting the ground.
+func hit_solid(contact: Vector2, normal: Vector2, push: float, solid_x: float, solid_y: float) -> void:
+	if state.is_on_surface():
+		return
+	state.x += normal.x * push
+	state.y += normal.y * push
+	var spin_speed: Vector2 = Vector2(-contact.y, contact.x) * angular_velocity
+	var moving: Vector2 = Vector2(state.velocity_x - solid_x, state.velocity_y - solid_y) + spin_speed
+	var into: float = -moving.dot(normal)
+	if into <= 0.0:
+		return
+	var lever: float = contact.cross(normal)
+	var impulse: float = (1.0 + design.contact_bounce) * into / (1.0 / _mass_now + lever * lever / _spin_resistance_now)
+	state.velocity_x += normal.x * impulse / _mass_now
+	state.velocity_y += normal.y * impulse / _mass_now
+	angular_velocity += lever * impulse / _spin_resistance_now
+	orbit_changed.emit()
+
+	var safe: float = design.safe_impact_speed
+	if into <= safe:
+		return
+	var energy: float = 0.5 * _mass_now * (into * into - safe * safe)
+	var inward: Vector2 = (-normal).rotated(-heading)
+	var touching: Vector2 = contact.rotated(-heading) + _pivot
+	warning_raised.emit("STATION COLLISION")
+	_take_damage(body.crush(inward, energy, int(state.time * 1000.0)), normal * minf(into * 0.4, 200.0), touching, clampf(into * 0.7, 60.0, 320.0))
+
+
 ## Puts every pixel back, as a station's repair bay will.
 func repair() -> void:
 	var moved: Vector2 = (-_pivot).rotated(heading)
@@ -590,6 +620,14 @@ func world_outline() -> PackedVector2Array:
 	var points := PackedVector2Array()
 	for point: Vector2 in body.outline_now():
 		points.append(_art_to_world(point))
+	return points
+
+
+## Points along the edges of the ship's outline, as offsets from it in the world.
+func world_outline_samples(spacing: float) -> PackedVector2Array:
+	var points: PackedVector2Array = body.outline_samples_now(spacing)
+	for i in range(points.size()):
+		points[i] = _art_to_world(points[i])
 	return points
 
 

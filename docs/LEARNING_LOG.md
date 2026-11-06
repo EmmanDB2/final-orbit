@@ -355,3 +355,11 @@ Files: `scripts/ui/target_markers.gd`, `scripts/ui/flight_hud.gd`, `scripts/ui/u
 
 - clipping a line to a rectangle
 - a signal carrying layout from one UI system to another
+
+## 2026-11-06: The station is solid
+
+Files: `scripts/station/station_view.gd`, `scripts/station/station_layout.gd`, `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/ship/ship_design.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- collision against a pixel mask
+- a contact impulse with spin
+- physics priority to order systems within a tick

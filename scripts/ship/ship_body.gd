@@ -498,6 +498,21 @@ func outline_now() -> PackedVector2Array:
 	return points
 
 
+## Points along the edges of the ship's outline where they are right now, about this far apart, from
+## the middle of the grid.
+func outline_samples_now(spacing: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for layer: Layer in _layers:
+		var count: int = layer.outline.size()
+		for i in range(count):
+			var from: Vector2 = layer.place(layer.outline[i])
+			var to: Vector2 = layer.place(layer.outline[(i + 1) % count])
+			var steps: int = maxi(ceili(from.distance_to(to) / spacing), 1)
+			for step in range(steps):
+				points.append(from.lerp(to, float(step) / steps))
+	return points
+
+
 ## Crushes the ship from one side, as flat ground does. Spends energy on the pixels farthest
 ## along the direction first, and returns what was erased as "pixels", "points", and "colors".
 func crush(direction: Vector2, energy: float, damage_seed: int) -> Dictionary:

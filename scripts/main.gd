@@ -39,7 +39,7 @@ func _ready() -> void:
 	$Camera2D.start_view(gravity_model, state)
 	$Background/BodyGuides.start_guides(gravity_model, state)
 	$Trajectory.start_preview(gravity_model, state)
-	$Station.start_station(gravity_model, state, station, station_index)
+	$Station.start_station(gravity_model, state, station, station_index, $Ship)
 	$Hud/SafeArea/TargetMarkers.start_markers(gravity_model, state)
 	$Hud/SafeArea/TargetMarkers.add_satellite_target(station.callsign, station_index)
 	$Sparks.start_sparks(gravity_model, state)
