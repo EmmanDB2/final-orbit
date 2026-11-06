@@ -26,8 +26,9 @@ var _last_pixels_per_unit: float = 0.0
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
-	# A zoom change jumps the view, which isn't motion, so the stars hold still for it.
-	if pixels_per_unit == _last_pixels_per_unit:
+	# The very first view has nothing to compare with. After that the view never jumps,
+	# so the stars keep moving through zooms too.
+	if _last_pixels_per_unit > 0.0:
 		var moved_x: float = (center_x - _last_center_x) * pixels_per_unit
 		var moved_y: float = (center_y - _last_center_y) * pixels_per_unit
 		var speed: float = sqrt(moved_x * moved_x + moved_y * moved_y)
