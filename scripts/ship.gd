@@ -106,6 +106,7 @@ var _translate_right: float = 0.0
 
 @onready var _flame: Sprite2D = $Flame
 @onready var _puffs: RcsPuffs = $RcsPuffs
+@onready var _glow: ReentryGlow = $ReentryGlow
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _icon: Sprite2D = $Icon
 
@@ -218,6 +219,9 @@ func _process(delta: float) -> void:
 	# Small corrections while holding steady don't show, so the nozzles don't flicker.
 	var turning_clockwise: bool = _spin_firing > 0.2
 	var turning_back: bool = _spin_firing < -0.2
+	_glow.visible = _show_sprite
+	_glow.rotation = _heat_heading - heading
+	_glow.set_heat(heat_share, _sprite_scale)
 	_puffs.visible = _show_sprite
 	_puffs.set_firing(
 			turning_clockwise or _translate_right > 0.0,

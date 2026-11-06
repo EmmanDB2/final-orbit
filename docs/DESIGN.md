@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Re-entry heat built, shown as hot gas around the ship. It does no damage yet \[Leaning\] |
 | 2026-11-05 | Atmospheres built: the home planet has air that moves with its spin, drag that depends on the ship's shape and mass, and a stepped glow that becomes the sky up close \[Leaning\]. The path line ignores the air for now |
 | 2026-11-05 | Planets and moons spin. Landing now means matching the ground's speed, and launching with the spin gives a boost \[Leaning\] |
 | 2026-11-05 | Real star built: it's body 0, with the planet on rails around it and the moon on rails around the planet. Star tint now comes from it. SYS shows a planet and its moons, and a second press shows the whole system \[Leaning\]. Reaching the star takes about 40 minutes without time warp |
@@ -216,6 +217,7 @@ Rotating planets and atmospheres: \[Leaning, Tier 1\]
 - Outside the atmosphere, momentum is conserved and the ship does not slow down.
 - Airless bodies have no moving air, so a hovering ship stays put while the ground slides past underneath.
 - Coasting stays closed-form above the atmosphere. Inside it the ship is simulated step by step, which limits time warp and fold-to-coast there and needs the preview's background thread.
+- Re-entry heat grows with the square root of air density and the cube of speed. A gentle return from low orbit reads about 0.2 on a scale where 1.0 is the limit, and a steep return from high up goes past 1.0. For now it only shows, as a bow shock and streaks of gas in the thrust and fire colors. Heat damage and heat shields come with damage. \[Leaning\]
 - For now the path line ignores the air, so inside the atmosphere it shows where the ship would go with no drag and updates every tick. Drawing the drag into it waits for the background thread. \[Leaning\]
 
 Ship: \[Locked\]

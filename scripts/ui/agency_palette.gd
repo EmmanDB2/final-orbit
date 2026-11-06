@@ -14,3 +14,6 @@ extends Resource
 @export var telemetry_cyan: Color
 @export var telemetry_green: Color
 @export var telemetry_amber: Color
+@export var thrust_white: Color
+@export var thrust_yellow: Color
+@export var thrust_red: Color

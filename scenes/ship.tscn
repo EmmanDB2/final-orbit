@@ -5,11 +5,15 @@
 [ext_resource type="Texture2D" uid="uid://cgk1w00m0s2wo" path="res://art/flame_main.png" id="3_flame"]
 [ext_resource type="Resource" path="res://data/lander_design.tres" id="5_design"]
 [ext_resource type="Script" path="res://scripts/rcs_puffs.gd" id="6_puffs"]
+[ext_resource type="Script" path="res://scripts/reentry_glow.gd" id="7_glow"]
 [ext_resource type="Texture2D" uid="uid://d021pawjfte4p" path="res://art/ship_icon.png" id="4_icon"]
 
 [node name="Ship" type="Node2D" unique_id=606153027]
 script = ExtResource("1_2gnfn")
 design = ExtResource("5_design")
+
+[node name="ReentryGlow" type="Node2D" parent="." unique_id=1720448106]
+script = ExtResource("7_glow")
 
 [node name="RcsPuffs" type="Node2D" parent="." unique_id=1577203968]
 script = ExtResource("6_puffs")

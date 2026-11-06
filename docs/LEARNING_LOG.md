@@ -178,3 +178,10 @@ Files: `native/src/patched_conics_model.*`, `native/src/gravity_model.*`, `tests
 
 - the drag equation
 - exponential thinning of air with height
+
+## 2026-11-05: Tier 1, ticket 8: re-entry heat
+
+Files: `scripts/reentry_glow.gd`, `scripts/ship.gd`, `scripts/rcs_puffs.gd`, `scripts/ui/agency_palette.gd`, `data/agency_palette.tres`, `scenes/ship.tscn`, `docs/DESIGN.md`
+
+- why heating grows with the cube of speed
+- static functions shared between scripts

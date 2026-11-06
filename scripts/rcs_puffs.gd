@@ -89,13 +89,13 @@ func _draw_puff(nozzle: Vector2, direction: Vector2) -> void:
 		var color: Color = colors[int(share * colors.size())]
 		var across: float = -half_width
 		while across <= half_width:
-			if _speckle(along, across, frame) < 1.0 - share * share:
+			if speckle(along, across, frame) < 1.0 - share * share:
 				var spot: Vector2 = (nozzle + direction * along + side * across) * _art_scale
 				draw_rect(Rect2(spot.round(), Vector2.ONE), color)
 			across += pixel
 		along += pixel
 
 
-# A repeatable 0-1 number for one spot of gas on one animation frame.
-func _speckle(along: float, across: float, frame: int) -> float:
+## A repeatable 0-1 number for one spot of gas on one animation frame.
+static func speckle(along: float, across: float, frame: int) -> float:
 	return fposmod(sin(along * 12.9898 + across * 78.233 + frame * 37.719) * 43758.5453, 1.0)
