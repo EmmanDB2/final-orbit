@@ -6,6 +6,7 @@
 script = ExtResource("1_data")
 color = Color(0.62, 0.72, 1, 1)
 falloff_distance = 22650000.0
+heat_distance = 6000000.0
 display_name = "Star"
 radius = 2500000.0
 surface_gravity = 3600.0

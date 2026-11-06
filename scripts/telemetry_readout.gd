@@ -1,6 +1,6 @@
-# telemetry_readout.gd: shows how each touchdown went.
-# From DESIGN.md, "Camera, zoom, and landing". Tier 0 has no damage, so this is all a
-# touchdown does.
+# telemetry_readout.gd: shows short messages to the pilot: how each touchdown went, and
+# what damage has taken out.
+# From DESIGN.md, "Camera, zoom, and landing" and "Destruction".
 extends Node2D
 
 ## Telemetry green and amber, and agency red, from the agency palette.
@@ -12,23 +12,30 @@ extends Node2D
 ## Top speed for a clean landing, in world units per second.
 @export var soft_touchdown_speed: float = 50.0
 ## Top speed for a hard landing rather than a crash.
-@export var hard_touchdown_speed: float = 500.0
+@export var hard_touchdown_speed: float = 250.0
 ## How long the touchdown message stays up, in seconds.
 @export var message_seconds: float = 4.0
 ## How far below the top of the safe area the touchdown message goes.
 @export var message_height: float = 56.0
 
-var _message: String = ""
-var _message_color: Color = Color.WHITE
-var _message_time_left: float = 0.0
+## Most messages shown at once, newest at the bottom.
+@export var most_messages: int = 4
+## Pixels between one message and the next.
+@export var message_spacing: float = 12.0
+
+var _messages: Array[Dictionary] = []
+var _ship_lost: bool = false
 
 
 func _process(delta: float) -> void:
-	if _message_time_left > 0.0:
-		_message_time_left -= delta
-		if _message_time_left <= 0.0:
-			_message = ""
-			queue_redraw()
+	var changed: bool = false
+	for i in range(_messages.size() - 1, -1, -1):
+		_messages[i]["time_left"] -= delta
+		if _messages[i]["time_left"] <= 0.0 and not _messages[i]["stays"]:
+			_messages.remove_at(i)
+			changed = true
+	if changed:
+		queue_redraw()
 
 
 func _on_ship_touched_down(speed: float, upright: bool) -> void:
@@ -41,22 +48,32 @@ func _on_ship_touched_down(speed: float, upright: bool) -> void:
 
 
 func _on_ship_lifted_off() -> void:
-	_message = ""
-	_message_time_left = 0.0
+	for i in range(_messages.size() - 1, -1, -1):
+		if not _messages[i]["stays"]:
+			_messages.remove_at(i)
 	queue_redraw()
 
 
-func _show_message(text: String, color: Color) -> void:
-	_message = text
-	_message_color = color
-	_message_time_left = message_seconds
+func _on_ship_warning_raised(text: String) -> void:
+	_show_message(text, warning_color)
+
+
+func _on_ship_lost() -> void:
+	_show_message("SHIP LOST", bad_color, true)
+
+
+func _show_message(text: String, color: Color, stays: bool = false) -> void:
+	_messages.append({"text": text, "color": color, "time_left": message_seconds, "stays": stays})
+	while _messages.size() > most_messages:
+		_messages.remove_at(0)
 	queue_redraw()
 
 
 func _draw() -> void:
-	if _message == "":
-		return
-	var left: float = floorf(((get_parent() as Control).size.x - UiStyle.text_width(_message)) / 2.0)
-	for offset: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
-		UiStyle.draw_text(self, _message, Vector2(left, message_height) + offset, outline_color)
-	UiStyle.draw_text(self, _message, Vector2(left, message_height), _message_color)
+	for i in range(_messages.size()):
+		var text: String = _messages[i]["text"]
+		var left: float = floorf(((get_parent() as Control).size.x - UiStyle.text_width(text)) / 2.0)
+		var at := Vector2(left, message_height + i * message_spacing)
+		for offset: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
+			UiStyle.draw_text(self, text, at + offset, outline_color)
+		UiStyle.draw_text(self, text, at, _messages[i]["color"])

@@ -9,3 +9,5 @@ extends BodyData
 @export var color: Color = Color.WHITE
 ## Distance at which the star's light has dropped to half. Bigger means a brighter star.
 @export var falloff_distance: float = 4000.0
+## Distance at which its heat reaches the top of a hull's scale, past which hulls burn.
+@export var heat_distance: float = 6000000.0

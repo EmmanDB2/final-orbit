@@ -22,6 +22,9 @@ const PAD_MARGIN: float = 4.0
 const ZOOM_WIDTH: float = 68.0
 const BUTTON_HEIGHT: float = 44.0
 const BURN_HEIGHT: float = 76.0
+const RESTART_WIDTH: float = 84.0
+## How far below the top bar RESTART sits, leaving room for pilot messages above it.
+const RESTART_DROP: float = 64.0
 ## How much of each hidden panel stays on screen as a strip.
 const STRIP: float = 6.0
 ## How far a finger moves before a touch on open space counts as a drag.
@@ -51,6 +54,7 @@ var _stab_button: UiButton
 var _left_tab: SideTab
 var _right_tab: SideTab
 var _zoom_buttons: Array[UiButton] = []
+var _restart_button: UiButton
 
 var _ship: Node2D
 var _is_inner_screen: bool = true
@@ -83,6 +87,7 @@ func connect_flight(ship: Node2D, view: Node, turn_guide: Node) -> void:
 	ship.flight_data_changed.connect((_left_panel as PlatePanel).on_flight_data)
 	ship.assist_changed.connect(_on_assist_changed)
 	ship.stab_changed.connect(_on_stab_changed)
+	ship.stranded_changed.connect(_on_stranded_changed)
 	_lever.throttle_changed.connect(ship._on_throttle_changed)
 	zoom_button_pressed.connect(view._on_zoom_button_pressed)
 	zoom_scaled.connect(view._on_zoom_scaled)
@@ -99,6 +104,10 @@ func _build() -> void:
 	_zoom_row = _child_control(self)
 	_top_bar = TopBar.new()
 	add_child(_top_bar)
+	_restart_button = UiButton.new().setup("RESTART", palette.telemetry_amber)
+	_restart_button.visible = false
+	_restart_button.tapped.connect(func() -> void: get_tree().reload_current_scene())
+	add_child(_restart_button)
 
 	(_left_panel as PlatePanel).shows_fuel = true
 	_lever = ThrottleLever.new()
@@ -164,6 +173,9 @@ func _layout() -> void:
 
 	_top_bar.position = Vector2.ZERO
 	_top_bar.size = Vector2(view.x, BAR_HEIGHT)
+
+	_restart_button.size = Vector2(RESTART_WIDTH, BUTTON_HEIGHT)
+	_restart_button.position = Vector2(floorf((view.x - RESTART_WIDTH) / 2.0), BAR_HEIGHT + RESTART_DROP)
 
 	_left_panel.size = Vector2(LEFT_WIDTH, body_height)
 	_lever.position = Vector2(6.0, 10.0)
@@ -345,8 +357,12 @@ func _input(event: InputEvent) -> void:
 		_on_finger_moved(event.index, event.position)
 
 
+func _on_stranded_changed(stranded: bool) -> void:
+	_restart_button.visible = stranded
+
+
 func _widgets_in_reach() -> Array[UiWidget]:
-	var widgets: Array[UiWidget] = []
+	var widgets: Array[UiWidget] = [_restart_button]
 	if _hidden:
 		widgets.append(_left_tab)
 		widgets.append(_right_tab)

@@ -1,6 +1,6 @@
-# rcs_puffs.gd: draws gas puffing from the ship's RCS nozzles while they fire.
-# From DESIGN.md, "Ships". Purely cosmetic: ship.gd says which nozzles are firing, and the
-# nozzle positions come from the ship's design.
+# rcs_puffs.gd: draws gas puffing from the ship's RCS nozzles while they fire, and from any
+# holes venting fuel. From DESIGN.md, "Ships". Purely cosmetic: ship.gd says what's firing,
+# and the nozzle positions come from the ship's design.
 class_name RcsPuffs
 extends Node2D
 
@@ -22,6 +22,7 @@ var _fire_left: bool = false
 var _fire_right: bool = false
 var _fire_rear: bool = false
 var _fire_front: bool = false
+var _leaks: Array = []
 var _time: float = 0.0
 
 
@@ -33,6 +34,13 @@ func set_nozzles(design: ShipDesign) -> void:
 	_rear = PackedVector2Array()
 	for nozzle: Vector2 in design.rcs_rear_nozzles:
 		_rear.append(nozzle - middle)
+
+
+## Says where fuel is venting from: pairs of a point on the art and the way it's going.
+func set_leaks(leaks: Array) -> void:
+	if not leaks.is_empty() or not _leaks.is_empty():
+		_leaks = leaks
+		queue_redraw()
 
 
 ## Says which nozzles fire: the left and right sides, the rear pair, and the sides angled
@@ -49,7 +57,7 @@ func set_firing(left: bool, right: bool, rear: bool, front: bool, art_scale: flo
 
 
 func _is_firing() -> bool:
-	return _fire_left or _fire_right or _fire_rear or _fire_front
+	return _fire_left or _fire_right or _fire_rear or _fire_front or not _leaks.is_empty()
 
 
 func _process(delta: float) -> void:
@@ -71,6 +79,8 @@ func _draw() -> void:
 	if _fire_rear:
 		for nozzle: Vector2 in _rear:
 			_draw_puff(nozzle, Vector2.DOWN)
+	for leak: Array in _leaks:
+		_draw_puff(leak[0], leak[1])
 
 
 # A small cone of gas that widens as it leaves the nozzle and breaks up at the far end.

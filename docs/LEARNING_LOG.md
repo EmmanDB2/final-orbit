@@ -191,3 +191,19 @@ Files: `scripts/reentry_glow.gd`, `scripts/ship.gd`, `scripts/rcs_puffs.gd`, `sc
 Files: `data/lander_design.tres`, `docs/DESIGN.md`
 
 - the rocket equation and why more fuel means a heavier ship
+
+## 2026-11-05: Tier 1, ticket 9: live ship pixels
+
+Files: `scripts/ship/ship_body.gd`, `scripts/ship/material_data.gd`, `scripts/ship/ship_design.gd`, `data/materials/*`, `tests/test_ship_body.gd`
+
+- flood fill for connected pieces
+- counting sort
+- convex hulls for finding what touches first
+
+## 2026-11-05: Tier 1, ticket 10: damage
+
+Files: `scripts/ship.gd`, `scripts/debris_field.gd`, `scripts/telemetry_readout.gd`, `scripts/rcs_puffs.gd`, `scripts/star_light.gd`, `scripts/star_data.gd`, `scripts/main.gd`, `scripts/ui/flight_hud.gd`, `scenes/main.tscn`, `data/home_star.tres`, `data/lander_design.tres`, `docs/DESIGN.md`
+
+- kinetic energy and reduced mass in a collision
+- torque from off-center forces
+- updating a texture at runtime

@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://bkfs6c1r2b1i8" path="res://scripts/star_light.gd" id="6_light"]
 [ext_resource type="Shader" path="res://shaders/star.gdshader" id="21_star_shader"]
 [ext_resource type="Script" path="res://scripts/star_view.gd" id="22_star_view"]
+[ext_resource type="Script" path="res://scripts/debris_field.gd" id="23_debris"]
 [ext_resource type="Resource" path="res://data/home_star.tres" id="7_star"]
 [ext_resource type="Script" uid="uid://drw8htpqo2g5a" path="res://scripts/main.gd" id="8_main"]
 [ext_resource type="Resource" path="res://data/home_planet.tres" id="9_planet"]
@@ -92,6 +93,9 @@ star = ExtResource("7_star")
 [node name="Trajectory" type="Node2D" parent="." unique_id=1942087613]
 script = ExtResource("13_path")
 
+[node name="Debris" type="Node2D" parent="." unique_id=1436605912]
+script = ExtResource("23_debris")
+
 [node name="TurnGuide" type="Node2D" parent="." unique_id=1902447315]
 script = ExtResource("21_guide")
 
@@ -133,6 +137,11 @@ script = ExtResource("17_readout")
 [connection signal="view_changed" from="Camera2D" to="Background/BodyGuides" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Ship" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Trajectory" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Debris" method="_on_view_changed"]
+[connection signal="part_detached" from="Ship" to="Debris" method="_on_ship_part_detached"]
+[connection signal="pixels_scattered" from="Ship" to="Debris" method="_on_ship_pixels_scattered"]
+[connection signal="warning_raised" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_warning_raised"]
+[connection signal="ship_lost" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_lost"]
 [connection signal="orbit_changed" from="Ship" to="Trajectory" method="_on_ship_orbit_changed"]
 [connection signal="world_position_changed" from="Ship" to="Trajectory" method="_on_ship_world_position_changed"]
 [connection signal="screen_fitted" from="ScreenFit" to="Hud/SafeArea" method="_on_screen_fitted"]
@@ -142,3 +151,4 @@ script = ExtResource("17_readout")
 [connection signal="lifted_off" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_lifted_off"]
 [connection signal="world_position_changed" from="Ship" to="StarLight" method="_on_ship_world_position_changed"]
 [connection signal="star_light_changed" from="StarLight" to="Background/Starfield" method="_on_star_light_changed"]
+[connection signal="star_heat_changed" from="StarLight" to="Ship" method="_on_star_heat_changed"]

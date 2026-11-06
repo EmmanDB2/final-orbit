@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Damage built: pixels are collision, hits and heat erase them, pieces break off as debris with their own orbits, lost modules change how the ship flies, and tanks leak. Losing the cockpit loses the ship. RESTART added. CRASH now starts at 250 units/s instead of 500 \[Leaning\] |
 | 2026-11-05 | The lander's fuel doubled to 40 t, with engine and RCS raised so a full tank feels the same \[Leaning\] |
 | 2026-11-05 | Re-entry heat built, shown as hot gas around the ship. It does no damage yet \[Leaning\] |
 | 2026-11-05 | Atmospheres built: the home planet has air that moves with its spin, drag that depends on the ship's shape and mass, and a stepped glow that becomes the sky up close \[Leaning\]. The path line ignores the air for now |
@@ -172,6 +173,22 @@ Destruction: \[Locked\]
 - Losing a module changes how the ship flies: a missing thruster gives off-center thrust and spin, a punctured tank vents and pushes the ship.
 - A debris budget caps active pieces; tiny ones fade or burn up.
 
+How it works in Tier 1: \[Leaning\]
+
+- Pixels are the ship's collision with the ground: whichever pixel reaches the ground first touches it, at any angle. Hitting debris uses the pixels too.
+- Up to 50 units/s does nothing. Above that, the energy is half the mass times the square of speed, less the safe speed's share. Against debris, the mass is the two bodies' shared mass.
+- Each material has a strength, the energy to destroy one of its pixels: hull and paint 500 kJ, steel 1.5 MJ, glass 200 kJ, foil 100 kJ. The whole lander is worth about 7 GJ.
+- Flat ground crushes from the side that hits, in a jagged line. Debris knocks a dent around where it touches.
+- As a guide, with a light tank: 100 units/s scratches the engine bell, 150 takes about 3% of the ship, and 250 takes the engine. A full tank hits about three times as hard.
+- A connectivity check groups pixels into 3 x 3 cells, and touching cells count as attached, so the art's small gaps hold together. The piece with the most cockpit stays the ship.
+- Pieces under 30 pixels are just sparks. There can be 12 chunks at once. Under 200 pixels, one fades after 30 seconds or burns up in the air, and any chunk on the ground goes after 60 seconds.
+- The ship turns around its new center of mass, which moves as pixels go.
+- A module under half its pixels stops working, and the pilot gets a message. Left RCS gone means no clockwise turn or moving right, and right RCS gone means the reverse. An engine module gone means half the thrust, off-center, so the ship spins.
+- Fuel is shared across the tanks. A holed tank leaks at up to 2,000 kg/s depending on the hole, loses capacity as it goes, and pushes the ship away from the hole. A destroyed tank loses what it held at once. Lost capacity stays lost, even after landing.
+- Cockpit under half its pixels means the ship is lost, until the escape pod in Tier 2. The ship stops responding and stays where it is as a wreck. Touching the star destroys everything.
+- RESTART appears when the ship is lost, has no engine, or has no fuel, and starts a new flight.
+- A hit stops the ship dead against the ground, with no bounce or slide yet.
+
 Archetypes that emerge from the physics: \[Leaning\]
 
 | Archetype | Good at | Pays for it with |
@@ -218,7 +235,8 @@ Rotating planets and atmospheres: \[Leaning, Tier 1\]
 - Outside the atmosphere, momentum is conserved and the ship does not slow down.
 - Airless bodies have no moving air, so a hovering ship stays put while the ground slides past underneath.
 - Coasting stays closed-form above the atmosphere. Inside it the ship is simulated step by step, which limits time warp and fold-to-coast there and needs the preview's background thread.
-- Re-entry heat grows with the square root of air density and the cube of speed. A gentle return from low orbit reads about 0.2 on a scale where 1.0 is the limit, and a steep return from high up goes past 1.0. For now it only shows, as a bow shock and streaks of gas in the thrust and fire colors. Heat damage and heat shields come with damage. \[Leaning\]
+- Re-entry heat grows with the square root of air density and the cube of speed, and shows as a bow shock and streaks of gas in the thrust and fire colors. A gentle return from low orbit reads about 0.2 on a scale where 1.0 is the limit, and a steep return from high up goes past 1.0. \[Leaning\]
+- The hull warms toward the heat over about 6 seconds, so a short spike does no harm. Past 1.0 it burns away from the hot side, at 200 MJ a second for each whole step past, about 3% of the lander. Heat shields come with more modules. \[Leaning\]
 - For now the path line ignores the air, so inside the atmosphere it shows where the ship would go with no drag and updates every tick. Drawing the drag into it waits for the background thread. \[Leaning\]
 
 Ship: \[Locked\]
@@ -293,7 +311,7 @@ Every hazard is physical, visible, and predictable: you die because you were gre
 | Delta-v | Limited fuel, rocket equation | Efficient transfers, staging, lighter ships | 1 |
 | Impact | Approach speed and mass | Slow docking and landing, better gear | 1 |
 | Atmospheres | Drag and re-entry heat | Correct entry angle, heat shields | 1 |
-| Star heat | Too close to a star | Heat shielding, radiators | 1 |
+| Star heat | Too close to a star: hulls burn inside 6 million units of the home star | Heat shielding, radiators | 1 |
 | Cold and dark | Inverse-square sunlight far out | Different power and thermal builds | 1 |
 | Comms blackout | No line of sight to a relay | Plan uplinks; no updates or uplink while hidden | 1 |
 | Radiation belts | Magnetic planets, gas giants | Pass through fast or route around | 2 |
@@ -321,7 +339,7 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 - Tiers 2 to 7 are built. Star system centers on the star, Planet on the planet you're around, Orbit on whichever body you're orbiting, and Approach, Descent, and Surface on the ship. In between, the center slides steadily with the zoom. Out in deep space, the ship stands in for the planet and orbited body. \[Leaning\]
 - The far tiers draw each body's rails and sphere of influence in dark canopy glass from the agency palette, behind the bodies. An orbit line stops at that body's sphere of influence ring, and rails or rings too small to read aren't drawn. \[Leaning\]
 - A ship rests on its engine bell, and on the ground it settles upright and the turn keys do nothing, so thrust always lifts it straight off. \[Leaning\]
-- Tier 0 has no damage: a touchdown only reports LANDED (up to 50 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 500 units/s). \[Leaning\]
+- A touchdown reports LANDED (up to 50 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 250 units/s), on top of any damage. \[Leaning\]
 - Up close, patches of the next color speckle the ground so you can see drift. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
 - One exception: closer than the Orbit view, the ship is its normal sprite at true scale, with no smoothing and no minimum size, so it can shrink out of sight just before the icon takes over. At the Orbit view and farther it's a clean icon, and very far out it's a dot. \[Leaning\]
