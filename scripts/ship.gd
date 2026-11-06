@@ -55,8 +55,6 @@ signal flight_data_changed(data: Dictionary)
 @export var dot_max_zoom: float = 0.0001
 ## The icon shows at this zoom and farther, and the sprite at anything closer.
 @export var icon_max_zoom: float = 1.0 / 800.0
-## The smallest the sprite gets, as a share of its full size. About the icon's height.
-@export var sprite_min_scale: float = 0.08
 ## Height of the ship's center when it's resting on its engine bell, in world units.
 @export var ground_clearance: float = 105.0
 ## How fast the ship straightens up on the ground, in radians per second.
@@ -323,7 +321,7 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 			(state.x - center_x) * pixels_per_unit,
 			(state.y - center_y) * pixels_per_unit).round()
 	_show_sprite = pixels_per_unit > icon_max_zoom
-	_sprite_scale = clampf(pixels_per_unit, sprite_min_scale, 1.0)
+	_sprite_scale = minf(pixels_per_unit, 1.0)
 	_sprite.scale = Vector2.ONE * _sprite_scale
 	_flame.scale = Vector2.ONE * _sprite_scale
 	_flame.position = _flame_position * _sprite_scale

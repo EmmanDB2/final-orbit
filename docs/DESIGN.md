@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | The ship sprite has no minimum size: it stays at true scale until the icon takes over at the Orbit view \[Leaning\] |
 | 2026-11-05 | RCS puffs built, firing from the side nubs and tail nozzles on the art \[Leaning\] |
 | 2026-11-05 | Time warp put in the parking lot for now |
 | 2026-11-05 | RCS pad and translation built. The inner screen's right panel widens to 140 game pixels to fit 44-pixel buttons, and its pad needs no ROT / TRANS switch, since it shows rotate and translate at once. The cover screen's panel only rises as far as its controls need \[Leaning\] |
@@ -312,7 +313,7 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 - Tier 0 has no damage: a touchdown only reports LANDED (up to 50 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 500 units/s). \[Leaning\]
 - Up close, patches of the next color speckle the ground so you can see drift. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
-- One exception: closer than the Orbit view, the ship is its normal sprite at true size, with no smoothing, down to about 17 px tall. At the Orbit view and farther it's a clean icon, and very far out it's a dot. \[Leaning\]
+- One exception: closer than the Orbit view, the ship is its normal sprite at true scale, with no smoothing and no minimum size, so it can shrink out of sight just before the icon takes over. At the Orbit view and farther it's a clean icon, and very far out it's a dot. \[Leaning\]
 - Terrain detail is generated only when you zoom in close. \[Leaning\]
 - Zoom moves smoothly and has no outer limit, so the ship can shrink to a single dot. The tiers set what detail is drawn at each distance. \[Leaning\]
 - Interiors use an FTL-style cutaway: zoom in and the roof comes off, with top-down movement inside. \[Locked for design, built in Tier 3\]

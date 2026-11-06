@@ -150,3 +150,9 @@ Files: `scripts/rcs_puffs.gd`, `scripts/ship.gd`, `scripts/ship/ship_design.gd`,
 
 - why a thruster above the center of mass turns the ship
 - child nodes that follow their parent's rotation
+
+## 2026-11-05: Ship sprite has no minimum size
+
+Files: `scripts/ship.gd`, `docs/DESIGN.md`
+
+- scaling a sprite with the zoom
