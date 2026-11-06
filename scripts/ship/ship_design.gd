@@ -17,10 +17,23 @@ extends Resource
 @export var exhaust_velocity: float = 1.0
 ## RCS translation thrust, in newtons, for moving without turning.
 @export var rcs_translate_force: float = 0.0
+## The fastest a hit can be and do no damage, in meters per second.
+@export var safe_impact_speed: float = 50.0
+## How fast fuel escapes a tank that has lost all its pixels, in kilograms per second. A
+## smaller hole leaks in proportion.
+@export var tank_leak_rate: float = 2000.0
+## How fast escaping fuel leaves a hole, in meters per second, which sets how hard it pushes.
+@export var vent_speed: float = 800.0
 ## How much the ship's shape catches the air. 1.0 is the blunt lander.
 @export var drag_coefficient: float = 1.0
-## How much air heating reads as the top of the scale. Damage from it comes later.
+## How much air heating reads as the top of the scale. Past it, the hull starts burning.
 @export var heat_limit: float = 2.0e10
+## How long the hull takes to warm up or cool down, in seconds.
+@export var hull_heat_seconds: float = 6.0
+## How fast a hull burns for each whole step past the top of the scale, in joules per second.
+@export var burn_power: float = 2.0e8
+## How often a burning hull loses pixels, in seconds.
+@export var burn_seconds: float = 0.33
 ## Where the RCS nozzles sit on the art, in pixels, for drawing their puffs.
 @export var rcs_left_nozzle: Vector2 = Vector2.ZERO
 @export var rcs_right_nozzle: Vector2 = Vector2.ZERO

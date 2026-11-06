@@ -6,4 +6,5 @@
 script = ExtResource("1_material")
 display_name = "Canopy glass"
 density = 0.6
+strength = 200000.0
 colors = PackedColorArray(0.164706, 0.290196, 0.333333, 1, 0.560784, 0.780392, 0.811765, 1)
