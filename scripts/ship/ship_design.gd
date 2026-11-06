@@ -17,6 +17,10 @@ extends Resource
 @export var exhaust_velocity: float = 1.0
 ## RCS translation thrust, in newtons, for moving without turning.
 @export var rcs_translate_force: float = 0.0
+## How much the ship's shape catches the air. 1.0 is the blunt lander.
+@export var drag_coefficient: float = 1.0
+## How much air heating reads as the top of the scale. Damage from it comes later.
+@export var heat_limit: float = 2.0e10
 ## Where the RCS nozzles sit on the art, in pixels, for drawing their puffs.
 @export var rcs_left_nozzle: Vector2 = Vector2.ZERO
 @export var rcs_right_nozzle: Vector2 = Vector2.ZERO

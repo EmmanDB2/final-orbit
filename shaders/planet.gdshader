@@ -14,7 +14,13 @@ uniform float units_per_px = 1.0;
 // How far the body has turned, set by the same script.
 uniform float spin_cos = 1.0;
 uniform float spin_sin = 0.0;
+// How high the air reaches on screen, in pixels, set by the same script. Zero means airless.
+uniform float air_px = 0.0;
 // Set by planet_view.gd from the planet's data.
+uniform vec3 air_color : source_color = vec3(1.0);
+// How many flat steps the air fades through, and how strong it is at the ground.
+uniform float air_steps = 6.0;
+uniform float air_strength = 0.8;
 uniform vec4 surface_colors[6] : source_color;
 uniform int terrain_seed = 1;
 // Size of the largest land features, in world units.
@@ -81,7 +87,16 @@ void vertex() {
 void fragment() {
 	vec2 offset = floor(pixel) + vec2(0.5) - center_px;
 	if (dot(offset, offset) > radius_px * radius_px) {
-		COLOR = vec4(0.0);
+		float above_ground = length(offset) - radius_px;
+		if (above_ground < air_px) {
+			// A checker of pixels at each edge keeps the steps from looking like hard rings.
+			float reach = 1.0 - above_ground / air_px;
+			float checker = mod(floor(pixel.x) + floor(pixel.y), 2.0) / air_steps;
+			float level = floor((reach * reach + checker * 0.5) * air_steps) / air_steps;
+			COLOR = vec4(air_color, level * air_strength);
+		} else {
+			COLOR = vec4(0.0);
+		}
 	} else {
 		// Turn the screen offset back by the spin to find which ground is under this pixel.
 		vec2 ground = vec2(spin_cos * offset.x + spin_sin * offset.y, spin_cos * offset.y - spin_sin * offset.x) * units_per_px;

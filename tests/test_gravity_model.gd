@@ -62,6 +62,7 @@ func _initialize() -> void:
 
 	_test_nested_system()
 	_test_spin()
+	_test_air()
 
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -794,7 +795,23 @@ func _test_spin() -> void:
 	against.y = -(RADIUS + 110.0)
 	against.velocity_x = -SPIN * RADIUS
 	for i in range(240):
-		spinning.propagate(along, 1.0 / 60.0)
-		spinning.propagate(against, 1.0 / 60.0)
+		if not along.is_on_surface():
+			spinning.propagate(along, 1.0 / 60.0)
+		if not against.is_on_surface():
+			spinning.propagate(against, 1.0 / 60.0)
 	_check("coming down with the spin only hits at the fall speed", along.get_touchdown_speed(), sqrt(2.0 * MU / (RADIUS * RADIUS) * 10.0), 15.0)
 	_check("coming down against it, the ground hits at twice the spin", against.get_touchdown_speed(), 2.0 * SPIN * RADIUS, 30.0)
+
+
+func _test_air() -> void:
+	const ZONE := 15000.0
+	const SCALE_HEIGHT := 2000.0
+	var airy := PatchedConicsModel.new()
+	airy.set_central_body(MU, RADIUS, ZONE)
+	_check("no air until it's given some", airy.get_air_density(0.0, -RADIUS, 0.0), 0.0, 0.0)
+	airy.set_body_atmosphere(0, 1.0, SCALE_HEIGHT)
+	_check("thickest at the ground", airy.get_air_density(0.0, -RADIUS, 0.0), 1.0, 1e-9)
+	_check("none at the top", airy.get_air_density(0.0, -(RADIUS + ZONE), 0.0), 0.0, 1e-12)
+	_check("none above the top", airy.get_air_density(0.0, -(RADIUS + ZONE * 2.0), 0.0), 0.0, 0.0)
+	var one_up: float = airy.get_air_density(0.0, -(RADIUS + SCALE_HEIGHT), 0.0)
+	_check("thins by e every scale height", one_up, exp(-1.0), 1e-3)

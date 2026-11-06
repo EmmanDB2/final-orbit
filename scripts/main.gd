@@ -45,4 +45,5 @@ func _add_body(gravity_model: PatchedConicsModel, parent: int, body: BodyData) -
 			body.orbit_semi_major_axis, body.orbit_eccentricity, body.orbit_argument_of_periapsis,
 			body.orbit_start_angle, body.landing_line_altitude)
 	gravity_model.set_body_spin(index, body.spin_rate)
+	gravity_model.set_body_atmosphere(index, body.air_density, body.air_scale_height)
 	return index

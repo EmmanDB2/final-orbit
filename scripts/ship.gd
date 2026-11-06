@@ -87,6 +87,9 @@ var state: ShipState
 var _gravity_model: GravityModel
 var _thrusting: bool = false
 var _was_on_surface: bool = false
+## How hot the air is making the ship, where 1.0 is the top of the scale. Damage comes later.
+var heat_share: float = 0.0
+
 var _show_sprite: bool = true
 var _sprite_scale: float = 1.0
 var _flame_position: Vector2 = Vector2.ZERO
@@ -97,6 +100,7 @@ var _stab_needs_pick: bool = true
 var _stab_direction: int = 0
 var _flame_time: float = 0.0
 var _spin_firing: float = 0.0
+var _heat_heading: float = 0.0
 var _translate_forward: float = 0.0
 var _translate_right: float = 0.0
 
@@ -182,10 +186,12 @@ func _physics_process(delta: float) -> void:
 		state.velocity_y += -cos(heading) * along + sin(heading) * across
 		_burn_fuel(design.rcs_fuel_rate * (absf(translate_forward) + absf(translate_right)) * delta)
 
+	var in_air: bool = _push_through_air(delta)
+
 	_gravity_model.propagate(state, delta)
 
 	var on_surface: bool = state.is_on_surface()
-	if _thrusting or translating or on_surface != _was_on_surface:
+	if _thrusting or translating or in_air or on_surface != _was_on_surface:
 		orbit_changed.emit()
 	if on_surface and not _was_on_surface:
 		var tilt: float = absf(angle_difference(heading, _local_up_heading()))
@@ -226,6 +232,39 @@ func _burn_fuel(amount: float) -> void:
 	if amount > 0.0:
 		fuel = maxf(fuel - amount, 0.0)
 		_update_performance()
+
+
+# Air pushes back against the ship's motion through it, and it moves with the planet, so
+# this measures against the moving air. Side-on, the ship catches more of it. Returns
+# whether there was any air to push through.
+func _push_through_air(delta: float) -> bool:
+	heat_share = 0.0
+	if state.is_on_surface():
+		return false
+	var density: float = _gravity_model.get_air_density(state.x, state.y, state.time)
+	if density <= 0.0:
+		return false
+
+	var air: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+	var through_x: float = state.velocity_x - air[0]
+	var through_y: float = state.velocity_y - air[1]
+	var speed: float = sqrt(through_x * through_x + through_y * through_y)
+	if speed < 0.001:
+		return true
+
+	var along_nose: float = absf(through_x * sin(heading) - through_y * cos(heading)) / speed
+	var across_nose: float = sqrt(maxf(1.0 - along_nose * along_nose, 0.0))
+	var catching: float = body.width * along_nose + body.length * across_nose
+	var mass_now: float = body.mass + fuel
+	var slowing: float = 0.5 * density * speed * speed * design.drag_coefficient * catching / mass_now
+	var change: float = minf(slowing * delta, speed)
+	state.velocity_x -= through_x / speed * change
+	state.velocity_y -= through_y / speed * change
+
+	# Heating grows with the cube of speed, so a steep, fast entry is far worse.
+	heat_share = sqrt(density) * speed * speed * speed / design.heat_limit
+	_heat_heading = atan2(through_x, -through_y)
+	return true
 
 
 func _update_performance() -> void:

@@ -35,6 +35,9 @@ public:
 	// Sets how fast a body turns, in radians per second. Positive is clockwise on screen, the
 	// way the ship starts, so launching that way gets a boost.
 	void set_body_spin(int p_index, double p_rate);
+	// Gives a body air, thickest at the ground and thinning with height, every p_scale_height
+	// by a factor of e. It ends at the top of the body's landing zone.
+	void set_body_atmosphere(int p_index, double p_surface_density, double p_scale_height);
 
 	godot::PackedFloat64Array get_acceleration(double p_x, double p_y, double p_time) const override;
 	void propagate(const godot::Ref<ShipState> &p_state, double p_dt) const override;
@@ -43,6 +46,7 @@ public:
 	godot::PackedFloat64Array find_encounter(const godot::Ref<ShipState> &p_state, double p_duration) const override;
 	double get_altitude(double p_x, double p_y, double p_time) const override;
 	godot::PackedFloat64Array get_surface_velocity(double p_x, double p_y, double p_time) const override;
+	double get_air_density(double p_x, double p_y, double p_time) const override;
 	int get_body_count() const override;
 	int get_body_parent(int p_index) const override;
 	godot::PackedFloat64Array get_body_position(int p_index, double p_time) const override;
@@ -70,6 +74,9 @@ private:
 		double entry_altitude = 0.0;
 		// Radians per second.
 		double spin_rate = 0.0;
+		// Air at the ground, and how quickly it thins with height. Zero means airless.
+		double air_density = 0.0;
+		double air_scale_height = 1.0;
 		// The body this one orbits, and its rails around it. Body 0 doesn't use these.
 		int parent = -1;
 		double semi_major_axis = 0.0;

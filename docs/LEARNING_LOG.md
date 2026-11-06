@@ -171,3 +171,10 @@ Files: `native/src/patched_conics_model.*`, `native/src/gravity_model.h`, `tests
 
 - rotating a coordinate in a shader
 - velocity of a point on a turning body
+
+## 2026-11-05: Tier 1, ticket 7: atmospheres
+
+Files: `native/src/patched_conics_model.*`, `native/src/gravity_model.*`, `tests/test_gravity_model.gd`, `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/ship/ship_design.gd`, `scripts/body_data.gd`, `scripts/body_view.gd`, `scripts/main.gd`, `shaders/planet.gdshader`, `data/home_planet.tres`, `docs/DESIGN.md`
+
+- the drag equation
+- exponential thinning of air with height

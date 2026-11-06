@@ -22,6 +22,7 @@ void GravityModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("find_encounter", "state", "duration"), &GravityModel::find_encounter);
 	ClassDB::bind_method(D_METHOD("get_altitude", "x", "y", "time"), &GravityModel::get_altitude);
 	ClassDB::bind_method(D_METHOD("get_surface_velocity", "x", "y", "time"), &GravityModel::get_surface_velocity);
+	ClassDB::bind_method(D_METHOD("get_air_density", "x", "y", "time"), &GravityModel::get_air_density);
 	ClassDB::bind_method(D_METHOD("get_body_count"), &GravityModel::get_body_count);
 	ClassDB::bind_method(D_METHOD("get_body_parent", "index"), &GravityModel::get_body_parent);
 	ClassDB::bind_method(D_METHOD("get_local_root", "index"), &GravityModel::get_local_root);

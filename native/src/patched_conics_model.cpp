@@ -48,6 +48,7 @@ void PatchedConicsModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_central_body", "mu", "radius", "entry_altitude"), &PatchedConicsModel::set_central_body, DEFVAL(0.0));
 	ClassDB::bind_method(D_METHOD("add_body", "parent", "mu", "radius", "semi_major_axis", "eccentricity", "argument_of_periapsis", "mean_anomaly_at_start", "entry_altitude"), &PatchedConicsModel::add_body, DEFVAL(0.0));
 	ClassDB::bind_method(D_METHOD("set_body_spin", "index", "rate"), &PatchedConicsModel::set_body_spin);
+	ClassDB::bind_method(D_METHOD("set_body_atmosphere", "index", "surface_density", "scale_height"), &PatchedConicsModel::set_body_atmosphere);
 }
 
 void PatchedConicsModel::set_central_body(double p_mu, double p_radius, double p_entry_altitude) {
@@ -77,6 +78,12 @@ int PatchedConicsModel::add_body(int p_parent, double p_mu, double p_radius, dou
 void PatchedConicsModel::set_body_spin(int p_index, double p_rate) {
 	ERR_FAIL_INDEX(p_index, static_cast<int>(bodies.size()));
 	bodies[p_index].spin_rate = p_rate;
+}
+
+void PatchedConicsModel::set_body_atmosphere(int p_index, double p_surface_density, double p_scale_height) {
+	ERR_FAIL_INDEX(p_index, static_cast<int>(bodies.size()));
+	bodies[p_index].air_density = p_surface_density;
+	bodies[p_index].air_scale_height = p_scale_height;
 }
 
 PatchedConicsModel::State2D PatchedConicsModel::body_state(int p_index, double p_time) const {
@@ -654,6 +661,24 @@ PackedFloat64Array PatchedConicsModel::get_surface_velocity(double p_x, double p
 	result.push_back(body.vx + ground_vx);
 	result.push_back(body.vy + ground_vy);
 	return result;
+}
+
+double PatchedConicsModel::get_air_density(double p_x, double p_y, double p_time) const {
+	const int index = dominant_body(p_x, p_y, p_time);
+	const Body &body = bodies[index];
+	if (body.air_density <= 0.0) {
+		return 0.0;
+	}
+	const State2D origin = body_state(index, p_time);
+	const double dx = p_x - origin.x;
+	const double dy = p_y - origin.y;
+	const double altitude = std::max(std::sqrt(dx * dx + dy * dy) - body.radius, 0.0);
+	if (altitude >= body.entry_altitude) {
+		return 0.0;
+	}
+	// Plain exponential thinning, shifted so it reaches exactly zero at the top.
+	const double top = std::exp(-body.entry_altitude / body.air_scale_height);
+	return body.air_density * (std::exp(-altitude / body.air_scale_height) - top) / (1.0 - top);
 }
 
 int PatchedConicsModel::get_body_count() const {

@@ -19,6 +19,15 @@ extends Resource
 ## an airless body. In world units.
 @export var landing_line_altitude: float = 0.0
 
+@export_group("Atmosphere")
+## How thick the air is at the ground: 1.0 is the home planet, and 0 is airless. The air
+## ends at landing_line_altitude.
+@export var air_density: float = 0.0
+## How quickly the air thins: every this many world units up, it drops by a factor of e.
+@export var air_scale_height: float = 2000.0
+## The color of the air's glow around the body.
+@export var air_color: Color = Color.WHITE
+
 @export_group("Rails")
 ## Average distance from the body this one orbits. Zero for the body at the center.
 @export var orbit_semi_major_axis: float = 0.0

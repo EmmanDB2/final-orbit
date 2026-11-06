@@ -65,6 +65,8 @@ public:
 	// is the one place ground speed comes from. Spin only counts inside the body's landing
 	// zone: higher up, this is just how the body itself is moving.
 	virtual godot::PackedFloat64Array get_surface_velocity(double p_x, double p_y, double p_time) const = 0;
+	// How thick the air is at this point: 1.0 is the home planet's ground, and 0 is no air.
+	virtual double get_air_density(double p_x, double p_y, double p_time) const = 0;
 	// One lap of a body's rails around its parent, relative to the parent, flat
 	// [x0, y0, x1, y1, ...]. Empty for body 0.
 	virtual godot::PackedFloat64Array get_body_orbit_path(int p_index, int p_samples) const = 0;

@@ -14,6 +14,9 @@ var spin_resistance: float = 0.0
 var module_masses: Dictionary = {}
 ## Total fuel the tanks hold, in kilograms.
 var fuel_capacity: float = 0.0
+## How wide and long the art is, in pixels. Sets how much air the ship pushes through.
+var width: float = 0.0
+var length: float = 0.0
 
 var _total_x: float = 0.0
 var _total_y: float = 0.0
@@ -30,6 +33,9 @@ static func measure(design: ShipDesign) -> ShipBody:
 			densities[color.to_html(false)] = material.density
 
 	var image: Image = design.texture.get_image()
+	var used: Vector2i = image.get_used_rect().size
+	body.width = used.x
+	body.length = used.y
 	var art_size: Vector2 = Vector2(image.get_size())
 	var columns: int = 1
 	var rows: int = 1

@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Atmospheres built: the home planet has air that moves with its spin, drag that depends on the ship's shape and mass, and a stepped glow that becomes the sky up close \[Leaning\]. The path line ignores the air for now |
 | 2026-11-05 | Planets and moons spin. Landing now means matching the ground's speed, and launching with the spin gives a boost \[Leaning\] |
 | 2026-11-05 | Real star built: it's body 0, with the planet on rails around it and the moon on rails around the planet. Star tint now comes from it. SYS shows a planet and its moons, and a second press shows the whole system \[Leaning\]. Reaching the star takes about 40 minutes without time warp |
 | 2026-11-05 | The ship sprite has no minimum size: it stays at true scale until the icon takes over at the Orbit view \[Leaning\] |
@@ -208,11 +209,14 @@ Rotating planets and atmospheres: \[Leaning, Tier 1\]
 - Planets spin, and their atmospheres rotate with them. The home planet turns once in about 48 minutes, with its ground moving at 330 units/s, clockwise like the ship's starting orbit. The moon is tidally locked, with its ground moving at 137 units/s. \[Leaning\]
 - The speed readout measures against the turning ground inside the landing zone, and against the body itself higher up, so it jumps by the ground speed at the top of the zone. \[Leaning\]
 - Inside an atmosphere, air resistance is computed relative to the moving air, so a hovering ship gets dragged along with the rotation.
+- Air resistance grows with the air's density, the square of speed, and how much of the ship faces the air, and shrinks with mass, so side-on slows harder and a full tank punches through further. Each ship's shape sets it, and the width and length come from its pixels. \[Leaning\]
+- The home planet's air ends at 15,000 units and thins by a factor of e every 2,000. A lander coming from low orbit reaches the ground at about 300 units/s, so it still needs a burn to land. \[Leaning\]
 - Landing means matching the ground's rotational speed.
 - Launching in the direction of spin gives a free speed boost, like real rockets launching east.
 - Outside the atmosphere, momentum is conserved and the ship does not slow down.
 - Airless bodies have no moving air, so a hovering ship stays put while the ground slides past underneath.
 - Coasting stays closed-form above the atmosphere. Inside it the ship is simulated step by step, which limits time warp and fold-to-coast there and needs the preview's background thread.
+- For now the path line ignores the air, so inside the atmosphere it shows where the ship would go with no drag and updates every tick. Drawing the drag into it waits for the background thread. \[Leaning\]
 
 Ship: \[Locked\]
 
