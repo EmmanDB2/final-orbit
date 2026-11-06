@@ -111,3 +111,11 @@ Files: `scripts/screen_fit.gd`, `scripts/safe_area.gd`, `scripts/flight_view.gd`
 - stretch settings and whole-number pixel scaling
 - anchors and safe areas for reactive UI
 - when a signal doesn't fire, and checking the value yourself
+
+## 2026-11-05: Ticket 8, the real flight UI
+
+Files: `scripts/ui/*`, `data/agency_palette.tres`, `scripts/ship.gd`, `scripts/flight_view.gd`, `scripts/telemetry_readout.gd`, `scripts/main.gd`, `scenes/main.tscn`, `project.godot`, `native/src/*`, `tests/test_gravity_model.gd`, `docs/DESIGN.md`
+
+- custom-drawn `Control` nodes and `_draw`
+- routing several fingers to different widgets
+- steering to a heading with a bang-bang control law

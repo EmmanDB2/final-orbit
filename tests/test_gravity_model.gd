@@ -42,6 +42,7 @@ func _initialize() -> void:
 	_test_ground_clearance()
 	_test_touchdown_speed()
 	_test_entry_heights()
+	_test_orbit_apsides()
 
 	var with_moon := PatchedConicsModel.new()
 	with_moon.set_central_body(MU, RADIUS)
@@ -338,6 +339,18 @@ func _test_entry_heights() -> void:
 		_check_quiet(sqrt(points[i * 2] * points[i * 2] + points[i * 2 + 1] * points[i * 2 + 1]) - RADIUS - 15000.0, heights[i], 1e-6)
 	_check("periapsis dips below the entry height", lowest, 10000.0 - 15000.0, 50.0)
 	_check("the low part is one stretch in the middle", 1.0 if first_low > 0 and last_low < 255 else 0.0, 1.0, 0.0)
+
+
+func _test_orbit_apsides() -> void:
+	var periapsis: float = 180000.0
+	var apoapsis: float = 540000.0
+	var a: float = (periapsis + apoapsis) / 2.0
+	var state := _state(0.0, -periapsis, sqrt(MU * (2.0 / periapsis - 1.0 / a)), 0.0)
+	var apsides: PackedFloat64Array = _model.get_orbit_apsides(state)
+	_check("periapsis height", apsides[0], periapsis - RADIUS, 1e-3)
+	_check("apoapsis height", apsides[1], apoapsis - RADIUS, 1e-3)
+	var open := _state(0.0, -periapsis, sqrt(2.0 * MU / periapsis) * 1.2, 0.0)
+	_check("an open path has no apoapsis", _model.get_orbit_apsides(open)[1], -1.0, 0.0)
 
 
 func _check_quiet(actual: float, expected: float, tolerance: float) -> void:

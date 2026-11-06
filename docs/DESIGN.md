@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | First real UI built for Tier 0: top bar, throttle lever, BURN under its cover, ASS and STAB buttons, zoom buttons, heading dial, drag to point, and auto-hide with side tabs. Replaces the throwaway touch controls and rough readout. Smooth zoom built \[Leaning\]. Gravity interface gains `get_body_velocity` and `get_orbit_apsides` |
 | 2026-11-05 | STAB picks its direction automatically, from whichever is closest to where the nose points \[Leaning\] |
 | 2026-11-05 | Clean landing limit lowered from 150 to 50 \[Leaning\] |
 | 2026-11-05 | Readouts show 1 world unit as 1 m \[Leaning\]. STAB added as a flight mode that holds the nose on a chosen direction \[Leaning\], so the PRO and RETRO buttons become part of it. ASS stays spin-only |
@@ -214,7 +215,7 @@ Flight modes: \[Leaning\]
 - STAB picks automatically, whichever of the four is closest to where the nose is pointing. On the north side of a clockwise orbit, those are right along the path, left against it, down toward the planet, and up away from it. \[Leaning\]
 - The name ASS, for Attitude Stabilization System, is final. \[Locked\]
 - ASS uses the same thrusters as manual turning, at the same strength, so from Tier 1 it should burn the same fuel.
-- The ship starts in ASS. T switches modes for now; the touch control is part of the touch controls question.
+- The ship starts in ASS, with STAB off. On the Mac, T switches ASS and RAW, and R switches STAB.
 
 Scale and precision: \[Leaning\]
 
@@ -298,7 +299,6 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 - The far tiers draw each moon's rails and sphere of influence in dark canopy glass from the agency palette, behind the planet and moons. A moon's orbit line stops at its sphere of influence ring. \[Leaning\]
 - A ship rests on its engine bell, and on the ground it settles upright and the turn keys do nothing, so thrust always lifts it straight off. \[Leaning\]
 - Tier 0 has no damage: a touchdown only reports LANDED (up to 50 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 500 units/s). \[Leaning\]
-- A rough readout shows altitude and speed relative to the ground, in world units. It's there so landing can be judged, and isn't the real UI. \[Leaning\]
 - Up close, patches of the next color speckle the ground so you can see drift. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
 - Terrain detail is generated only when you zoom in close. \[Leaning\]
@@ -331,6 +331,7 @@ Side panels: \[Locked\]
 - Bottom-left, next to the left panel: zoom buttons. SYS shows the local system, ORBIT shows what you're orbiting, and SHIP goes to the closest view of the ship.
 - Right side, at the bottom: flight mode buttons (ASS, STAB, NODE) and the BURN button under a red flip-up safety cover.
 - The throttle lever sets thrust power, and BURN activates it.
+- The first touch lifts BURN's cover and the button fires while held. The cover drops again after 6 seconds with no burning. \[Leaning\]
 - The center stays clear for the planet, orbit line, ship, and markers.
 
 Auto-hide: \[Locked\]
@@ -357,7 +358,8 @@ Turning and RCS controls: \[Leaning\]
 
 - Drag to point: dragging anywhere on the space view shows a cyan heading line from the ship toward the thumb, and the ship rotates to face it using RCS physics.
 - While turning, a dashed heading ring appears around the ship and fades when released.
-- Drag to point works even when the side panels are auto-hidden.
+- Drag to point works even when the side panels are auto-hidden, and leaves them hidden.
+- Two fingers on open space pinch to zoom. \[Leaning\]
 - RCS pad (right panel, inner screen): rotate left, rotate right, and four translate arrows (forward, back, left, right).
 - Translation moves the ship without turning it and is required for docking and precise landings.
 - A ROT / TRANS switch sits above the pad. On the cover screen, the compact pad uses it to flip four arrows between rotation and translation, with STAB in the middle.
@@ -478,7 +480,7 @@ Open questions:
 - [ ] Pilot identity: named character, customizable, or anonymous?
 - [x] Exact internal pixel resolutions for the inner and cover screens: 816 x 616 at 3x on the 2448 x 1848 inner screen and 986 x 624 at 2x on the 1972 x 1248 cover screen, from the screen fitting rule under Platform. Sizes confirmed on the device 2026-11-05.
 - [ ] Module grid size (64 x 64 px is a starting guess)
-- [ ] Touch controls for burns, rotation, and maneuver planning. A throwaway prototype lives in `scripts/rough_touch_controls.gd` so the game can be flown on the phone: slide a left thumb to turn, hold a right thumb to thrust, tap the mode panel, pinch to zoom. It isn't an answer to this question.
+- [ ] Touch controls for maneuver planning. Burns and rotation are settled in the UI section.
 - [ ] Economy numbers: gig pay, ship prices, repair costs, tow cost
 - [x] C# on Android stable yet, or stay with C++ GDExtension? Still experimental in Godot 4.7 (checked 2026-11-05); stay with C++
 - [ ] Starting conditions: first ship, starting money, home station

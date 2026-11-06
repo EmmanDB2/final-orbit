@@ -619,6 +619,34 @@ PackedFloat64Array PatchedConicsModel::get_body_position(int p_index, double p_t
 	return result;
 }
 
+PackedFloat64Array PatchedConicsModel::get_body_velocity(int p_index, double p_time) const {
+	PackedFloat64Array result;
+	const State2D state = body_state(p_index, p_time);
+	result.push_back(state.vx);
+	result.push_back(state.vy);
+	return result;
+}
+
+PackedFloat64Array PatchedConicsModel::get_orbit_apsides(const Ref<ShipState> &p_state) const {
+	PackedFloat64Array result;
+	ERR_FAIL_COND_V(p_state.is_null(), result);
+
+	const int index = dominant_body(p_state->x, p_state->y, p_state->time);
+	const Body &body = bodies[index];
+	const State2D origin = body_state(index, p_state->time);
+	State2D relative;
+	relative.x = p_state->x - origin.x;
+	relative.y = p_state->y - origin.y;
+	relative.vx = p_state->velocity_x - origin.vx;
+	relative.vy = p_state->velocity_y - origin.vy;
+
+	const Conic conic = make_conic(relative, body.mu);
+	const double periapsis = periapsis_radius(relative, body.mu);
+	result.push_back(periapsis - body.radius);
+	result.push_back(conic.alpha > 1e-12 ? 2.0 / conic.alpha - periapsis - body.radius : -1.0);
+	return result;
+}
+
 double PatchedConicsModel::get_body_radius(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, static_cast<int>(bodies.size()), 0.0);
 	return bodies[p_index].radius;

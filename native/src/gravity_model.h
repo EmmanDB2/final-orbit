@@ -45,11 +45,16 @@ public:
 	// Where a body is at a moment in time, as [x, y]. Bodies move on rails, computed from
 	// the time, so this works for any moment without simulating up to it.
 	virtual godot::PackedFloat64Array get_body_position(int p_index, double p_time) const = 0;
+	// How a body is moving at a moment in time, as [x, y].
+	virtual godot::PackedFloat64Array get_body_velocity(int p_index, double p_time) const = 0;
 	virtual double get_body_radius(int p_index) const = 0;
 	// The body whose gravity applies at this point and time.
 	virtual int get_dominant_body(double p_x, double p_y, double p_time) const = 0;
 	// How far a body's gravity dominates. Zero for a body with no limit, such as body 0.
 	virtual double get_sphere_of_influence(int p_index) const = 0;
+	// The low and high points of the ship's current orbit, as heights above the dominant
+	// body's surface: [periapsis, apoapsis]. Apoapsis is -1 on a path that never comes back.
+	virtual godot::PackedFloat64Array get_orbit_apsides(const godot::Ref<ShipState> &p_state) const = 0;
 	// Height above the dominant body's surface.
 	virtual double get_altitude(double p_x, double p_y, double p_time) const = 0;
 	// How fast the ground of the dominant body is moving under this point, as [x, y]. This

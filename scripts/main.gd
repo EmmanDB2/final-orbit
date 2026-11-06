@@ -28,4 +28,6 @@ func _ready() -> void:
 	$Camera2D.start_view(gravity_model, state)
 	$Background/BodyGuides.start_guides(gravity_model, state)
 	$Trajectory.start_preview(gravity_model, state)
+	$TurnGuide.ship = $Ship
+	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide)
 	$Ship.start_flight(gravity_model, state, PI / 2.0)

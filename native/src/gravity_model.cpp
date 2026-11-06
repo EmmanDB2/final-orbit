@@ -16,6 +16,8 @@ void GravityModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_surface_velocity", "x", "y", "time"), &GravityModel::get_surface_velocity);
 	ClassDB::bind_method(D_METHOD("get_body_count"), &GravityModel::get_body_count);
 	ClassDB::bind_method(D_METHOD("get_body_position", "index", "time"), &GravityModel::get_body_position);
+	ClassDB::bind_method(D_METHOD("get_body_velocity", "index", "time"), &GravityModel::get_body_velocity);
+	ClassDB::bind_method(D_METHOD("get_orbit_apsides", "state"), &GravityModel::get_orbit_apsides);
 	ClassDB::bind_method(D_METHOD("get_body_radius", "index"), &GravityModel::get_body_radius);
 	ClassDB::bind_method(D_METHOD("get_dominant_body", "x", "y", "time"), &GravityModel::get_dominant_body);
 	ClassDB::bind_method(D_METHOD("get_sphere_of_influence", "index"), &GravityModel::get_sphere_of_influence);

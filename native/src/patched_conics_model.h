@@ -39,6 +39,8 @@ public:
 	godot::PackedFloat64Array get_surface_velocity(double p_x, double p_y, double p_time) const override;
 	int get_body_count() const override;
 	godot::PackedFloat64Array get_body_position(int p_index, double p_time) const override;
+	godot::PackedFloat64Array get_body_velocity(int p_index, double p_time) const override;
+	godot::PackedFloat64Array get_orbit_apsides(const godot::Ref<ShipState> &p_state) const override;
 	double get_body_radius(int p_index) const override;
 	int get_dominant_body(double p_x, double p_y, double p_time) const override;
 	double get_sphere_of_influence(int p_index) const override;
