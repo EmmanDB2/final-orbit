@@ -62,14 +62,10 @@ uniform vec3 air_color : source_color = vec3(1.0);
 uniform vec3 air_sunset_color : source_color = vec3(1.0, 0.6, 0.4);
 uniform vec3 star_color : source_color = vec3(1.0);
 
-// Up close the big shapes are too large to show motion, so patches of the next color up
-// speckle the ground. This is their smallest size, in world units, and how wide they
-// stay on screen, in pixels, as you zoom out. Past the last zoom they switch off.
-uniform float speckle_size = 22.0;
-uniform float speckle_screen_size = 20.0;
-uniform float speckle_last_zoom_out = 40.0;
-// How much of the ground the speckles cover, from 0 to 1.
-uniform float speckle_amount = 0.3;
+// Each zoom shows finer detail than the last: patches of the next color, in tiers from this
+// size down, each a quarter of the last, appearing once their pixels can show them. This is also
+// what lets you see drift up close.
+uniform float detail_largest = 4800.0;
 // How many flat steps the daylight falls through, how far above the disc the star sits, and
 // what color a surface turns on the night side, as a share of its own.
 uniform float light_steps = 2.0;
@@ -179,6 +175,30 @@ float height_to_band(float height) {
 		return level / sea_level * 3.0;
 	}
 	return 3.0 + (level - sea_level) / (1.0 - sea_level) * 3.0;
+}
+
+
+// Moves a color up or down one wherever this zoom's detail tiers say so. Sea stays sea, and
+// land stays land.
+int with_detail(int index, vec2 ground) {
+	uint seed = uint(terrain_seed) + 20u;
+	float feature = detail_largest;
+	int shift = 0;
+	for (int tier = 0; tier < 5; tier++) {
+		if (feature > detail_units * 3.0) {
+			float value = value_noise(ground / feature, seed + uint(tier));
+			if (value < 0.3) {
+				shift = 1;
+			} else if (value > 0.74) {
+				shift = -1;
+			}
+		}
+		feature *= 0.25;
+	}
+	bool has_sea = sea_level > 0.0;
+	int lowest = (has_sea && index >= 3) ? 3 : 0;
+	int highest = (has_sea && index < 3) ? 2 : 5;
+	return clamp(index + shift, lowest, highest);
 }
 
 
@@ -294,15 +314,7 @@ void fragment() {
 		}
 
 		// Flat colors with hard edges, the way the ship is drawn.
-		int index = int(clamp(height_to_band(height), 0.0, 5.999));
-		if (units_per_px < speckle_last_zoom_out) {
-			float size = max(speckle_size, cell_units * 8.0);
-			float speckle = value_noise(ground / size, uint(terrain_seed) + 16u);
-			if (speckle < speckle_amount) {
-				// The last color of the sea and of the land step back, so sea stays sea.
-				index = (index == 2 || index == 5) ? index - 1 : index + 1;
-			}
-		}
+		int index = with_detail(int(clamp(height_to_band(height), 0.0, 5.999)), ground);
 		float share_out = distance_px / radius_px;
 		if (ice_cap > 0.0 && share_out + (height - 0.5) * 0.35 < ice_cap) {
 			index = 5;

@@ -281,3 +281,10 @@ Files: `native/src/terrain_profile.*`, `native/src/patched_conics_model.*`, `nat
 - 1D noise that loops around a circle
 - sending data to a shader through a texture
 - one source of numbers for physics and drawing
+
+## 2026-11-06: Terrain ticket 3: detail by zoom
+
+Files: `shaders/planet.gdshader`
+
+- level of detail
+- noise octaves as tiers of features
