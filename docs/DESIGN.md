@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | STAB picks its direction automatically, from whichever is closest to where the nose points \[Leaning\] |
 | 2026-11-05 | Clean landing limit lowered from 150 to 50 \[Leaning\] |
 | 2026-11-05 | Readouts show 1 world unit as 1 m \[Leaning\]. STAB added as a flight mode that holds the nose on a chosen direction \[Leaning\], so the PRO and RETRO buttons become part of it. ASS stays spin-only |
 | 2026-11-05 | UI decisions refined. Heading dial adopted, so the direction of travel marker leaves the parking lot. Hidden panels come back by dragging a side tab, replacing tap anywhere. Zoom buttons are SYS, ORBIT, and SHIP, and zoom moves smoothly with no outer limit \[Leaning\]. Throttle sets thrust and BURN activates it. Touch targets are measured in game pixels. Right panel rule reworded to fit the full-height panel |
@@ -209,7 +210,8 @@ Flight modes: \[Leaning\]
 - RAW: your inputs only. Spin and drift last until you counter them yourself.
 - ASS (Attitude Stabilization System): when you let go of the turn keys, the RCS fires against the spin until the ship stops turning.
 - ASS never brakes velocity, because cutting velocity would break orbits. \[Locked\]
-- STAB: the RCS holds the nose on a chosen direction, either along the trajectory line or toward the planet, each with the nose first or the thruster first. \[Leaning\]
+- STAB: the RCS holds the nose on one of four directions: along the trajectory line or toward the body you're orbiting, each with the nose first or the thruster first. \[Leaning\]
+- STAB picks automatically, whichever of the four is closest to where the nose is pointing. On the north side of a clockwise orbit, those are right along the path, left against it, down toward the planet, and up away from it. \[Leaning\]
 - The name ASS, for Attitude Stabilization System, is final. \[Locked\]
 - ASS uses the same thrusters as manual turning, at the same strength, so from Tier 1 it should burn the same fuel.
 - The ship starts in ASS. T switches modes for now; the touch control is part of the touch controls question.
