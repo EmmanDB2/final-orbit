@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | The lander's fuel doubled to 40 t, with engine and RCS raised so a full tank feels the same \[Leaning\] |
 | 2026-11-05 | Re-entry heat built, shown as hot gas around the ship. It does no damage yet \[Leaning\] |
 | 2026-11-05 | Atmospheres built: the home planet has air that moves with its spin, drag that depends on the ship's shape and mass, and a stepped glow that becomes the sky up close \[Leaning\]. The path line ignores the air for now |
 | 2026-11-05 | Planets and moons spin. Landing now means matching the ground's speed, and launching with the spin gives a boost \[Leaning\] |
@@ -158,7 +159,7 @@ Construction:
 - Fuel has mass and burns off, so ships get lighter and more agile as they fly. \[Locked\]
 - The main engine and RCS both burn fuel, so ASS, STAB, and turning all cost fuel. With none left, neither fires. \[Leaning\]
 - RCS puffs show from the nozzles on the art. The nozzle opposite the push fires, so the left one turns the nose clockwise or moves the ship right. The two tail nozzles move it forward, and the side nozzles angled forward back it up. Puffs only show on the sprite, and tiny corrections while holding steady don't show. \[Leaning\]
-- The lander, as the all-rounder: about 19.5 t dry, 20 t of fuel, 300 m/s² of thrust when full and about 608 when empty, about 10,600 m/s of delta-v, and about 25 seconds of full-throttle burn. These live in `data/lander_design.tres`. \[Leaning\]
+- The lander, as the all-rounder: about 19.5 t dry, 40 t of fuel, 300 m/s² of thrust when full and about 916 when empty, about 16,700 m/s of delta-v, and about 34 seconds of full-throttle burn. Engine and RCS strength are set so a full tank feels the same as it did with half the fuel. These live in `data/lander_design.tres`. \[Leaning\]
 - Until stations exist, landing on the planet refills the tanks, and a ship stranded with no fuel means restarting. \[Leaning\]
 - Staging: drop empty tanks or used heat shields to save mass; dropped parts become debris. \[Leaning\]
 - Repairs and customization happen at the pixel level, so patched plating shows on the hull. Liveries and paint use the agency palette. \[Leaning\]
@@ -242,7 +243,7 @@ Scale and precision: \[Leaning\]
 
 - Planets around 1/10 real scale, tuned for play.
 - Readouts show 1 world unit as 1 m, so distances read big, with bigger planets and distances to come. \[Leaning\]
-- Tier 1's star has 5,000 times the planet's mass and sits 45 million units away, so a lap of the planet around it takes about 3.5 hours at about 22,000 units/s. A full tank can drop from low orbit almost to the star, in about 40 minutes. That's the longest trip that works without time warp. These live in `data/home_star.tres` and `data/home_planet.tres`. \[Leaning\]
+- Tier 1's star has 5,000 times the planet's mass and sits 45 million units away, so a lap of the planet around it takes about 3.5 hours at about 22,000 units/s. About three quarters of a full tank can drop from low orbit almost to the star, in about 40 minutes. That's the longest trip that works without time warp. These live in `data/home_star.tres` and `data/home_planet.tres`. \[Leaning\]
 - The Tier 0 planet is far smaller for now, so a low orbit takes under 4 minutes without time warp: radius 150,000 px and surface gravity 200 px/s², or about 1/850 real scale if the 35 px pilot is 1.75 m. Revisit once time warp exists. These live in `data/home_planet.tres`. \[Leaning\]
 - Floating origin re-centered on the ship to avoid jitter.
 - Physics math in 64-bit, either in native code or a double-precision engine build.

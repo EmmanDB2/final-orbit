@@ -38,14 +38,14 @@ script = ExtResource("2_module")
 display_name = "Fuel tank, left"
 kind = "tank"
 cell = Vector2i(0, 2)
-fuel_capacity = 10000.0
+fuel_capacity = 20000.0
 
 [sub_resource type="Resource" id="Module_2_1"]
 script = ExtResource("2_module")
 display_name = "Fuel tank, right"
 kind = "tank"
 cell = Vector2i(1, 2)
-fuel_capacity = 10000.0
+fuel_capacity = 20000.0
 
 [sub_resource type="Resource" id="Module_3_0"]
 script = ExtResource("2_module")
@@ -65,11 +65,11 @@ texture = ExtResource("3_art")
 cell_size = 64
 modules = Array[Object]([SubResource("Module_0_0"), SubResource("Module_0_1"), SubResource("Module_1_0"), SubResource("Module_1_1"), SubResource("Module_2_0"), SubResource("Module_2_1"), SubResource("Module_3_0"), SubResource("Module_3_1")])
 materials = Array[Object]([ExtResource("4_hull"), ExtResource("5_structure"), ExtResource("6_foil"), ExtResource("7_glass"), ExtResource("8_paint")])
-engine_force = 11845000.0
-rcs_torque = 147100000.0
+engine_force = 17844785.0
+rcs_torque = 180170785.0
 exhaust_velocity = 15000.0
 rcs_fuel_rate = 20.0
-rcs_translate_force = 1185000.0
+rcs_translate_force = 1785232.0
 rcs_left_nozzle = Vector2(15, 61)
 rcs_right_nozzle = Vector2(95, 61)
 rcs_rear_nozzles = PackedVector2Array(27, 190, 80.5, 190)

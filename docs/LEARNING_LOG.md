@@ -185,3 +185,9 @@ Files: `scripts/reentry_glow.gd`, `scripts/ship.gd`, `scripts/rcs_puffs.gd`, `sc
 
 - why heating grows with the cube of speed
 - static functions shared between scripts
+
+## 2026-11-05: Double the lander's fuel
+
+Files: `data/lander_design.tres`, `docs/DESIGN.md`
+
+- the rocket equation and why more fuel means a heavier ship
