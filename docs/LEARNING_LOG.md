@@ -332,3 +332,11 @@ Files: `shaders/engine_flame.gdshader`, `scripts/engine_flame.gd`, `scripts/ship
 
 - shaping an effect from game state with uniforms
 - easing a value toward a target over time
+
+## 2026-11-06: Cut the station art into sprites
+
+Files: `tools/slice_station.gd`, `art/station_1/`, `scripts/ui/agency_palette.gd`, `data/agency_palette.tres`, `docs/DESIGN.md`
+
+- flood fill and connected pieces
+- matching colors in a perceptual color space (Oklab)
+- keeping files out of a Godot project with `.gdignore`

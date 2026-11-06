@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Station art cut into clean sprites by a new tool, with stations drawn at 2 game pixels per art pixel as a third exception to the fixed pixel size \[Leaning\]. All 25 listed agency colors now in the palette data |
 | 2026-11-06 | Engine flame now drawn by code from throttle, air, and damage, replacing the sprite. Procedural burn animation leaves the parking lot \[Leaning\] |
 | 2026-11-06 | Re-entry rebuilt: the hull visibly heats from the hot side, hot air hugs its real outline, and flames stream off its edges, replacing a fixed arc \[Leaning\] |
 | 2026-11-06 | Surfaces rebuilt up close: a pixel grid fixed to the ground, a seeded skyline that ships really collide with, new detail at each zoom, a cross-section of the ground, dithered sky bands, surface props by biome, engine dust, a ship shadow, and far-off mountains \[Leaning\] |
@@ -327,6 +328,7 @@ Terrain and biomes per body: \[Leaning\]
 - Seeded galaxy; systems are generated only when approached.
 - Off-screen, nothing simulates except the rails math.
 - Stations and colonies are hubs for gigs, fuel, and repairs; NPC traffic is ambiance, not a simulated economy.
+- The first station is a hub with four ports and five rooms that bolt on port to port: comms, crew hab, EVA hab, suit room, and ship refueling. Each room has an outside and an inside sprite on the same canvas, lined up on its ports; the insides wait for Tier 3. \[Leaning\]
 
 ## Hazards
 
@@ -378,6 +380,7 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 - The engine blows dust off the ground from 260 units up, in the ground's own colors. The ship's shadow lies along the terrain from 800 units up, shifted away from the star, thinning as it climbs, and gone at night. A far-off line of peaks stands behind the skyline and goes by at 0.3 of the ground's speed. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
 - A second exception: from far out, a planet or moon is drawn in bigger pixels, up to 4 game pixels wide, so it reads like a sprite. Manny's call, after comparing it with one fixed pixel size. \[Leaning\]
+- A third exception: a station's art pixels are 2 game pixels wide. The concept art's astronaut is 20 art pixels tall, so that's what puts it at the pilot's 40 px and makes the rooms the right size for the ship. Manny's to confirm. \[Leaning\]
 - One exception: closer than the Orbit view, the ship is its normal sprite at true scale, with no smoothing and no minimum size, so it can shrink out of sight just before the icon takes over. At the Orbit view and farther it's a clean icon, and very far out it's a dot. \[Leaning\]
 - Terrain detail is generated only when you zoom in close. \[Leaning\]
 - Zoom moves smoothly and has no outer limit, so the ship can shrink to a single dot. The tiers set what detail is drawn at each distance. \[Leaning\]
@@ -512,6 +515,7 @@ Art pipeline: \[Leaning\]
 1. Describe the asset to Gemini for concept images.
 2. Recreate it by hand, or hand the image to Claude to turn into a clean sprite.
 3. Clean up in Aseprite: snap to grid, force the agency palette, fix edges.
+3b. A concept sheet with fake pixels can go through a tool instead, like `tools/slice_station.gd`: it cuts out each drawing, drops the background and stars, reads the fake pixels back to real ones, forces the agency palette, and gives back the 1 px dark outline.
 4. Ship modules are drawn on the fixed module grid, one PNG each, since their pixels are collision and damage. Small gaps in the art are fine, since they get welded when the ship is measured.
 5. Inside art is drawn at the same size as the hull: a systems drawing and a bare frame drawing. Only what sits under the hull is used, since the hull's outline is the ship's.
 6. Planets and space are shaders and code, not hand-drawn sprites.

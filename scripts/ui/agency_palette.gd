@@ -1,4 +1,4 @@
-# agency_palette.gd: the agency colors the UI draws with.
+# agency_palette.gd: the agency colors that the UI and everything human-made draw with.
 # From DESIGN.md, "Art direction" (the locked 26-color agency palette).
 class_name AgencyPalette
 extends Resource
@@ -18,3 +18,13 @@ extends Resource
 @export var thrust_white: Color
 @export var thrust_yellow: Color
 @export var thrust_red: Color
+@export var agency_orange_light: Color
+@export var agency_blue_dark: Color
+@export var agency_blue: Color
+@export var agency_blue_light: Color
+@export var gold_darkest: Color
+@export var gold_dark: Color
+@export var gold: Color
+@export var gold_light: Color
+@export var glass_dark: Color
+@export var glass_light: Color
