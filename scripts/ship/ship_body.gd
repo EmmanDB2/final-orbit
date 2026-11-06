@@ -45,10 +45,10 @@ class Layer:
 		return hinge_home + Vector2(from_hinge.x, from_hinge.y / fold)
 
 
-## Pixels are grouped into square cells this wide for the connectivity check, and touching
-## cells count as attached. It's faster than checking every pixel, and it holds together
-## parts the art draws with a pixel or two of gap, such as the engine bell.
-const CONNECT_CELL: int = 3
+## Pixels are attached if they touch, corners included. Parts the art draws with a small gap,
+## such as the engine bell, get welded across it when the ship is measured: pixels this far
+## apart or closer count as touching for as long as both are there.
+const WELD_REACH: int = 4
 ## How many depths a pixel can have: skin, systems, and frame.
 const DEPTHS: int = 3
 ## How far ahead of the next depth down each one goes, in pixels, so a hit strips the skin well
@@ -101,6 +101,15 @@ var _depth_strength: PackedFloat32Array = PackedFloat32Array()
 var _depth_color: PackedColorArray = PackedColorArray()
 var _is_working: PackedByteArray = PackedByteArray()
 var _is_nozzle: PackedByteArray = PackedByteArray()
+var _cell_of: PackedInt32Array = PackedInt32Array()
+# Which pixel is at each place on the grid, where the ship has it stowed. -1 for none.
+var _pixel_at: PackedInt32Array = PackedInt32Array()
+# Pairs of pixels joined across a gap the art draws.
+var _welds: PackedInt32Array = PackedInt32Array()
+var _needs_split_check: bool = true
+# The latest pieces found: each cell's run of pixels, and which run each run has joined.
+var _run_at: PackedInt32Array = PackedInt32Array()
+var _run_parent: PackedInt32Array = PackedInt32Array()
 # Per module.
 var _module_start: PackedInt32Array = PackedInt32Array()
 var _module_left: PackedInt32Array = PackedInt32Array()
@@ -129,6 +138,8 @@ static func measure(design: ShipDesign) -> ShipBody:
 			rows = maxi(rows, module.cell.y + 1)
 	body._canvas = Vector2i(columns, rows) * design.cell_size
 	body._half = Vector2(body._canvas) / 2.0
+	body._pixel_at.resize(body._canvas.x * body._canvas.y)
+	body._pixel_at.fill(-1)
 
 	var grid_layer := Layer.new()
 	grid_layer.image = Image.create(body._canvas.x, body._canvas.y, false, Image.FORMAT_RGBA8)
@@ -155,6 +166,7 @@ static func measure(design: ShipDesign) -> ShipBody:
 			body.tanks.append({"position": middle, "capacity": module.fuel_capacity, "full": module.fuel_capacity, "module": i})
 			body.fuel_capacity += module.fuel_capacity
 	body.original_fuel_capacity = body.fuel_capacity
+	body._weld_drawn_gaps()
 	body._refresh()
 	return body
 
@@ -202,6 +214,11 @@ func _add_module(index: int, module: ModuleData, materials: Dictionary, design: 
 			var home: Vector2 = Vector2(layer.top_left + at) + Vector2(0.5, 0.5) - _half
 			layer.image.set_pixel(at.x, at.y, color)
 			layer.lookup[at.y * layer_width + at.x] = _density.size()
+			var on_canvas: Vector2i = layer.top_left + at
+			var cell_index: int = on_canvas.y * _canvas.x + on_canvas.x
+			_cell_of.append(cell_index)
+			if on_canvas.x >= 0 and on_canvas.y >= 0 and on_canvas.x < _canvas.x and on_canvas.y < _canvas.y:
+				_pixel_at[cell_index] = _density.size()
 			_depth.append(0)
 			_module_of.append(index)
 			_home.append(home)
@@ -474,61 +491,43 @@ func dent(point: Vector2, energy: float, damage_seed: int) -> Dictionary:
 ## pixels as "pixels", "points", and "colors". Whether pieces touch goes by where they're
 ## stowed, since a moving part stays attached however far out it is.
 func split_off() -> Array[Dictionary]:
-	var columns: int = ceili(float(_canvas.x) / CONNECT_CELL)
-	var rows: int = ceili(float(_canvas.y) / CONNECT_CELL)
-	var cell_piece := PackedInt32Array()
-	cell_piece.resize(columns * rows)
-	cell_piece.fill(-1)
-	const UNLABELED: int = -2
-	for index in range(_density.size()):
-		if _density[index] > 0.0:
-			cell_piece[_connect_cell(index, columns)] = UNLABELED
-
-	var piece_count: int = 0
-	for start in range(cell_piece.size()):
-		if cell_piece[start] != UNLABELED:
-			continue
-		var stack := PackedInt32Array([start])
-		cell_piece[start] = piece_count
-		while not stack.is_empty():
-			var at: int = stack[stack.size() - 1]
-			stack.resize(stack.size() - 1)
-			var cx: int = at % columns
-			var cy: int = at / columns
-			for dy in range(-1, 2):
-				for dx in range(-1, 2):
-					var nx: int = cx + dx
-					var ny: int = cy + dy
-					if nx >= 0 and ny >= 0 and nx < columns and ny < rows and cell_piece[ny * columns + nx] == UNLABELED:
-						cell_piece[ny * columns + nx] = piece_count
-						stack.append(ny * columns + nx)
-		piece_count += 1
-
 	var pieces: Array[Dictionary] = []
-	if piece_count <= 1:
+	if not _needs_split_check:
+		return pieces
+	_needs_split_check = false
+	if _count_pieces(true) <= 1:
 		return pieces
 
+	# Every run's final piece, worked out once so the loops over pixels stay quick.
+	var piece_of_run := PackedInt32Array()
+	piece_of_run.resize(_run_parent.size())
+	for run in range(_run_parent.size()):
+		piece_of_run[run] = _root_of(run)
+	var is_cockpit := PackedByteArray()
+	is_cockpit.resize(modules.size())
+	for i in range(modules.size()):
+		is_cockpit[i] = 1 if modules[i].kind == "cockpit" else 0
+
 	var counts := PackedInt32Array()
-	counts.resize(piece_count)
+	counts.resize(_run_parent.size())
 	counts.fill(0)
 	var cockpit := PackedInt32Array()
-	cockpit.resize(piece_count)
+	cockpit.resize(_run_parent.size())
 	cockpit.fill(0)
 	for index in range(_density.size()):
 		if _density[index] > 0.0:
-			var piece: int = cell_piece[_connect_cell(index, columns)]
+			var piece: int = piece_of_run[_run_at[_cell_of[index]]]
 			counts[piece] += 1
-			if modules[_module_of[index]].kind == "cockpit":
-				cockpit[piece] += 1
+			cockpit[piece] += is_cockpit[_module_of[index]]
 
 	var main: int = 0
-	for piece in range(piece_count):
+	for piece in range(counts.size()):
 		if cockpit[piece] > cockpit[main] or (cockpit[piece] == cockpit[main] and counts[piece] > counts[main]):
 			main = piece
 
 	var entry_of: Dictionary = {}
-	for piece in range(piece_count):
-		if piece != main:
+	for piece in range(counts.size()):
+		if piece != main and counts[piece] > 0:
 			var entry := {
 				"mass": 0.0,
 				"pixel_count": counts[piece],
@@ -543,7 +542,7 @@ func split_off() -> Array[Dictionary]:
 	for index in range(_density.size()):
 		if _density[index] <= 0.0:
 			continue
-		var piece: int = cell_piece[_connect_cell(index, columns)]
+		var piece: int = piece_of_run[_run_at[_cell_of[index]]]
 		if piece == main:
 			continue
 		var entry: Dictionary = entry_of[piece]
@@ -567,14 +566,154 @@ func split_off() -> Array[Dictionary]:
 			piece_image.set_pixel(floori(points[i].x) - low.x, floori(points[i].y) - low.y, colors[i])
 		entry["image"] = piece_image
 		entry["center"] = Vector2(low) + Vector2(piece_size) / 2.0
+	# Taking loose pieces away can't loosen anything else.
+	_needs_split_check = false
 	_refresh()
 	pieces.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["pixel_count"] > b["pixel_count"])
 	return pieces
 
 
-func _connect_cell(index: int, columns: int) -> int:
-	var on_canvas: Vector2 = _home[index] + _half
-	return int(on_canvas.y) / CONNECT_CELL * columns + int(on_canvas.x) / CONNECT_CELL
+# Finds what's attached to what. Each row's unbroken runs of pixels are joined to the runs they
+# touch in the row above, which is far quicker than following every pixel. Returns how many
+# separate pieces there are.
+func _count_pieces(use_welds: bool) -> int:
+	var columns: int = _canvas.x
+	_run_at.resize(_pixel_at.size())
+	_run_parent.resize(0)
+	var above_starts := PackedInt32Array()
+	var above_stops := PackedInt32Array()
+	var above_first: int = 0
+	var pieces: int = 0
+	for y in range(_canvas.y):
+		var row: int = y * columns
+		var row_first: int = _run_parent.size()
+		var starts := PackedInt32Array()
+		var stops := PackedInt32Array()
+		var x: int = 0
+		var checked: int = 0
+		while x < columns:
+			var pixel: int = _pixel_at[row + x]
+			if pixel < 0 or _density[pixel] <= 0.0:
+				x += 1
+				continue
+			var start: int = x
+			var run: int = _run_parent.size()
+			_run_parent.append(run)
+			pieces += 1
+			while x < columns:
+				pixel = _pixel_at[row + x]
+				if pixel < 0 or _density[pixel] <= 0.0:
+					break
+				_run_at[row + x] = run
+				x += 1
+			starts.append(start)
+			stops.append(x)
+			# Corners count, so a run touches anything from one before it to one after it.
+			var i: int = checked
+			while i < above_starts.size() and above_starts[i] <= x:
+				if above_stops[i] >= start:
+					if _join_runs(run, above_first + i):
+						pieces -= 1
+				i += 1
+			while checked < above_starts.size() and above_stops[checked] < x:
+				checked += 1
+		above_starts = starts
+		above_stops = stops
+		above_first = row_first
+
+	if use_welds:
+		for i in range(0, _welds.size(), 2):
+			var a: int = _welds[i]
+			var b: int = _welds[i + 1]
+			if _density[a] > 0.0 and _density[b] > 0.0:
+				if _join_runs(_run_at[_cell_of[a]], _run_at[_cell_of[b]]):
+					pieces -= 1
+	return pieces
+
+
+# Joins two runs, and returns true if they weren't joined already.
+func _join_runs(a: int, b: int) -> bool:
+	var root_a: int = _root_of(a)
+	var root_b: int = _root_of(b)
+	if root_a == root_b:
+		return false
+	_run_parent[root_a] = root_b
+	return true
+
+
+func _root_of(run: int) -> int:
+	while _run_parent[run] != run:
+		_run_parent[run] = _run_parent[_run_parent[run]]
+		run = _run_parent[run]
+	return run
+
+
+func _piece_of(index: int) -> int:
+	return _root_of(_run_at[_cell_of[index]])
+
+
+# The art can draw a part with a small gap, such as the engine bell, and it should still count
+# as attached. So the whole ship gets welded together here, across only those gaps.
+func _weld_drawn_gaps() -> void:
+	if _count_pieces(false) <= 1:
+		return
+
+	var counts := PackedInt32Array()
+	counts.resize(_run_parent.size())
+	counts.fill(0)
+	for index in range(_density.size()):
+		counts[_piece_of(index)] += 1
+	var biggest: int = 0
+	for piece in range(counts.size()):
+		if counts[piece] > counts[biggest]:
+			biggest = piece
+
+	for index in range(_density.size()):
+		var piece: int = _piece_of(index)
+		if piece != biggest:
+			_weld_within(index, piece, WELD_REACH)
+
+	# Anything still loose gets one weld to the nearest pixel, however far that is.
+	var reach: int = WELD_REACH + 1
+	var pieces: int = _count_pieces(true)
+	while pieces > 1 and reach <= maxi(_canvas.x, _canvas.y):
+		var main: int = _piece_of(_largest_pixel())
+		for index in range(_density.size()):
+			if _piece_of(index) != main:
+				if _weld_within(index, _piece_of(index), reach):
+					break
+		pieces = _count_pieces(true)
+		reach += 1
+	_needs_split_check = true
+
+
+func _largest_pixel() -> int:
+	var counts := PackedInt32Array()
+	counts.resize(_run_parent.size())
+	counts.fill(0)
+	var best: int = 0
+	for index in range(_density.size()):
+		var piece: int = _piece_of(index)
+		counts[piece] += 1
+		if counts[piece] > counts[_piece_of(best)]:
+			best = index
+	return best
+
+
+# Welds a pixel to every pixel of another piece within reach, and returns whether it found any.
+func _weld_within(index: int, piece: int, reach: int) -> bool:
+	var found: bool = false
+	var cell: int = _cell_of[index]
+	var cx: int = cell % _canvas.x
+	var cy: int = cell / _canvas.x
+	for ny in range(maxi(cy - reach, 0), mini(cy + reach + 1, _canvas.y)):
+		for nx in range(maxi(cx - reach, 0), mini(cx + reach + 1, _canvas.x)):
+			var other: int = _pixel_at[ny * _canvas.x + nx]
+			if other >= 0 and other != index and _piece_of(other) != piece:
+				_welds.append(index)
+				_welds.append(other)
+				found = true
+	return found
 
 
 # A repeatable small number per pixel, so a crushed edge is jagged instead of ruled.
@@ -611,6 +750,7 @@ func _peel(index: int) -> void:
 		return
 
 	_density[index] = 0.0
+	_needs_split_check = true
 	pixel_count -= 1
 	_layers[pixel_layer[index]].image.set_pixel(pixel_x[index], pixel_y[index], Color(0.0, 0.0, 0.0, 0.0))
 	_module_left[module_index] -= 1
@@ -685,25 +825,31 @@ func _refresh() -> void:
 		spin_resistance = 0.0
 
 	# Each row's two ends are enough to find a layer's outline.
+	var firsts: Array[PackedInt32Array] = []
+	var lasts: Array[PackedInt32Array] = []
+	for layer: Layer in _layers:
+		var first := PackedInt32Array()
+		first.resize(layer.image.get_height())
+		first.fill(-1)
+		firsts.append(first)
+		lasts.append(first.duplicate())
+	for index in range(_density.size()):
+		if _density[index] > 0.0:
+			var layer_index: int = pixel_layer[index]
+			var x: int = pixel_x[index]
+			var y: int = pixel_y[index]
+			if firsts[layer_index][y] < 0 or x < firsts[layer_index][y]:
+				firsts[layer_index][y] = x
+			if x > lasts[layer_index][y]:
+				lasts[layer_index][y] = x
+
 	for layer_index in range(_layers.size()):
 		var layer: Layer = _layers[layer_index]
-		var rows: int = layer.image.get_height()
-		var first := PackedInt32Array()
-		var last := PackedInt32Array()
-		first.resize(rows)
-		first.fill(-1)
-		last.resize(rows)
-		last.fill(-1)
-		for index in range(_density.size()):
-			if _density[index] > 0.0 and pixel_layer[index] == layer_index:
-				var x: int = pixel_x[index]
-				var y: int = pixel_y[index]
-				if first[y] < 0 or x < first[y]:
-					first[y] = x
-				last[y] = maxi(last[y], x)
+		var first: PackedInt32Array = firsts[layer_index]
+		var last: PackedInt32Array = lasts[layer_index]
 		var edge_points := PackedVector2Array()
 		var corner: Vector2 = Vector2(layer.top_left) - _half
-		for y in range(rows):
+		for y in range(first.size()):
 			if first[y] >= 0:
 				edge_points.append(corner + Vector2(first[y], y))
 				edge_points.append(corner + Vector2(first[y], y + 1))

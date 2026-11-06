@@ -10,8 +10,6 @@ extends Node2D
 
 ## Most chunks in flight. Past this, the oldest small one goes.
 @export var chunk_budget: int = 12
-## A piece with fewer pixels than this is just sparks.
-@export var smallest_chunk: int = 30
 ## A chunk with fewer pixels than this fades after small_chunk_seconds, and can burn up.
 @export var small_chunk: int = 200
 @export var small_chunk_seconds: float = 30.0
@@ -53,13 +51,6 @@ func chunk_count() -> int:
 
 
 func _on_ship_part_detached(piece: Dictionary, x: float, y: float, velocity_x: float, velocity_y: float, angle: float, spin: float, kick: Vector2) -> void:
-	if piece["pixel_count"] < smallest_chunk:
-		var offsets := PackedVector2Array()
-		for point: Vector2 in piece["points"]:
-			offsets.append((point - piece["center"]).rotated(angle))
-		_sparks.scatter(offsets, piece["colors"], 1, x, y, velocity_x, velocity_y, kick, Vector2.ZERO, 40.0)
-		return
-
 	var away: Vector2 = Vector2.UP.rotated(_rng.randf() * TAU) * _rng.randf_range(5.0, 25.0)
 	var state := ShipState.new()
 	state.x = x

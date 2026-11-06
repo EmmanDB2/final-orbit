@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Connectivity now goes by pixels actually touching instead of 3 x 3 cells, so loose pixels drop off instead of floating \[Leaning\] |
 | 2026-11-06 | Inside layers built from Manny's frame and systems drawings: damage strips the skin first, then the systems, then the frame. Material strengths halved so a crash costs about what it did, with the skin going first \[Leaning\] |
 | 2026-11-06 | Landing legs built, with a LEGS button. They swing down, take harder landings, and can break off, leaving the ship leaning. The ship now stands on its feet with them down, which replaces always resting on the bell \[Leaning\] |
 | 2026-11-06 | Ships are now built from one PNG per module, placed by the ship's data file, with working pixels marked so damage knows the real parts. Engines weaken as the bell goes instead of working or not \[Leaning\] |
@@ -189,10 +190,10 @@ How it works in Tier 1: \[Leaning\]
 - The layers have a thickness, the share of a material's density and strength that a pixel of it has: skin 0.4, systems 0.2, frame 0.225 on the lander. Together they add up to the same 19.5 t as before. Parts with no inside art, such as the legs, count in full. \[Leaning\]
 - Flat ground crushes from the side that hits, in a jagged line. Debris knocks a dent around where it touches.
 - As a guide, with a light tank and the legs up: 60 units/s scuffs the bell, 100 strips about 280 pixels of skin, 150 strips about 570 and starts breaking through, 200 cuts the engine to about two thirds, and 250 kills it. A full tank hits about three times as hard, so 150 nearly kills the engine.
-- A connectivity check groups pixels into 3 x 3 cells, and touching cells count as attached, so the art's small gaps hold together. The piece with the most cockpit stays the ship.
+- Pixels are attached only if they touch, corners included, so nothing is left floating. Gaps the art draws, such as around the engine bell, get welded when the ship is measured: pixels up to 4 px apart across such a gap count as touching for as long as both are there. The piece with the most cockpit stays the ship. \[Leaning\]
 - A hit counts at once for mass, thrust, and everything else, but the art catches up over up to about 0.4 seconds: pixels go a few at a time from where the hit landed, and the edge about to go glows in the thrust and fire colors. A crushed ship sinks to where it now rests, and the art shakes briefly. \[Leaning\]
 - Every depth lost becomes a spark, thrown away from the hit, up to 800 in one hit. Past that, sparks stand in for 2 x 2 blocks, and past 3,000 for 3 x 3 blocks. Sparks live 1.6 to 4.5 seconds and flicker out at the end. Near the ground they fall and bounce, and elsewhere they drift, slowed by any air. There can be 1,500 at once. \[Leaning\]
-- Pieces under 30 pixels are just sparks. There can be 12 chunks at once. Under 200 pixels, one crumbles into sparks after 30 seconds or burns up in the air. Any chunk crumbles after 60 seconds on the ground, or at once if it hits the ground faster than 120 units/s.
+- Pieces under 30 pixels drop away as sparks, just after whatever cut them loose. There can be 12 chunks at once. Under 200 pixels, one crumbles into sparks after 30 seconds or burns up in the air. Any chunk crumbles after 60 seconds on the ground, or at once if it hits the ground faster than 120 units/s.
 - The ship turns around its new center of mass, which moves as pixels go.
 - A module under half its working pixels stops working, and the pilot gets a message. Left RCS gone means no clockwise turn or moving right, and right RCS gone means the reverse. An engine weakens as its bell goes and stops under a quarter of it. One engine module gone means half the thrust, off-center, so the ship spins. The tail nozzles work or fail on their own.
 - Fuel is shared across the tanks. A tank can only hold as much as is left of it, so losing pixels loses that share of its fuel at once. What remains leaks at up to 2,000 kg/s depending on the hole, and pushes the ship away from the hole. Lost capacity stays lost, and landing only refills tanks with no holes.
@@ -483,7 +484,7 @@ Art pipeline: \[Leaning\]
 1. Describe the asset to Gemini for concept images.
 2. Recreate it by hand, or hand the image to Claude to turn into a clean sprite.
 3. Clean up in Aseprite: snap to grid, force the agency palette, fix edges.
-4. Ship modules are drawn on the fixed module grid, one PNG each, since their pixels are collision and damage. Keep gaps within a part to 2 px or less so it counts as one piece.
+4. Ship modules are drawn on the fixed module grid, one PNG each, since their pixels are collision and damage. Small gaps in the art are fine, since they get welded when the ship is measured.
 5. Inside art is drawn at the same size as the hull: a systems drawing and a bare frame drawing. Only what sits under the hull is used, since the hull's outline is the ship's.
 6. Planets and space are shaders and code, not hand-drawn sprites.
 

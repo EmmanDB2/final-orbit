@@ -87,6 +87,24 @@ func add_hit(erased: Dictionary, hit_point: Vector2, kick: Vector2, blast: float
 	})
 
 
+## Adds pixels left with nothing to hold them to the end of the newest hit, so they drop away
+## just after whatever cut them loose.
+func add_loose(pixels: PackedInt32Array, colors: PackedColorArray) -> void:
+	if _hits.is_empty():
+		return
+	var hit: Dictionary = _hits[_hits.size() - 1]
+	var hit_pixels: PackedInt32Array = hit["pixels"]
+	var hit_colors: PackedColorArray = hit["colors"]
+	var hit_reveals: PackedColorArray = hit["reveals"]
+	hit_pixels.append_array(pixels)
+	hit_colors.append_array(colors)
+	for i in range(pixels.size()):
+		hit_reveals.append(Color(0.0, 0.0, 0.0, 0.0))
+	hit["pixels"] = hit_pixels
+	hit["colors"] = hit_colors
+	hit["reveals"] = hit_reveals
+
+
 ## Takes pixels away right now, for a piece that has just broken off and is drawn on its own.
 func remove_now(pixels: PackedInt32Array) -> void:
 	for pixel: int in pixels:

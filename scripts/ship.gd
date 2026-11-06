@@ -86,6 +86,8 @@ signal flight_data_changed(data: Dictionary)
 @export var icon_max_zoom: float = 1.0 / 800.0
 ## A module with less than this share of its working pixels left stops working.
 @export var module_dead_share: float = 0.5
+## A piece that breaks off with fewer pixels than this is just sparks.
+@export var smallest_chunk: int = 30
 ## An engine keeps pushing, more weakly, down to this share of its bell.
 @export var engine_dead_share: float = 0.25
 ## How fast the ship straightens up on the ground, in radians per second.
@@ -524,6 +526,9 @@ func _take_damage(erased: Dictionary, kick: Vector2, hit_point: Vector2, blast: 
 	_jolt_ticks = JOLT_TICKS
 	var hit_at: Vector2 = _art_to_world(hit_point)
 	for piece: Dictionary in body.split_off():
+		if piece["pixel_count"] < smallest_chunk:
+			_wave.add_loose(piece["pixels"], piece["colors"])
+			continue
 		_wave.remove_now(piece["pixels"])
 		var at: Vector2 = _art_to_world(piece["center"])
 		var thrown: Vector2 = kick + (at - hit_at).normalized() * blast * 0.4

@@ -244,3 +244,10 @@ Files: `art/ship_lander_frame.png`, `art/ship_lander_systems.png`, `art/lander/*
 
 - one array holding several values per pixel
 - several sorted fronts walking through one list
+
+## 2026-11-06: Drop loose pixels
+
+Files: `scripts/ship/ship_body.gd`, `scripts/ship/damage_wave.gd`, `scripts/ship.gd`, `scripts/debris_field.gd`, `tests/test_ship_body.gd`, `docs/DESIGN.md`
+
+- union-find for connected pieces
+- runs of pixels instead of single pixels
