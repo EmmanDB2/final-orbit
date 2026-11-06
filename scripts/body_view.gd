@@ -53,6 +53,7 @@ func show_body(index: int, body: BodyData, gravity_model: GravityModel, state: S
 	_gravity_model = gravity_model
 	_state = state
 	_material.set_shader_parameter("surface_colors", body.surface_colors)
+	_material.set_shader_parameter("strata_colors", body.strata_colors)
 	_material.set_shader_parameter("terrain_seed", body.terrain_seed)
 	_material.set_shader_parameter("largest_feature", body.radius * 0.6)
 
@@ -111,7 +112,8 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	var radius_px: float = maxf(_radius * pixels_per_unit, smallest_radius)
 	var distance: float = sqrt(from_middle_x * from_middle_x + from_middle_y * from_middle_y)
 	var air_px: float = _air_height * pixels_per_unit
-	var on_screen: bool = distance - radius_px - air_px < size.length() / 2.0
+	var highest_px: float = _gravity_model.get_highest_ground(_index) * pixels_per_unit
+	var on_screen: bool = distance - radius_px - maxf(air_px, highest_px) < size.length() / 2.0
 	visible = on_screen and (_moon_orbit == 0.0 or _moon_orbit * pixels_per_unit >= smallest_orbit)
 	if not visible:
 		return

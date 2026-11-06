@@ -66,6 +66,14 @@ uniform vec3 star_color : source_color = vec3(1.0);
 // size down, each a quarter of the last, appearing once their pixels can show them. This is also
 // what lets you see drift up close.
 uniform float detail_largest = 4800.0;
+// What's under the ground, from the top down: dirt, rock, deep rock, and the dark core. The very
+// top is whatever the surface map shows at that spot on the rim.
+uniform vec4 strata_colors[4] : source_color;
+// The cross-section grows down from the skyline as you zoom in, starting at the first zoom and
+// filling the screen by the second, in world units per pixel. The map stays below it.
+uniform float section_starts = 300.0;
+uniform float section_full = 32.0;
+uniform float section_deepest_px = 1200.0;
 // How many flat steps the daylight falls through, how far above the disc the star sits, and
 // what color a surface turns on the night side, as a share of its own.
 uniform float light_steps = 2.0;
@@ -178,6 +186,64 @@ float height_to_band(float height) {
 }
 
 
+// The side view of the ground: which color belongs this far below the skyline, at this far
+// around the rim. Layers wander a little, and stay at least a few pixels thick when far out.
+vec3 section_color(float along, float depth_below, float band, float reach_units) {
+	uint seed = uint(terrain_seed) + 120u;
+	float wander = value_noise(vec2(along / 90.0, 0.0), seed) - 0.5;
+	float wander_slow = value_noise(vec2(along / 700.0, 3.0), seed + 1u) - 0.5;
+	int top = int(clamp(band, 0.0, 5.999));
+	vec3 crust = surface_colors[top].rgb;
+	float depth = depth_below;
+
+	// Sea is water down to a bed of the lowest land color.
+	if (sea_level > 0.0 && band < 3.0) {
+		float water = (3.0 - band) * max(40.0, cell_units * 3.0);
+		if (depth < water) {
+			return crust;
+		}
+		depth -= water;
+		crust = surface_colors[3].rgb;
+	}
+
+	float crust_end = max(10.0, cell_units * 2.0);
+	// While it only reaches part way down, its layers share that reach, so the dark core doesn't
+	// show as a ring around the planet. Once it fills the screen, they settle at their true depths.
+	float dirt_end = max(max(110.0, cell_units * 5.0), reach_units * 0.14);
+	float rock_end = max(max(900.0, cell_units * 11.0), reach_units * 0.5);
+	float deep_end = max(max(7000.0, cell_units * 24.0), reach_units * 1.1);
+	if (depth < crust_end + wander * crust_end) {
+		return crust;
+	}
+	vec3 color;
+	vec3 other;
+	if (depth < dirt_end + wander * dirt_end * 0.5) {
+		color = strata_colors[0].rgb;
+		other = strata_colors[1].rgb;
+	} else if (depth < rock_end + wander_slow * rock_end * 0.5) {
+		// Rock lies in bands that follow the ground.
+		bool banded = mod(floor((depth + wander_slow * 200.0) / max(90.0, cell_units * 3.0)), 3.0) < 1.0;
+		color = banded ? mix(strata_colors[1].rgb, strata_colors[2].rgb, 0.5) : strata_colors[1].rgb;
+		other = strata_colors[2].rgb;
+	} else if (depth < deep_end + wander_slow * deep_end * 0.3) {
+		color = strata_colors[2].rgb;
+		other = strata_colors[3].rgb;
+	} else {
+		return strata_colors[3].rgb;
+	}
+
+	// Stones in it, big ones first, and small ones only once their pixels can show.
+	float stone = value_noise(vec2(along, depth) / max(44.0, cell_units * 5.0), seed + 2u);
+	if (stone > 0.78) {
+		return other;
+	}
+	if (cell_units * 4.0 < 26.0 && value_noise(vec2(along, depth) / 13.0, seed + 3u) > 0.8) {
+		return mix(color, other, 0.5);
+	}
+	return color;
+}
+
+
 // Moves a color up or down one wherever this zoom's detail tiers say so. Sea stays sea, and
 // land stays land.
 int with_detail(int index, vec2 ground) {
@@ -251,6 +317,9 @@ void fragment() {
 	bool above_ground = false;
 	float ground_px = 0.0;
 	float height_px = 0.0;
+	float rim_band = 4.0;
+	float along_rim = 0.0;
+	float depth_units = 0.0;
 	vec2 grid_ground = vec2(0.0);
 	if (on_surface_grid) {
 		vec2 from_view = floor(pixel) + vec2(0.5) - screen_middle;
@@ -266,8 +335,12 @@ void fragment() {
 			whole = vec2(column + 4096.0, row + 4096.0);
 			float strip_at = column + 512.0;
 			if (strip_at >= 0.0 && strip_at < 1024.0) {
-				ground_px = texelFetch(rim_strip, ivec2(int(strip_at), 0), 0).r * rim_fade / units_per_px;
+				vec4 rim = texelFetch(rim_strip, ivec2(int(strip_at), 0), 0);
+				ground_px = rim.r * rim_fade / units_per_px;
+				rim_band = rim.g;
 			}
+			along_rim = (float(view_column) + column + 0.5) * cell_units;
+			depth_units = (floor(ground_px / cell_px) * cell_px - (row + 0.5) * cell_px) * units_per_px;
 			above_ground = row * cell_px >= floor(ground_px / cell_px) * cell_px;
 			float at_angle = (float(view_column) + column + 0.5) * cell_px / radius_px;
 			float at_radius = (radius_px + (row + 0.5) * cell_px) * units_per_px;
@@ -321,8 +394,17 @@ void fragment() {
 		}
 		vec3 color = surface_colors[index].rgb;
 
+		// Close in, a side view of the ground grows down from the skyline over the map, with a
+		// dithered edge where they meet.
+		float section = clamp((section_starts - units_per_px) / (section_starts - section_full), 0.0, 1.0);
+		float section_reach = section * section * section * section * section_deepest_px;
+		bool in_section = on_surface_grid && (on_grid ? depth_units / units_per_px + (pattern - 0.5) * 40.0 < section_reach : section >= 1.0);
+		if (in_section) {
+			color = on_grid ? section_color(along_rim, depth_units, rim_band, section < 1.0 ? section_reach * units_per_px : 0.0) : strata_colors[3].rgb;
+		}
+
 		// Clouds are one flat color, and fade out as you get close.
-		if (cloud_amount > 0.0 && units_per_px > cloud_nearest) {
+		if (!in_section && cloud_amount > 0.0 && units_per_px > cloud_nearest) {
 			float fading = clamp((units_per_px - cloud_nearest) / (cloud_nearest * 3.0), 0.0, 1.0);
 			if (cloud_cover(offset, share_out, 5) > 1.0 - cloud_amount * fading) {
 				color = cloud_color;

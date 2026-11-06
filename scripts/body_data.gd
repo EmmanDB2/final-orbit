@@ -54,6 +54,9 @@ extends Resource
 ## How tall each cliff step is, in world units. Zero means none.
 @export var terrain_cliff_step: float = 0.0
 
+## What's under the ground, from the top down: dirt, rock, deep rock, and the dark core.
+@export var strata_colors: PackedColorArray = PackedColorArray()
+
 @export_group("Rails")
 ## Average distance from the body this one orbits. Zero for the body at the center.
 @export var orbit_semi_major_axis: float = 0.0
