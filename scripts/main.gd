@@ -9,6 +9,8 @@ extends Node2D
 @export var planet: BodyData
 ## The moon on rails around the planet.
 @export var moon: BodyData
+## The station on rails around the planet.
+@export var station: StationDesign
 ## How high above the surface the ship starts, in a circular orbit.
 @export var start_altitude: float = 30000.0
 
@@ -18,6 +20,8 @@ func _ready() -> void:
 	gravity_model.set_central_body(star.get_mu(), star.radius, star.landing_line_altitude)
 	var planet_index: int = _add_body(gravity_model, 0, planet)
 	var moon_index: int = _add_body(gravity_model, planet_index, moon)
+	var station_index: int = gravity_model.add_satellite(planet_index, planet.radius + station.orbit_altitude,
+			station.orbit_eccentricity, station.orbit_argument_of_periapsis, station.orbit_start_angle)
 
 	var planet_at: PackedFloat64Array = gravity_model.get_body_position(planet_index, 0.0)
 	var planet_velocity: PackedFloat64Array = gravity_model.get_body_velocity(planet_index, 0.0)
@@ -35,6 +39,7 @@ func _ready() -> void:
 	$Camera2D.start_view(gravity_model, state)
 	$Background/BodyGuides.start_guides(gravity_model, state)
 	$Trajectory.start_preview(gravity_model, state)
+	$Station.start_station(gravity_model, state, station, station_index)
 	$Sparks.start_sparks(gravity_model, state)
 	$Debris.start_debris(gravity_model, state, $Ship, $Sparks)
 	var bodies: Dictionary = {planet_index: planet, moon_index: moon}

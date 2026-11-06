@@ -38,6 +38,11 @@ void GravityModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_dominant_body", "x", "y", "time"), &GravityModel::get_dominant_body);
 	ClassDB::bind_method(D_METHOD("get_sphere_of_influence", "index"), &GravityModel::get_sphere_of_influence);
 	ClassDB::bind_method(D_METHOD("get_body_orbit_path", "index", "samples"), &GravityModel::get_body_orbit_path, DEFVAL(256));
+	ClassDB::bind_method(D_METHOD("get_satellite_count"), &GravityModel::get_satellite_count);
+	ClassDB::bind_method(D_METHOD("get_satellite_parent", "index"), &GravityModel::get_satellite_parent);
+	ClassDB::bind_method(D_METHOD("get_satellite_position", "index", "time"), &GravityModel::get_satellite_position);
+	ClassDB::bind_method(D_METHOD("get_satellite_velocity", "index", "time"), &GravityModel::get_satellite_velocity);
+	ClassDB::bind_method(D_METHOD("get_satellite_orbit_path", "index", "samples"), &GravityModel::get_satellite_orbit_path, DEFVAL(256));
 }
 
 } // namespace final_orbit

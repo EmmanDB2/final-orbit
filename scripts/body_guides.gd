@@ -34,6 +34,8 @@ func start_guides(gravity_model: GravityModel, state: ShipState) -> void:
 	_state = state
 	for index in range(1, gravity_model.get_body_count()):
 		_rails.append(gravity_model.get_body_orbit_path(index, orbit_samples))
+	for index in range(gravity_model.get_satellite_count()):
+		_rails.append(gravity_model.get_satellite_orbit_path(index, orbit_samples))
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
@@ -60,7 +62,10 @@ func _rebuild_orbits() -> void:
 func _draw() -> void:
 	# This sits in the background layer, behind the bodies, where the origin is the screen's corner.
 	var middle: Vector2 = get_viewport_rect().size / 2.0
-	for i in range(_screen_orbits.size()):
+	var body_rails: int = _gravity_model.get_body_count() - 1
+	for i in range(body_rails, _screen_orbits.size()):
+		_draw_satellite_rail(i - body_rails, _screen_orbits[i], middle)
+	for i in range(body_rails):
 		var index: int = i + 1
 		var parent_now: PackedFloat64Array = _gravity_model.get_body_position(_gravity_model.get_body_parent(index), _state.time)
 		var body_now: PackedFloat64Array = _gravity_model.get_body_position(index, _state.time)
@@ -77,6 +82,17 @@ func _draw() -> void:
 			_draw_outside_ring(_screen_orbits[i], center, radius)
 		if radius >= smallest_ring and center.length() >= smallest_orbit:
 			draw_arc(center, radius, 0.0, TAU, ring_points, guide_color, -1.0)
+
+
+# A satellite's rails, around its parent as it is now. It has no ring to stop at.
+func _draw_satellite_rail(index: int, points: PackedVector2Array, middle: Vector2) -> void:
+	var parent_now: PackedFloat64Array = _gravity_model.get_body_position(_gravity_model.get_satellite_parent(index), _state.time)
+	var parent_on_screen := Vector2(
+			(parent_now[0] - _center_x) * _pixels_per_unit,
+			(parent_now[1] - _center_y) * _pixels_per_unit)
+	if points[0].length() >= smallest_orbit:
+		draw_set_transform((middle + parent_on_screen).round())
+		draw_polyline(points, guide_color, -1.0)
 
 
 # Draws a body's orbit line, stopping where it meets the ring around that body.

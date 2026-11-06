@@ -21,6 +21,7 @@ func _initialize() -> void:
 	patched_conics.set_central_body(MU, RADIUS)
 	_model = patched_conics
 
+	_test_satellites()
 	_test_acceleration()
 	_test_circular_orbit_closes()
 	_test_small_steps_match_one_big_step()
@@ -955,3 +956,37 @@ func _test_terrain() -> void:
 				flat_sea += 1
 	_check("this planet has sea on its rim", 1.0 if sea_count > 100 else 0.0, 1.0, 0.0)
 	_check("and the sea is flat", flat_sea, sea_count, 0.0)
+
+
+func _test_satellites() -> void:
+	var model := PatchedConicsModel.new()
+	model.set_central_body(MU, RADIUS)
+	var moon: int = model.add_body(0, MOON_MU, MOON_RADIUS, MOON_ORBIT, MOON_ECCENTRICITY, 0.0, 0.0)
+	var bodies_before: int = model.get_body_count()
+	var station: int = model.add_satellite(0, LOW_ORBIT, 0.0, 0.0, 0.5)
+	var around_moon: int = model.add_satellite(moon, MOON_RADIUS * 2.0, 0.0, 0.0, 0.0)
+	_check("satellites don't count as bodies", model.get_body_count(), bodies_before, 0.0)
+	_check("they have their own numbers", model.get_satellite_count(), 2.0, 0.0)
+	_check("and know what they orbit", model.get_satellite_parent(around_moon), moon, 0.0)
+
+	# On rails, it goes where a coasting ship started beside it goes.
+	var at: PackedFloat64Array = model.get_satellite_position(station, 0.0)
+	var moving: PackedFloat64Array = model.get_satellite_velocity(station, 0.0)
+	_check("it sits at its orbit's height", sqrt(at[0] * at[0] + at[1] * at[1]), LOW_ORBIT, 1e-6)
+	_check("and starts where it's told", atan2(at[1], at[0]), 0.5, 1e-9)
+	var ship := ShipState.new()
+	ship.x = at[0]
+	ship.y = at[1]
+	ship.velocity_x = moving[0]
+	ship.velocity_y = moving[1]
+	model.propagate(ship, 150.0)
+	var later: PackedFloat64Array = model.get_satellite_position(station, 150.0)
+	_check("a ship coasting beside it stays beside it", Vector2(ship.x - later[0], ship.y - later[1]).length(), 0.0, 1e-3)
+	_check("its rails hold no gravity", model.get_dominant_body(later[0], later[1], 150.0), 0.0, 0.0)
+
+	# Around a moon, it rides along.
+	var moon_at: PackedFloat64Array = model.get_body_position(moon, 40.0)
+	var small: PackedFloat64Array = model.get_satellite_position(around_moon, 40.0)
+	_check("around a moon it stays with the moon", Vector2(small[0] - moon_at[0], small[1] - moon_at[1]).length(), MOON_RADIUS * 2.0, 1e-6)
+	var lap: PackedFloat64Array = model.get_satellite_orbit_path(station, 65)
+	_check("its lap closes", Vector2(lap[0] - lap[128], lap[1] - lap[129]).length(), 0.0, 1e-3)

@@ -47,6 +47,7 @@ void stumpff(double p_z, double &r_c, double &r_s) {
 void PatchedConicsModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_central_body", "mu", "radius", "entry_altitude"), &PatchedConicsModel::set_central_body, DEFVAL(0.0));
 	ClassDB::bind_method(D_METHOD("add_body", "parent", "mu", "radius", "semi_major_axis", "eccentricity", "argument_of_periapsis", "mean_anomaly_at_start", "entry_altitude"), &PatchedConicsModel::add_body, DEFVAL(0.0));
+	ClassDB::bind_method(D_METHOD("add_satellite", "parent", "semi_major_axis", "eccentricity", "argument_of_periapsis", "mean_anomaly_at_start"), &PatchedConicsModel::add_satellite);
 	ClassDB::bind_method(D_METHOD("set_body_spin", "index", "rate"), &PatchedConicsModel::set_body_spin);
 	ClassDB::bind_method(D_METHOD("set_body_atmosphere", "index", "surface_density", "scale_height"), &PatchedConicsModel::set_body_atmosphere);
 	ClassDB::bind_method(D_METHOD("set_body_terrain", "index", "seed", "mountains", "hills", "rough", "rocks", "crater_depth", "crater_share", "cliff_step", "sea_level", "largest_feature", "ridge_height"), &PatchedConicsModel::set_body_terrain, DEFVAL(0.0));
@@ -61,19 +62,30 @@ void PatchedConicsModel::set_central_body(double p_mu, double p_radius, double p
 int PatchedConicsModel::add_body(int p_parent, double p_mu, double p_radius, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start, double p_entry_altitude) {
 	ERR_FAIL_INDEX_V(p_parent, static_cast<int>(bodies.size()), -1);
 	const double parent_mu = bodies[p_parent].mu;
-	Body body;
-	body.parent = p_parent;
+	Body body = make_rails(p_parent, p_semi_major_axis, p_eccentricity, p_argument_of_periapsis, p_mean_anomaly_at_start);
 	body.mu = p_mu;
 	body.radius = p_radius;
 	body.entry_altitude = p_entry_altitude;
+	body.sphere_of_influence = p_semi_major_axis * std::pow(p_mu / parent_mu, 0.4);
+	bodies.push_back(body);
+	return static_cast<int>(bodies.size()) - 1;
+}
+
+PatchedConicsModel::Body PatchedConicsModel::make_rails(int p_parent, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start) const {
+	Body body;
+	body.parent = p_parent;
 	body.semi_major_axis = p_semi_major_axis;
 	body.eccentricity = p_eccentricity;
 	body.argument_of_periapsis = p_argument_of_periapsis;
 	body.mean_anomaly_at_start = p_mean_anomaly_at_start;
-	body.mean_motion = std::sqrt(parent_mu / (p_semi_major_axis * p_semi_major_axis * p_semi_major_axis));
-	body.sphere_of_influence = p_semi_major_axis * std::pow(p_mu / parent_mu, 0.4);
-	bodies.push_back(body);
-	return static_cast<int>(bodies.size()) - 1;
+	body.mean_motion = std::sqrt(bodies[p_parent].mu / (p_semi_major_axis * p_semi_major_axis * p_semi_major_axis));
+	return body;
+}
+
+int PatchedConicsModel::add_satellite(int p_parent, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start) {
+	ERR_FAIL_INDEX_V(p_parent, static_cast<int>(bodies.size()), -1);
+	satellites.push_back(make_rails(p_parent, p_semi_major_axis, p_eccentricity, p_argument_of_periapsis, p_mean_anomaly_at_start));
+	return static_cast<int>(satellites.size()) - 1;
 }
 
 void PatchedConicsModel::set_body_spin(int p_index, double p_rate) {
@@ -134,12 +146,27 @@ PatchedConicsModel::State2D PatchedConicsModel::body_state(int p_index, double p
 }
 
 PatchedConicsModel::State2D PatchedConicsModel::rail_state(int p_index, double p_time) const {
-	State2D result;
 	if (p_index <= 0 || p_index >= static_cast<int>(bodies.size())) {
-		return result;
+		return State2D();
 	}
+	return rail_of(bodies[p_index], p_time);
+}
 
-	const Body &body = bodies[p_index];
+PatchedConicsModel::State2D PatchedConicsModel::satellite_state(int p_index, double p_time) const {
+	const Body &satellite = satellites[p_index];
+	const State2D rail = rail_of(satellite, p_time);
+	const State2D parent = body_state(satellite.parent, p_time);
+	State2D result;
+	result.x = parent.x + rail.x;
+	result.y = parent.y + rail.y;
+	result.vx = parent.vx + rail.vx;
+	result.vy = parent.vy + rail.vy;
+	return result;
+}
+
+PatchedConicsModel::State2D PatchedConicsModel::rail_of(const Body &p_body, double p_time) const {
+	State2D result;
+	const Body &body = p_body;
 	double mean_anomaly = std::fmod(body.mean_anomaly_at_start + body.mean_motion * p_time, FULL_CIRCLE);
 	if (mean_anomaly > HALF_CIRCLE) {
 		mean_anomaly -= FULL_CIRCLE;
@@ -834,13 +861,52 @@ PackedFloat64Array PatchedConicsModel::get_body_orbit_path(int p_index, int p_sa
 		return points;
 	}
 
-	const double period = FULL_CIRCLE / bodies[p_index].mean_motion;
+	return lap_of(bodies[p_index], p_samples);
+}
+
+PackedFloat64Array PatchedConicsModel::lap_of(const Body &p_body, int p_samples) const {
+	PackedFloat64Array points;
+	const double period = FULL_CIRCLE / p_body.mean_motion;
 	for (int i = 0; i < p_samples; i++) {
-		const State2D state = rail_state(p_index, period * i / (p_samples - 1));
+		const State2D state = rail_of(p_body, period * i / (p_samples - 1));
 		points.push_back(state.x);
 		points.push_back(state.y);
 	}
 	return points;
+}
+
+int PatchedConicsModel::get_satellite_count() const {
+	return static_cast<int>(satellites.size());
+}
+
+int PatchedConicsModel::get_satellite_parent(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(satellites.size()), -1);
+	return satellites[p_index].parent;
+}
+
+PackedFloat64Array PatchedConicsModel::get_satellite_position(int p_index, double p_time) const {
+	PackedFloat64Array result;
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(satellites.size()), result);
+	const State2D state = satellite_state(p_index, p_time);
+	result.push_back(state.x);
+	result.push_back(state.y);
+	return result;
+}
+
+PackedFloat64Array PatchedConicsModel::get_satellite_velocity(int p_index, double p_time) const {
+	PackedFloat64Array result;
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(satellites.size()), result);
+	const State2D state = satellite_state(p_index, p_time);
+	result.push_back(state.vx);
+	result.push_back(state.vy);
+	return result;
+}
+
+PackedFloat64Array PatchedConicsModel::get_satellite_orbit_path(int p_index, int p_samples) const {
+	PackedFloat64Array points;
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(satellites.size()), points);
+	ERR_FAIL_COND_V(p_samples < 2, points);
+	return lap_of(satellites[p_index], p_samples);
 }
 
 } // namespace final_orbit

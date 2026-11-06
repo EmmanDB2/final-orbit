@@ -86,6 +86,18 @@ public:
 	// [x0, y0, x1, y1, ...]. Empty for body 0.
 	virtual godot::PackedFloat64Array get_body_orbit_path(int p_index, int p_samples) const = 0;
 
+	// Satellites are small things on rails around a body, like stations. They have no gravity, so
+	// they change nothing around them, and they're numbered apart from the bodies.
+	virtual int get_satellite_count() const = 0;
+	// The body a satellite orbits.
+	virtual int get_satellite_parent(int p_index) const = 0;
+	// Where a satellite is at a moment in time, as [x, y].
+	virtual godot::PackedFloat64Array get_satellite_position(int p_index, double p_time) const = 0;
+	// How a satellite is moving at a moment in time, as [x, y].
+	virtual godot::PackedFloat64Array get_satellite_velocity(int p_index, double p_time) const = 0;
+	// One lap of a satellite's rails, relative to its parent, flat [x0, y0, x1, y1, ...].
+	virtual godot::PackedFloat64Array get_satellite_orbit_path(int p_index, int p_samples) const = 0;
+
 protected:
 	static void _bind_methods();
 };

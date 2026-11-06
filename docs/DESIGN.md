@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Home Station in orbit: on rails with no gravity, holding still, with its room layout and start position \[Leaning\] |
 | 2026-11-06 | Station art cut into clean sprites by a new tool, with stations drawn at 2 game pixels per art pixel as a third exception to the fixed pixel size \[Leaning\]. All 25 listed agency colors now in the palette data |
 | 2026-11-06 | Engine flame now drawn by code from throttle, air, and damage, replacing the sprite. Procedural burn animation leaves the parking lot \[Leaning\] |
 | 2026-11-06 | Re-entry rebuilt: the hull visibly heats from the hot side, hot air hugs its real outline, and flames stream off its edges, replacing a fixed arc \[Leaning\] |
@@ -329,6 +330,7 @@ Terrain and biomes per body: \[Leaning\]
 - Off-screen, nothing simulates except the rails math.
 - Stations and colonies are hubs for gigs, fuel, and repairs; NPC traffic is ambiance, not a simulated economy.
 - The first station is a hub with four ports and five rooms that bolt on port to port: comms, crew hab, EVA hab, suit room, and ship refueling. Each room has an outside and an inside sprite on the same canvas, lined up on its ports; the insides wait for Tier 3. \[Leaning\]
+- It rides rails around the home planet like a moon does, but with no gravity of its own, at the height the ship starts, 2,600 m ahead of it. It holds still rather than turning, so its ports always face the same way. Comms is on top, crew hab on the right, suit room then EVA hab on the left, and ship refueling on the bottom, leaving four ports free. \[Leaning\]
 
 ## Hazards
 

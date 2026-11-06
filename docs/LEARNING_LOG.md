@@ -340,3 +340,11 @@ Files: `tools/slice_station.gd`, `art/station_1/`, `scripts/ui/agency_palette.gd
 - flood fill and connected pieces
 - matching colors in a perceptual color space (Oklab)
 - keeping files out of a Godot project with `.gdignore`
+
+## 2026-11-06: Home Station in orbit
+
+Files: `native/src/gravity_model.*`, `native/src/patched_conics_model.*`, `scripts/station/`, `data/station_1.tres`, `scripts/main.gd`, `scripts/body_guides.gd`, `scenes/main.tscn`, `tests/test_gravity_model.gd`, `tests/test_station.gd`, `docs/DESIGN.md`
+
+- Kepler rails computed from the time
+- nested resources in a data file
+- turning pixel art in quarter turns

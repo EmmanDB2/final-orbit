@@ -33,6 +33,10 @@ public:
 	// the same way the ship starts.
 	int add_body(int p_parent, double p_mu, double p_radius, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start, double p_entry_altitude = 0.0);
 
+	// Adds a satellite on rails around a body and returns its number, which is apart from the
+	// bodies'. Angles are as for add_body.
+	int add_satellite(int p_parent, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start);
+
 	// Sets how fast a body turns, in radians per second. Positive is clockwise on screen, the
 	// way the ship starts, so launching that way gets a boost.
 	void set_body_spin(int p_index, double p_rate);
@@ -66,6 +70,11 @@ public:
 	int get_dominant_body(double p_x, double p_y, double p_time) const override;
 	double get_sphere_of_influence(int p_index) const override;
 	godot::PackedFloat64Array get_body_orbit_path(int p_index, int p_samples) const override;
+	int get_satellite_count() const override;
+	int get_satellite_parent(int p_index) const override;
+	godot::PackedFloat64Array get_satellite_position(int p_index, double p_time) const override;
+	godot::PackedFloat64Array get_satellite_velocity(int p_index, double p_time) const override;
+	godot::PackedFloat64Array get_satellite_orbit_path(int p_index, int p_samples) const override;
 
 protected:
 	static void _bind_methods();
@@ -149,6 +158,10 @@ private:
 
 	// Where a body is and how it's moving relative to its parent, computed from the time.
 	State2D rail_state(int p_index, double p_time) const;
+	// The same, for rails belonging to anything.
+	State2D rail_of(const Body &p_body, double p_time) const;
+	// Where a satellite is and how it's moving in the world.
+	State2D satellite_state(int p_index, double p_time) const;
 	// The same in the world, adding up its parents.
 	State2D body_state(int p_index, double p_time) const;
 	int dominant_body(double p_x, double p_y, double p_time) const;
@@ -162,7 +175,12 @@ private:
 	// Fills whichever of the two arrays it's given.
 	void build_path(const godot::Ref<ShipState> &p_state, double p_duration, int p_samples, godot::PackedFloat64Array *r_points, godot::PackedFloat64Array *r_heights) const;
 
+	// Rails with no mass.
+	Body make_rails(int p_parent, double p_semi_major_axis, double p_eccentricity, double p_argument_of_periapsis, double p_mean_anomaly_at_start) const;
+	godot::PackedFloat64Array lap_of(const Body &p_body, int p_samples) const;
+
 	std::vector<Body> bodies = { Body() };
+	std::vector<Body> satellites;
 };
 
 } // namespace final_orbit

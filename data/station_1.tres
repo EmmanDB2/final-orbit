@@ -1,0 +1,79 @@
+[gd_resource type="Resource" script_class="StationDesign" format=3]
+
+[ext_resource type="Script" path="res://scripts/station/station_design.gd" id="1_design"]
+[ext_resource type="Script" path="res://scripts/station/station_room.gd" id="2_room"]
+[ext_resource type="Texture2D" path="res://art/station_1/hub.png" id="10_hub"]
+[ext_resource type="Texture2D" path="res://art/station_1/comms.png" id="11_comms"]
+[ext_resource type="Texture2D" path="res://art/station_1/crew_hab.png" id="12_crew_hab"]
+[ext_resource type="Texture2D" path="res://art/station_1/suit_room.png" id="13_suit_room"]
+[ext_resource type="Texture2D" path="res://art/station_1/eva_hab.png" id="14_eva_hab"]
+[ext_resource type="Texture2D" path="res://art/station_1/ship_refueling.png" id="15_ship_refueling"]
+
+[sub_resource type="Resource" id="Room_0"]
+script = ExtResource("2_room")
+display_name = "Hub"
+texture = ExtResource("10_hub")
+port_points = PackedVector2Array(106, 2, 106, 217, 5, 109, 208, 109)
+port_faces = PackedVector2Array(0, -1, 0, 1, -1, 0, 1, 0)
+bolts_to_room = -1
+bolts_to_port = 0
+own_port = 0
+
+[sub_resource type="Resource" id="Room_1"]
+script = ExtResource("2_room")
+display_name = "Comms"
+texture = ExtResource("11_comms")
+port_points = PackedVector2Array(88, 1, 88, 246)
+port_faces = PackedVector2Array(0, -1, 0, 1)
+bolts_to_room = 0
+bolts_to_port = 0
+own_port = 1
+
+[sub_resource type="Resource" id="Room_2"]
+script = ExtResource("2_room")
+display_name = "Crew hab"
+texture = ExtResource("12_crew_hab")
+port_points = PackedVector2Array(89, 1, 89, 246)
+port_faces = PackedVector2Array(0, -1, 0, 1)
+bolts_to_room = 0
+bolts_to_port = 3
+own_port = 1
+
+[sub_resource type="Resource" id="Room_3"]
+script = ExtResource("2_room")
+display_name = "Suit room"
+texture = ExtResource("13_suit_room")
+port_points = PackedVector2Array(90, 1, 90, 246)
+port_faces = PackedVector2Array(0, -1, 0, 1)
+bolts_to_room = 0
+bolts_to_port = 2
+own_port = 1
+
+[sub_resource type="Resource" id="Room_4"]
+script = ExtResource("2_room")
+display_name = "EVA hab"
+texture = ExtResource("14_eva_hab")
+port_points = PackedVector2Array(89, 1, 89, 246)
+port_faces = PackedVector2Array(0, -1, 0, 1)
+bolts_to_room = 3
+bolts_to_port = 0
+own_port = 1
+
+[sub_resource type="Resource" id="Room_5"]
+script = ExtResource("2_room")
+display_name = "Ship refueling"
+texture = ExtResource("15_ship_refueling")
+port_points = PackedVector2Array(116, 4, 116, 248)
+port_faces = PackedVector2Array(0, -1, 0, 1)
+bolts_to_room = 0
+bolts_to_port = 1
+own_port = 0
+
+[resource]
+script = ExtResource("1_design")
+display_name = "Home Station"
+callsign = "HOME"
+rooms = Array[ExtResource("2_room")]([SubResource("Room_0"), SubResource("Room_1"), SubResource("Room_2"), SubResource("Room_3"), SubResource("Room_4"), SubResource("Room_5")])
+art_pixel_size = 2.0
+orbit_altitude = 30000.0
+orbit_start_angle = -1.556352
