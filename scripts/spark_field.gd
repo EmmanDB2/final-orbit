@@ -81,9 +81,14 @@ func scatter(offsets: PackedVector2Array, colors: PackedColorArray, size: int, x
 	if offsets.is_empty():
 		return
 	var frame: SparkFrame = _frame_for(x, y, velocity_x, velocity_y)
+	while _total + offsets.size() > spark_budget and _frames[0] != frame:
+		_drop_oldest_frame()
+	var adding: int = mini(offsets.size(), spark_budget - _total)
+	if adding <= 0:
+		return
 	var from := Vector2(x - frame.state.x, y - frame.state.y)
 	var moving := Vector2(velocity_x - frame.state.velocity_x, velocity_y - frame.state.velocity_y)
-	for i in range(offsets.size()):
+	for i in range(adding):
 		var at: Vector2 = offsets[i]
 		var away: Vector2 = at - hit_offset
 		away = away.normalized() if away.length_squared() > 0.01 else Vector2.UP.rotated(_rng.randf() * TAU)
@@ -99,8 +104,7 @@ func scatter(offsets: PackedVector2Array, colors: PackedColorArray, size: int, x
 		frame.hot.append(_rng.randf_range(0.05, longest_hot) if _rng.randf() < hot_chance else 0.0)
 		frame.sizes.append(size)
 		frame.colors.append(colors[i])
-	_total += offsets.size()
-	_keep_to_budget()
+	_total += adding
 
 
 func _on_ship_pixels_scattered(offsets: PackedVector2Array, colors: PackedColorArray, size: int, x: float, y: float, velocity_x: float, velocity_y: float, kick: Vector2, hit_offset: Vector2, blast: float) -> void:
@@ -148,11 +152,6 @@ func _angle_on_body(frame: SparkFrame) -> float:
 func _drop_oldest_frame() -> void:
 	_total -= _frames[0].xs.size()
 	_frames.remove_at(0)
-
-
-func _keep_to_budget() -> void:
-	while _total > spark_budget and _frames.size() > 1:
-		_drop_oldest_frame()
 
 
 func _physics_process(delta: float) -> void:

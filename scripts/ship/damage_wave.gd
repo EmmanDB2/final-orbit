@@ -1,7 +1,8 @@
 # damage_wave.gd: what the ship's art shows while damage eats through it.
 # From DESIGN.md, "Destruction". A hit changes the ship's mass, thrust, and everything else
-# at once. This only decides what's drawn: the lost pixels go a few at a time, starting where
-# the hit landed and glowing just before they go, so damage spreads instead of blinking out.
+# at once. This only decides what's drawn: pixels go a few at a time, starting where the hit
+# landed and glowing just before they go, so damage spreads instead of blinking out. What shows
+# after each is whatever was under it: the systems, then the frame, then nothing.
 class_name DamageWave
 extends RefCounted
 
@@ -10,9 +11,10 @@ const FEWEST_TICKS: int = 2
 const MOST_TICKS: int = 26
 const PIXELS_PER_TICK: int = 30
 ## Up to this many pixels, every one becomes its own spark. Past it, sparks stand in for 2 x 2
-## blocks of pixels, and past the second limit for 3 x 3 blocks.
+## blocks of pixels, past the second limit for 3 x 3 blocks, and past the third for 4 x 4.
 const SINGLE_SPARK_LIMIT: int = 800
 const DOUBLE_SPARK_LIMIT: int = 3000
+const TRIPLE_SPARK_LIMIT: int = 12000
 
 ## The art as it should look right now, one texture per layer of the ship.
 var textures: Array[ImageTexture] = []
@@ -21,6 +23,7 @@ var _body: ShipBody
 var _images: Array[Image] = []
 var _changed: PackedByteArray = PackedByteArray()
 var _hits: Array[Dictionary] = []
+var _broken_off: Dictionary = {}
 
 
 func _init(body: ShipBody) -> void:
@@ -40,6 +43,7 @@ func is_idle() -> bool:
 func show_body(body: ShipBody) -> void:
 	_body = body
 	_hits.clear()
+	_broken_off.clear()
 	for i in range(_images.size()):
 		_images[i].copy_from(body.layer_image(i))
 		textures[i].update(_images[i])
@@ -64,13 +68,16 @@ func add_hit(erased: Dictionary, hit_point: Vector2, kick: Vector2, blast: float
 		return
 	var ticks: int = clampi(count / PIXELS_PER_TICK, FEWEST_TICKS, MOST_TICKS)
 	var block: int = 1
-	if count > DOUBLE_SPARK_LIMIT:
+	if count > TRIPLE_SPARK_LIMIT:
+		block = 4
+	elif count > DOUBLE_SPARK_LIMIT:
 		block = 3
 	elif count > SINGLE_SPARK_LIMIT:
 		block = 2
 	_hits.append({
 		"pixels": pixels,
 		"colors": erased["colors"],
+		"reveals": erased["reveals"],
 		"next": 0,
 		"rate": ceili(float(count) / ticks),
 		"block": block,
@@ -84,6 +91,7 @@ func add_hit(erased: Dictionary, hit_point: Vector2, kick: Vector2, blast: float
 func remove_now(pixels: PackedInt32Array) -> void:
 	for pixel: int in pixels:
 		_paint(pixel, Color(0.0, 0.0, 0.0, 0.0))
+		_broken_off[pixel] = true
 
 
 ## How many ticks until the slowest hit has finished.
@@ -103,6 +111,7 @@ func advance(hot: Color, warm: Color, cool: Color) -> Array[Dictionary]:
 		var hit: Dictionary = _hits[i]
 		var pixels: PackedInt32Array = hit["pixels"]
 		var colors: PackedColorArray = hit["colors"]
+		var reveals: PackedColorArray = hit["reveals"]
 		var rate: int = hit["rate"]
 		var next: int = hit["next"]
 		var stride: int = hit["block"] * hit["block"]
@@ -110,7 +119,7 @@ func advance(hot: Color, warm: Color, cool: Color) -> Array[Dictionary]:
 		var spray_points := PackedVector2Array()
 		var spray_colors := PackedColorArray()
 		for index in range(next, stop):
-			_paint(pixels[index], Color(0.0, 0.0, 0.0, 0.0))
+			_paint(pixels[index], reveals[index])
 			if index % stride == 0:
 				spray_points.append(_body.position_of(pixels[index]))
 				spray_colors.append(colors[index])
@@ -143,6 +152,8 @@ func _glow(pixels: PackedInt32Array, start: int, stop: int, color: Color) -> voi
 
 
 func _paint(pixel: int, color: Color) -> void:
+	if _broken_off.has(pixel):
+		return
 	var layer: int = _body.pixel_layer[pixel]
 	_images[layer].set_pixel(_body.pixel_x[pixel], _body.pixel_y[pixel], color)
 	_changed[layer] = 1

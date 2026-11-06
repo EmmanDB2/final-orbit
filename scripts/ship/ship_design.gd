@@ -16,6 +16,11 @@ extends Resource
 @export var exhaust_velocity: float = 1.0
 ## RCS translation thrust, in newtons, for moving without turning.
 @export var rcs_translate_force: float = 0.0
+## How thick each layer of a module with inside art is. A pixel of a layer has this share of
+## its material's density and strength, so together the layers make up the whole ship.
+@export var skin_thickness: float = 1.0
+@export var systems_thickness: float = 1.0
+@export var frame_thickness: float = 1.0
 ## The fastest a hit can be and do no damage, in meters per second.
 @export var safe_impact_speed: float = 50.0
 ## The fastest a landing can be with the legs down and do no damage, in meters per second.

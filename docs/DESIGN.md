@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Inside layers built from Manny's frame and systems drawings: damage strips the skin first, then the systems, then the frame. Material strengths halved so a crash costs about what it did, with the skin going first \[Leaning\] |
 | 2026-11-06 | Landing legs built, with a LEGS button. They swing down, take harder landings, and can break off, leaving the ship leaning. The ship now stands on its feet with them down, which replaces always resting on the bell \[Leaning\] |
 | 2026-11-06 | Ships are now built from one PNG per module, placed by the ship's data file, with working pixels marked so damage knows the real parts. Engines weaken as the bell goes instead of working or not \[Leaning\] |
 | 2026-11-06 | Damage reads better: hits spread across the art with a glowing edge instead of blinking out, every lost pixel flies off as a longer-lived spark, and chunks crumble into sparks instead of vanishing \[Leaning\] |
@@ -182,12 +183,15 @@ How it works in Tier 1: \[Leaning\]
 
 - Pixels are the ship's collision with the ground: whichever pixel reaches the ground first touches it, at any angle. Hitting debris uses the pixels too.
 - Up to 50 units/s does nothing. Above that, the energy is half the mass times the square of speed, less the safe speed's share. Against debris, the mass is the two bodies' shared mass.
-- Each material has a strength, the energy to destroy one of its pixels: hull and paint 500 kJ, steel 1.5 MJ, glass 200 kJ, foil 100 kJ. The whole lander is worth about 7 GJ.
+- Each material has a strength, the energy to destroy a full pixel of it: hull and paint 250 kJ, steel 750 kJ, glass 100 kJ, foil 50 kJ. The whole lander is worth about 5 GJ.
+- A pixel has depth where a module has inside art: the hull's skin on top, then the systems (tanks, plumbing, power core), then the bare frame. Damage takes one depth at a time, and a pixel is still solid until the last one goes, so it only counts against a module then. A tank's skin can go without holing it. \[Leaning\]
+- Each depth's front runs 12 px behind the one above, so a hit strips the skin well past where it breaks through, and innards show around every hole. \[Leaning\]
+- The layers have a thickness, the share of a material's density and strength that a pixel of it has: skin 0.4, systems 0.2, frame 0.225 on the lander. Together they add up to the same 19.5 t as before. Parts with no inside art, such as the legs, count in full. \[Leaning\]
 - Flat ground crushes from the side that hits, in a jagged line. Debris knocks a dent around where it touches.
-- As a guide, with a light tank: 100 units/s scratches the engine bell, 150 takes about 3% of the ship, and 250 takes the engine. A full tank hits about three times as hard.
+- As a guide, with a light tank and the legs up: 60 units/s scuffs the bell, 100 strips about 280 pixels of skin, 150 strips about 570 and starts breaking through, 200 cuts the engine to about two thirds, and 250 kills it. A full tank hits about three times as hard, so 150 nearly kills the engine.
 - A connectivity check groups pixels into 3 x 3 cells, and touching cells count as attached, so the art's small gaps hold together. The piece with the most cockpit stays the ship.
 - A hit counts at once for mass, thrust, and everything else, but the art catches up over up to about 0.4 seconds: pixels go a few at a time from where the hit landed, and the edge about to go glows in the thrust and fire colors. A crushed ship sinks to where it now rests, and the art shakes briefly. \[Leaning\]
-- Every lost pixel becomes a spark, thrown away from the hit, up to 800 pixels in one hit. Past that, sparks stand in for 2 x 2 blocks, and past 3,000 for 3 x 3 blocks. Sparks live 1.6 to 4.5 seconds and flicker out at the end. Near the ground they fall and bounce, and elsewhere they drift, slowed by any air. There can be 1,500 at once. \[Leaning\]
+- Every depth lost becomes a spark, thrown away from the hit, up to 800 in one hit. Past that, sparks stand in for 2 x 2 blocks, and past 3,000 for 3 x 3 blocks. Sparks live 1.6 to 4.5 seconds and flicker out at the end. Near the ground they fall and bounce, and elsewhere they drift, slowed by any air. There can be 1,500 at once. \[Leaning\]
 - Pieces under 30 pixels are just sparks. There can be 12 chunks at once. Under 200 pixels, one crumbles into sparks after 30 seconds or burns up in the air. Any chunk crumbles after 60 seconds on the ground, or at once if it hits the ground faster than 120 units/s.
 - The ship turns around its new center of mass, which moves as pixels go.
 - A module under half its working pixels stops working, and the pilot gets a message. Left RCS gone means no clockwise turn or moving right, and right RCS gone means the reverse. An engine weakens as its bell goes and stops under a quarter of it. One engine module gone means half the thrust, off-center, so the ship spins. The tail nozzles work or fail on their own.
@@ -243,7 +247,7 @@ Rotating planets and atmospheres: \[Leaning, Tier 1\]
 - Airless bodies have no moving air, so a hovering ship stays put while the ground slides past underneath.
 - Coasting stays closed-form above the atmosphere. Inside it the ship is simulated step by step, which limits time warp and fold-to-coast there and needs the preview's background thread.
 - Re-entry heat grows with the square root of air density and the cube of speed, and shows as a bow shock and streaks of gas in the thrust and fire colors. A gentle return from low orbit reads about 0.2 on a scale where 1.0 is the limit, and a steep return from high up goes past 1.0. \[Leaning\]
-- The hull warms toward the heat over about 6 seconds, so a short spike does no harm. Past 1.0 it burns away from the hot side, at 200 MJ a second for each whole step past, about 3% of the lander. Heat shields come with more modules. \[Leaning\]
+- The hull warms toward the heat over about 6 seconds, so a short spike does no harm. Past 1.0 it burns away from the hot side, at 200 MJ a second for each whole step past, about 4% of the lander. Heat shields come with more modules. \[Leaning\]
 - For now the path line ignores the air, so inside the atmosphere it shows where the ship would go with no drag and updates every tick. Drawing the drag into it waits for the background thread. \[Leaning\]
 
 Ship: \[Locked\]
@@ -480,7 +484,8 @@ Art pipeline: \[Leaning\]
 2. Recreate it by hand, or hand the image to Claude to turn into a clean sprite.
 3. Clean up in Aseprite: snap to grid, force the agency palette, fix edges.
 4. Ship modules are drawn on the fixed module grid, one PNG each, since their pixels are collision and damage. Keep gaps within a part to 2 px or less so it counts as one piece.
-5. Planets and space are shaders and code, not hand-drawn sprites.
+5. Inside art is drawn at the same size as the hull: a systems drawing and a bare frame drawing. Only what sits under the hull is used, since the hull's outline is the ship's.
+6. Planets and space are shaders and code, not hand-drawn sprites.
 
 ## Tech
 

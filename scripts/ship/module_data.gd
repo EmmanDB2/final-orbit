@@ -8,6 +8,10 @@ extends Resource
 @export var kind: String = ""
 ## The module's own art. Its pixels are its mass, collision, and damage.
 @export var texture: Texture2D
+## What's under the hull, in the same place as the hull's art: the systems first, then the bare
+## frame under those. Damage shows them as it goes. Either can be left out.
+@export var systems_texture: Texture2D
+@export var frame_texture: Texture2D
 ## Which grid cell it fills, counted from the ship's top-left cell.
 @export var cell: Vector2i = Vector2i.ZERO
 ## How much fuel it holds, in kilograms, if it's a tank.

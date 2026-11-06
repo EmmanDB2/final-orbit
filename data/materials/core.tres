@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="MaterialData" format=3]
+
+[ext_resource type="Script" path="res://scripts/ship/material_data.gd" id="1_material"]
+
+[resource]
+script = ExtResource("1_material")
+display_name = "Power core glow"
+density = 0.25
+strength = 50000.0
+colors = PackedColorArray(1.000000, 0.952941, 0.768627, 1, 1.000000, 0.701961, 0.278431, 1, 0.949020, 0.701961, 0.227451, 1)

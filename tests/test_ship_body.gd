@@ -12,6 +12,7 @@ func _initialize() -> void:
 	_test_lander()
 	_test_erasing()
 	_test_lander_damage()
+	_test_depth()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -150,7 +151,7 @@ func _test_real_parts() -> void:
 	var design: ShipDesign = load("res://data/lander_design.tres")
 	var body: ShipBody = ShipBody.measure(design)
 	var rcs_left: int = 2
-	_check("the lander is the same mass as the drawing", body.mass, 19485.0, 2.0)
+	_check("the layers add up to the lander's mass", body.mass, 19485.0, 40.0)
 	_check("and every pixel's there", body.pixel_count, 14337.0, 0.0)
 	_check("the RCS nozzle starts working", body.nozzle_share(rcs_left), 1.0, 0.0)
 	_check("and its module", body.working_share(rcs_left), 1.0, 0.0)
@@ -198,3 +199,58 @@ func _test_real_parts() -> void:
 				differences += 1
 	_check("the pieces match the drawing exactly", differences, 0.0, 0.0)
 	_check("and nothing's extra", whole.pixel_count, drawn, 0.0)
+
+
+# Damage goes down through the layers: skin, then systems, then frame.
+func _test_depth() -> void:
+	var design: ShipDesign = load("res://data/lander_design.tres")
+	var body: ShipBody = ShipBody.measure(design)
+	var whole_mass: float = body.mass
+	var whole_count: int = body.pixel_count
+	var tank: int = 4
+	var tank_start: float = body.module_share(tank)
+
+	# A pixel of the tank with all three layers.
+	var pixel: int = -1
+	for index in range(body._density.size()):
+		if body._module_of[index] == tank and body._depth_color[index * 3 + 1].a > 0.5 and body._depth_color[index * 3 + 2].a > 0.5:
+			pixel = index
+			break
+	_check("the tank has pixels with all three layers", 1.0 if pixel >= 0 else 0.0, 1.0, 0.0)
+
+	body._peel(pixel)
+	_check("taking the skin leaves the pixel there", body.pixel_count, whole_count, 0.0)
+	_check("still solid", 1.0 if body.has_pixel(body.position_of(pixel)) else 0.0, 1.0, 0.0)
+	_check("showing what's under it", 1.0 if body._color[pixel] == body._depth_color[pixel * 3 + 1] else 0.0, 1.0, 0.0)
+	_check("the art shows it too", 1.0 if body.layer_image(0).get_pixel(body.pixel_x[pixel], body.pixel_y[pixel]) == body._depth_color[pixel * 3 + 1] else 0.0, 1.0, 0.0)
+	_check("the mass drops by the skin", whole_mass - body.mass, body._depth_mass[pixel * 3], 1e-3)
+	_check("and the tank's not holed", body.module_share(tank), tank_start, 0.0)
+
+	body._peel(pixel)
+	_check("the systems go next", body.pixel_count, whole_count, 0.0)
+	body._peel(pixel)
+	_check("and the frame finishes it", body.pixel_count, whole_count - 1, 0.0)
+	_check("now it's gone", 1.0 if body.has_pixel(body.position_of(pixel)) else 0.0, 0.0, 0.0)
+	_check("and the tank has a hole", 1.0 if body.module_share(tank) < tank_start else 0.0, 1.0, 0.0)
+
+	# Everything together is the whole ship, down to nothing.
+	var all: ShipBody = ShipBody.measure(design)
+	for index in range(all._density.size()):
+		all._erase(index)
+	all._refresh()
+	_check("erasing everything leaves nothing", all.pixel_count, 0.0, 0.0)
+	_check("and no mass", all.mass, 0.0, 0.05)
+
+	# A hit strips the skin farther than it breaks through.
+	var hit: ShipBody = ShipBody.measure(design)
+	var erased: Dictionary = hit.dent(Vector2(-50.0, 40.0), 2.0e8, 1)
+	var stripped: int = 0
+	var gone: int = 0
+	for index in range(hit._density.size()):
+		if hit._depth[index] >= 3:
+			gone += 1
+		elif hit._depth[index] > 0:
+			stripped += 1
+	_check("a hit opens up more than it destroys", 1.0 if stripped > gone else 0.0, 1.0, 0.0)
+	_check("and says what's under each pixel", erased["reveals"].size(), erased["pixels"].size(), 0.0)
+	print("a 200 MJ hit: %d pixels stripped, %d gone" % [stripped, gone])

@@ -1,7 +1,9 @@
 # slice_lander.gd: cuts art/ship_lander.png into one PNG per module, plus one per landing leg,
-# in art/lander/. From DESIGN.md, "Ships" (modules snap to a fixed grid).
+# in art/lander/. It cuts the inside drawings the same way, ship_lander_systems.png and
+# ship_lander_frame.png, keeping only what sits under the hull, since the hull's outline is the
+# ship's. From DESIGN.md, "Ships" (modules snap to a fixed grid) and "Destruction".
 #
-# This only needs running again if the whole-ship drawing changes. Every pixel goes into
+# This only needs running again if the drawings change. Every pixel of the hull goes into
 # exactly one piece, so the pieces put back together match the drawing exactly. Run with:
 #   godot --headless --path . --script tools/slice_lander.gd
 extends SceneTree
@@ -27,20 +29,32 @@ func _initialize() -> void:
 	_save_leg(art, used, "leg_left", _in_left_leg)
 	_save_leg(art, used, "leg_right", _in_right_leg)
 
+	_save_modules(art, art, used, "")
+	_save_modules(art, _load("ship_lander_systems"), used, "_systems")
+	_save_modules(art, _load("ship_lander_frame"), used, "_frame")
+	quit()
+
+
+func _load(drawing: String) -> Image:
+	var image: Image = Image.load_from_file(ProjectSettings.globalize_path("res://art/%s.png" % drawing))
+	image.convert(Image.FORMAT_RGBA8)
+	return image
+
+
+# Cuts a drawing into grid cells, keeping only pixels the hull has and the legs don't.
+func _save_modules(hull: Image, drawing: Image, used: PackedByteArray, suffix: String) -> void:
 	for row in range(NAMES.size()):
 		for column in range(2):
 			var piece := Image.create(CELL, CELL, false, Image.FORMAT_RGBA8)
 			var cell := Vector2i(column, row) * CELL
-			for y in range(art.get_height()):
-				for x in range(art.get_width()):
-					var on_grid := Vector2i(x, y) + ART_ON_GRID
-					var local: Vector2i = on_grid - cell
+			for y in range(hull.get_height()):
+				for x in range(hull.get_width()):
+					var local: Vector2i = Vector2i(x, y) + ART_ON_GRID - cell
 					if local.x < 0 or local.y < 0 or local.x >= CELL or local.y >= CELL:
 						continue
-					if used[y * art.get_width() + x] == 0:
-						piece.set_pixel(local.x, local.y, art.get_pixel(x, y))
-			piece.save_png(ProjectSettings.globalize_path("res://art/lander/%s.png" % NAMES[row][column]))
-	quit()
+					if used[y * hull.get_width() + x] == 0 and hull.get_pixel(x, y).a >= 0.5:
+						piece.set_pixel(local.x, local.y, drawing.get_pixel(x, y))
+			piece.save_png(ProjectSettings.globalize_path("res://art/lander/%s%s.png" % [NAMES[row][column], suffix]))
 
 
 # Saves one leg cropped to its own size, and prints where it goes on the module grid.

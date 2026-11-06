@@ -7,6 +7,9 @@
 # The modules on the grid are drawn together as one layer. A part that moves, such as a
 # landing leg, is a layer of its own that can be somewhere else while its pixels stay the same.
 # Mass always counts a moving part where it's stowed, since it's tiny next to the whole ship.
+#
+# A pixel can have depth: the hull's skin on top, then the systems under it, then the bare
+# frame. Damage takes one at a time, and a pixel is only gone once it has nothing left.
 class_name ShipBody
 extends RefCounted
 
@@ -46,6 +49,11 @@ class Layer:
 ## cells count as attached. It's faster than checking every pixel, and it holds together
 ## parts the art draws with a pixel or two of gap, such as the engine bell.
 const CONNECT_CELL: int = 3
+## How many depths a pixel can have: skin, systems, and frame.
+const DEPTHS: int = 3
+## How far ahead of the next depth down each one goes, in pixels, so a hit strips the skin well
+## past the point where it breaks through to the frame.
+const DEPTH_GAP: int = 12
 
 ## Total mass, in kilograms.
 var mass: float = 0.0
@@ -83,10 +91,14 @@ var _total_y: float = 0.0
 var _total_r_squared: float = 0.0
 # Per pixel. A density of zero means the pixel is gone.
 var _density: PackedFloat32Array = PackedFloat32Array()
-var _strength: PackedFloat32Array = PackedFloat32Array()
+var _depth: PackedByteArray = PackedByteArray()
 var _module_of: PackedInt32Array = PackedInt32Array()
 var _home: PackedVector2Array = PackedVector2Array()
 var _color: PackedColorArray = PackedColorArray()
+# Per pixel and depth, at pixel * DEPTHS + depth. An empty color means it has nothing there.
+var _depth_mass: PackedFloat32Array = PackedFloat32Array()
+var _depth_strength: PackedFloat32Array = PackedFloat32Array()
+var _depth_color: PackedColorArray = PackedColorArray()
 var _is_working: PackedByteArray = PackedByteArray()
 var _is_nozzle: PackedByteArray = PackedByteArray()
 # Per module.
@@ -131,7 +143,7 @@ static func measure(design: ShipDesign) -> ShipBody:
 		list.fill(0)
 	body._module_hole.resize(count)
 	for i in range(count):
-		body._add_module(i, design.modules[i], materials)
+		body._add_module(i, design.modules[i], materials, design)
 	body._module_left = body._module_start.duplicate()
 	body._working_left = body._working_start.duplicate()
 	body._nozzle_left = body._nozzle_start.duplicate()
@@ -147,11 +159,12 @@ static func measure(design: ShipDesign) -> ShipBody:
 	return body
 
 
-func _add_module(index: int, module: ModuleData, materials: Dictionary) -> void:
-	var art: Image = module.texture.get_image().duplicate()
-	if art.is_compressed():
-		art.decompress()
-	art.convert(Image.FORMAT_RGBA8)
+func _add_module(index: int, module: ModuleData, materials: Dictionary, design: ShipDesign) -> void:
+	var art: Image = _art_of(module.texture)
+	var systems: Image = _art_of(module.systems_texture)
+	var frame: Image = _art_of(module.frame_texture)
+	var has_inside: bool = systems != null or frame != null
+	var skin_thickness: float = design.skin_thickness if has_inside else 1.0
 
 	var layer: Layer = _layers[0]
 	var layer_index: int = 0
@@ -184,12 +197,12 @@ func _add_module(index: int, module: ModuleData, materials: Dictionary) -> void:
 				push_warning("Ship pixel color %s isn't in any material" % key)
 				continue
 			var material: MaterialData = materials[key]
+			var pixel_mass: float = material.density * skin_thickness
 			var at := Vector2i(x, y) + offset
 			var home: Vector2 = Vector2(layer.top_left + at) + Vector2(0.5, 0.5) - _half
 			layer.image.set_pixel(at.x, at.y, color)
 			layer.lookup[at.y * layer_width + at.x] = _density.size()
-			_density.append(material.density)
-			_strength.append(material.strength)
+			_depth.append(0)
 			_module_of.append(index)
 			_home.append(home)
 			_color.append(color)
@@ -200,17 +213,53 @@ func _add_module(index: int, module: ModuleData, materials: Dictionary) -> void:
 			var nozzle: bool = module.nozzle_rect.has_area() and module.nozzle_rect.has_point(Vector2i(x, y))
 			_is_working.append(1 if working else 0)
 			_is_nozzle.append(1 if nozzle else 0)
-			mass += material.density
-			_total_x += material.density * home.x
-			_total_y += material.density * home.y
-			_total_r_squared += material.density * home.length_squared()
+			_depth_mass.append(pixel_mass)
+			_depth_strength.append(material.strength * skin_thickness)
+			_depth_color.append(color)
+			var total_mass: float = pixel_mass
+			total_mass += _add_depth(systems, x, y, materials, design.systems_thickness)
+			total_mass += _add_depth(frame, x, y, materials, design.frame_thickness)
+			_density.append(total_mass)
+			mass += total_mass
+			_total_x += total_mass * home.x
+			_total_y += total_mass * home.y
+			_total_r_squared += total_mass * home.length_squared()
 			pixel_count += 1
-			module_masses[index] = module_masses.get(index, 0.0) + material.density
+			module_masses[index] = module_masses.get(index, 0.0) + total_mass
 			_module_start[index] += 1
 			if working:
 				_working_start[index] += 1
 			if nozzle:
 				_nozzle_start[index] += 1
+
+
+func _art_of(texture: Texture2D) -> Image:
+	if texture == null:
+		return null
+	var art: Image = texture.get_image().duplicate()
+	if art.is_compressed():
+		art.decompress()
+	art.convert(Image.FORMAT_RGBA8)
+	return art
+
+
+# Records what's at one depth under a pixel, and returns its mass.
+func _add_depth(art: Image, x: int, y: int, materials: Dictionary, thickness: float) -> float:
+	var color := Color(0.0, 0.0, 0.0, 0.0)
+	var material: MaterialData = null
+	if art != null:
+		var there: Color = art.get_pixel(x, y)
+		if there.a >= 0.5:
+			var key: String = there.to_html(false)
+			if materials.has(key):
+				material = materials[key]
+				color = there
+			else:
+				push_warning("Ship pixel color %s isn't in any material" % key)
+	_depth_color.append(color)
+	_depth_mass.append(material.density * thickness if material != null else 0.0)
+	_depth_strength.append(material.strength * thickness if material != null else 0.0)
+	return material.density * thickness if material != null else 0.0
 
 
 ## The ship's mass and spin resistance with this much fuel aboard, shared across its tanks.
@@ -533,18 +582,37 @@ func _jitter(index: int, damage_seed: int) -> int:
 	return ((index * 2654435761 + damage_seed * 40503) >> 7) & 7
 
 
+# Destroys a pixel completely, whatever's left of it.
 func _erase(index: int) -> void:
-	var density: float = _density[index]
+	while _depth[index] < DEPTHS:
+		_peel(index)
+
+
+# Takes the top depth off a pixel. Only with nothing left under it is the pixel gone.
+func _peel(index: int) -> void:
+	var depth: int = _depth[index]
+	var taken: float = _depth_mass[index * DEPTHS + depth]
 	var home: Vector2 = _home[index]
-	mass -= density
-	_total_x -= density * home.x
-	_total_y -= density * home.y
-	_total_r_squared -= density * home.length_squared()
+	mass -= taken
+	_total_x -= taken * home.x
+	_total_y -= taken * home.y
+	_total_r_squared -= taken * home.length_squared()
+	var module_index: int = _module_of[index]
+	module_masses[module_index] = module_masses.get(module_index, 0.0) - taken
+
+	var next: int = depth + 1
+	while next < DEPTHS and _depth_color[index * DEPTHS + next].a < 0.5:
+		next += 1
+	_depth[index] = next
+	if next < DEPTHS:
+		_density[index] -= taken
+		_color[index] = _depth_color[index * DEPTHS + next]
+		_layers[pixel_layer[index]].image.set_pixel(pixel_x[index], pixel_y[index], _color[index])
+		return
+
 	_density[index] = 0.0
 	pixel_count -= 1
 	_layers[pixel_layer[index]].image.set_pixel(pixel_x[index], pixel_y[index], Color(0.0, 0.0, 0.0, 0.0))
-	var module_index: int = _module_of[index]
-	module_masses[module_index] = module_masses.get(module_index, 0.0) - density
 	_module_left[module_index] -= 1
 	_module_hole[module_index] += home
 	if _is_working[index] == 1:
@@ -553,10 +621,11 @@ func _erase(index: int) -> void:
 		_nozzle_left[module_index] -= 1
 
 
-# Erases highest rank first until the energy runs out. A counting sort, since the ranks are
-# whole numbers in a small range and there are thousands of pixels.
+# Spends the energy from the highest rank down. A counting sort sorts the pixels, since the
+# ranks are whole numbers in a small range and there are thousands of pixels. Then three fronts
+# walk down them together, one per depth, each a little behind the one before.
 func _erase_in_order(order: PackedInt32Array, ranks: PackedInt32Array, energy: float) -> Dictionary:
-	var erased := {"pixels": PackedInt32Array(), "points": PackedVector2Array(), "colors": PackedColorArray()}
+	var erased := {"pixels": PackedInt32Array(), "points": PackedVector2Array(), "colors": PackedColorArray(), "reveals": PackedColorArray()}
 	if order.is_empty():
 		return erased
 	var lowest: int = ranks[0]
@@ -564,32 +633,45 @@ func _erase_in_order(order: PackedInt32Array, ranks: PackedInt32Array, energy: f
 	for rank: int in ranks:
 		lowest = mini(lowest, rank)
 		highest = maxi(highest, rank)
-	var counts := PackedInt32Array()
-	counts.resize(highest - lowest + 2)
-	counts.fill(0)
+	var span: int = highest - lowest + 1
+	var starts := PackedInt32Array()
+	starts.resize(span + 1)
+	starts.fill(0)
 	for rank: int in ranks:
-		counts[highest - rank + 1] += 1
-	for i in range(1, counts.size()):
-		counts[i] += counts[i - 1]
+		starts[highest - rank + 1] += 1
+	for i in range(1, span + 1):
+		starts[i] += starts[i - 1]
+	var filling: PackedInt32Array = starts.duplicate()
 	var sorted := PackedInt32Array()
 	sorted.resize(order.size())
 	for i in range(order.size()):
 		var slot: int = highest - ranks[i]
-		sorted[counts[slot]] = order[i]
-		counts[slot] += 1
+		sorted[filling[slot]] = order[i]
+		filling[slot] += 1
 
 	var left: float = energy
-	for index: int in sorted:
-		var cost: float = _strength[index]
-		if cost > left:
-			break
-		left -= cost
-		erased["pixels"].append(index)
-		erased["points"].append(position_of(index))
-		erased["colors"].append(_color[index])
-		_erase(index)
-	if not erased["points"].is_empty():
-		_refresh()
+	var front: int = highest
+	while front >= lowest - DEPTH_GAP * (DEPTHS - 1):
+		for depth in range(DEPTHS):
+			var slot: int = highest - (front + depth * DEPTH_GAP)
+			if slot < 0 or slot >= span:
+				continue
+			for i in range(starts[slot], starts[slot + 1]):
+				var index: int = sorted[i]
+				if _depth[index] != depth:
+					continue
+				var cost: float = _depth_strength[index * DEPTHS + depth]
+				if cost > left:
+					_refresh()
+					return erased
+				left -= cost
+				erased["pixels"].append(index)
+				erased["points"].append(position_of(index))
+				erased["colors"].append(_color[index])
+				_peel(index)
+				erased["reveals"].append(_color[index] if _depth[index] < DEPTHS else Color(0.0, 0.0, 0.0, 0.0))
+		front -= 1
+	_refresh()
 	return erased
 
 

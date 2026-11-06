@@ -237,3 +237,10 @@ Files: `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/ship/ship_design
 - flipping a sprite with a negative scale
 - balance: a center of mass over a support edge
 - input actions shared between keys and buttons
+
+## 2026-11-06: Tier 1, ticket 13: inside layers
+
+Files: `art/ship_lander_frame.png`, `art/ship_lander_systems.png`, `art/lander/*`, `tools/slice_lander.gd`, `scripts/ship/ship_body.gd`, `scripts/ship/module_data.gd`, `scripts/ship/ship_design.gd`, `scripts/ship/damage_wave.gd`, `data/lander_design.tres`, `data/materials/*`, `tests/test_ship_body.gd`, `docs/DESIGN.md`
+
+- one array holding several values per pixel
+- several sorted fronts walking through one list
