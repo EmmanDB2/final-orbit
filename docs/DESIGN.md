@@ -21,6 +21,11 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Clean landing limit lowered from 150 to 50 \[Leaning\] |
+| 2026-11-05 | Readouts show 1 world unit as 1 m \[Leaning\]. STAB added as a flight mode that holds the nose on a chosen direction \[Leaning\], so the PRO and RETRO buttons become part of it. ASS stays spin-only |
+| 2026-11-05 | UI decisions refined. Heading dial adopted, so the direction of travel marker leaves the parking lot. Hidden panels come back by dragging a side tab, replacing tap anywhere. Zoom buttons are SYS, ORBIT, and SHIP, and zoom moves smoothly with no outer limit \[Leaning\]. Throttle sets thrust and BURN activates it. Touch targets are measured in game pixels. Right panel rule reworded to fit the full-height panel |
+| 2026-11-05 | UI section gains turning and RCS controls and edge markers, including a full-height right panel on the inner screen \[Leaning\] |
+| 2026-11-05 | UI section added, with planet info as a subsection: UI principles, top bar, side panels, and auto-hide \[Locked\], cover screen and menus \[Leaning\], planet info \[Locked for design, Tier 1\] |
 | 2026-11-05 | Screen fitting rule replaces fixed sizes and settles the resolution question: the game fills any landscape screen on whole-number pixels \[Leaning\]. UI goes in a safe area that avoids cutouts \[Leaning\]. Still Android only, built for the Fold |
 | 2026-11-05 | Two moon capture aids added to the parking lot, not built: Manny likes the difficulty as it is |
 | 2026-11-05 | Landing works in Tier 0, with no damage yet \[Leaning\]. Zoom goes to seven tiers: a Descent tier at 1/8 sits between Surface and Approach, because the 128x jump was too big to land with. Landing line built, moved out of the parking lot \[Leaning\]. Rough altitude and speed readout added \[Leaning\]. Gravity interface gains `predict_entry_heights`, `get_altitude`, and `get_surface_velocity`, the one place ground speed comes from |
@@ -204,6 +209,7 @@ Flight modes: \[Leaning\]
 - RAW: your inputs only. Spin and drift last until you counter them yourself.
 - ASS (Attitude Stabilization System): when you let go of the turn keys, the RCS fires against the spin until the ship stops turning.
 - ASS never brakes velocity, because cutting velocity would break orbits. \[Locked\]
+- STAB: the RCS holds the nose on a chosen direction, either along the trajectory line or toward the planet, each with the nose first or the thruster first. \[Leaning\]
 - The name ASS, for Attitude Stabilization System, is final. \[Locked\]
 - ASS uses the same thrusters as manual turning, at the same strength, so from Tier 1 it should burn the same fuel.
 - The ship starts in ASS. T switches modes for now; the touch control is part of the touch controls question.
@@ -211,6 +217,7 @@ Flight modes: \[Leaning\]
 Scale and precision: \[Leaning\]
 
 - Planets around 1/10 real scale, tuned for play.
+- Readouts show 1 world unit as 1 m, so distances read big, with bigger planets and distances to come. \[Leaning\]
 - The Tier 0 planet is far smaller for now, so a low orbit takes under 4 minutes without time warp: radius 150,000 px and surface gravity 200 px/s², or about 1/850 real scale if the 35 px pilot is 1.75 m. Revisit once time warp exists. These live in `data/home_planet.tres`. \[Leaning\]
 - Floating origin re-centered on the ship to avoid jitter.
 - Physics math in 64-bit, either in native code or a double-precision engine build.
@@ -288,14 +295,96 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 - Tier 0 builds tiers 3 to 7. Planet centers on the middle of the system, Orbit centers on whichever body you're orbiting, and Approach, Descent, and Surface center on the ship. \[Leaning\]
 - The far tiers draw each moon's rails and sphere of influence in dark canopy glass from the agency palette, behind the planet and moons. A moon's orbit line stops at its sphere of influence ring. \[Leaning\]
 - A ship rests on its engine bell, and on the ground it settles upright and the turn keys do nothing, so thrust always lifts it straight off. \[Leaning\]
-- Tier 0 has no damage: a touchdown only reports LANDED (up to 150 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 500 units/s). \[Leaning\]
+- Tier 0 has no damage: a touchdown only reports LANDED (up to 50 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 500 units/s). \[Leaning\]
 - A rough readout shows altitude and speed relative to the ground, in world units. It's there so landing can be judged, and isn't the real UI. \[Leaning\]
 - Up close, patches of the next color speckle the ground so you can see drift. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
 - Terrain detail is generated only when you zoom in close. \[Leaning\]
 - Far zooms show ships as clean icons; close zooms show the pilot. \[Leaning\]
+- Zoom moves smoothly and has no outer limit, so the ship can shrink to a single dot. The tiers set what detail is drawn at each distance. \[Leaning\]
 - Interiors use an FTL-style cutaway: zoom in and the roof comes off, with top-down movement inside. \[Locked for design, built in Tier 3\]
 - Inside derelicts and stations: zero-g movement, flashlight cones in darkness, per-room pressure (a room graph, not per-pixel air), loot and logs. Destruction can create new entrances. \[Leaning\]
+
+## UI
+
+The UI is built around seeing space, with NASApunk flight hardware at the screen edges. Mockups for both screens: https://claude.ai/artifact/D1QGC4XQJXpQjdn2XcpQat
+
+UI principles: \[Locked\]
+
+- Space comes first. Seeing space is the point of the game, so the UI never clutters the center of the screen.
+- The UI is NASApunk hardware: panels hugging the screen edges, styled as physical 1970s flight equipment in pixel art (metal plates, stencil labels, chunky buttons).
+- The UI uses the agency palette only.
+- Numbers use a pixel or 7-segment style font.
+- All touch targets are at least 44 game pixels.
+
+Top bar: \[Locked\]
+
+- Always visible; it never auto-hides.
+- Contains, left to right: the FLIGHT menu button, the comms line (mission control radio text), flight readouts (ALT, SPD, AP, PE, mission clock, delta-v), Master Caution, and the split-flap pending-payout counter.
+- Master Caution lives here so warnings are never hidden by auto-hide.
+
+Side panels: \[Locked\]
+
+- Left edge: LED bar gauges for fuel, hull, and heat, plus a notched throttle lever.
+- Bottom-left, next to the left panel: zoom buttons. SYS shows the local system, ORBIT shows what you're orbiting, and SHIP goes to the closest view of the ship.
+- Right side, at the bottom: flight mode buttons (ASS, STAB, NODE) and the BURN button under a red flip-up safety cover.
+- The throttle lever sets thrust power, and BURN activates it.
+- The center stays clear for the planet, orbit line, ship, and markers.
+
+Auto-hide: \[Locked\]
+
+- After a few seconds with no input, the side panels shrink into thin strips at the screen edges.
+- The strips still show the fuel level and where BURN is.
+- A small tab sticks out from each side while the panels are hidden, and dragging in from either side brings them back.
+- Zen Mode can hide everything except a minimal top bar. \[Leaning\]
+
+Cover screen (folded): \[Leaning\]
+
+- Same rules with fewer controls.
+- The always-visible top bar has FLIGHT, a short comms line, ALT, SPD, delta-v, Master Caution, and payout.
+- Fuel and throttle sit bottom-left.
+- STAB, NODE, and BURN sit bottom-right.
+
+Menus: \[Leaning\]
+
+- Most menus only exist when docked at a station: gig board, hangar, repairs, refuel, full map, settings. Docking is like walking into the agency office.
+- In flight, the FLIGHT button opens a clipboard drawer from the edge with: Pause, Manifest (active gigs and what is still undelivered), Ship (damage schematic), Map, Settings.
+- Closing the drawer returns to the space view.
+
+Turning and RCS controls: \[Leaning\]
+
+- Drag to point: dragging anywhere on the space view shows a cyan heading line from the ship toward the thumb, and the ship rotates to face it using RCS physics.
+- While turning, a dashed heading ring appears around the ship and fades when released.
+- Drag to point works even when the side panels are auto-hidden.
+- RCS pad (right panel, inner screen): rotate left, rotate right, and four translate arrows (forward, back, left, right).
+- Translation moves the ship without turning it and is required for docking and precise landings.
+- A ROT / TRANS switch sits above the pad. On the cover screen, the compact pad uses it to flip four arrows between rotation and translation, with STAB in the middle.
+- Heading dial above the pad: nose direction, prograde (cyan) and retrograde (orange) markers, and a rate bar showing spin speed. Inner screen only.
+- The right panel on the inner screen is full height: heading dial, RCS pad, modes, then BURN at the bottom.
+
+Edge markers: \[Leaning\]
+
+- Off-screen targets (gig destinations, stations, bodies) show at the screen edge as small agency-orange arrows with a callsign and distance (for example "HOME 236 km").
+
+Control reference: the old mobile game Space Agency (rotate and translate button pads, off-screen target markers).
+
+### Planet info
+
+Tapping a body opens an agency dossier card: typewriter text, stamps, and a pixel portrait that fills in as more is learned. \[Locked for design, Tier 1\]
+
+What the card shows depends on how the player has studied the body: \[Locked for design, Tier 1\]
+
+- Never visited: "UNCHARTED" stamp and a silhouette only.
+- Orbited it: mass, radius, gravity, day length (the orbit itself reveals the mass).
+- Scanned it (requires a scanner module, which adds mass): atmosphere, surface temperature, radiation, hazards.
+- Landed on it: surface type, biome, and a "visited" stamp.
+
+Knowledge and ties to other systems: \[Locked for design, Tier 1\]
+
+- Knowledge is saved permanently once gathered.
+- First to chart pays the discovery bonus.
+- Survey gigs are scanning jobs.
+- Landing somewhere unscanned means flying in without knowing its surface temperature or atmosphere.
 
 ## Art direction
 
@@ -400,4 +489,3 @@ Parking lot:
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
 - Dim line past a moon's sphere of influence: the rest of the orbit keeps drawing faintly beyond the ring, so you can watch it shrink during a capture burn \[Not built: capture is meant to take some skill\]
-- Direction of travel marker: a small tick by the ship showing its direction relative to the body it's orbiting \[Not built: capture is meant to take some skill\]
