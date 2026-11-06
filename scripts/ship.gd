@@ -38,11 +38,8 @@ signal lifted_off
 ## periapsis, apoapsis, time, heading, prograde, and spin.
 signal flight_data_changed(data: Dictionary)
 
-## How quickly A and D change the ship's spin, in radians per second squared.
-## @export makes this value editable in the Inspector panel.
-@export var turn_acceleration: float = 1.5
-## Main engine acceleration, in pixels per second squared.
-@export var thrust_acceleration: float = 300.0
+## What this ship is built from. Thrust and turning come from its engines and its mass.
+@export var design: ShipDesign
 ## How many times per second the engine flame changes frame.
 @export var flame_fps: float = 15.0
 ## True starts the ship in ASS, false in RAW.
@@ -64,6 +61,12 @@ signal flight_data_changed(data: Dictionary)
 
 ## Direction of the nose in radians. 0 points up the screen; positive turns clockwise.
 var heading: float = 0.0
+## The ship's mass, center of mass, and spin resistance, measured from its pixels.
+var body: ShipBody
+## Main engine acceleration right now, in world units per second squared.
+var thrust_acceleration: float = 0.0
+## How quickly the RCS changes the spin right now, in radians per second squared.
+var turn_acceleration: float = 0.0
 ## How fast the nose is turning, in radians per second.
 var angular_velocity: float = 0.0
 ## How much of the engine's thrust BURN uses, from 0 to 1.
@@ -92,6 +95,9 @@ var _flame_time: float = 0.0
 
 func _ready() -> void:
 	_flame_position = _flame.position
+	body = ShipBody.measure(design)
+	thrust_acceleration = design.engine_force / body.mass
+	turn_acceleration = design.rcs_torque / body.spin_resistance
 	# Nothing flies until start_flight hands over gravity and a starting state.
 	set_physics_process(false)
 	assist_changed.emit(assist_enabled)

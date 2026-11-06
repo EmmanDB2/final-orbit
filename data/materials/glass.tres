@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="MaterialData" format=3]
+
+[ext_resource type="Script" path="res://scripts/ship/material_data.gd" id="1_material"]
+
+[resource]
+script = ExtResource("1_material")
+display_name = "Canopy glass"
+density = 0.6
+colors = PackedColorArray(0.164706, 0.290196, 0.333333, 1, 0.560784, 0.780392, 0.811765, 1)

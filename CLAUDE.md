@@ -10,8 +10,9 @@ If a request conflicts with it, point that out before writing code. Decisions ar
 [Locked], [Leaning], [Open], or [Cut]: build against Locked, treat Leaning as flexible,
 and ask about Open.
 
-Current tier: **Tier 0 (Zen prototype)**: one planet, one moon, one fixed ship, patched conics,
-trajectory preview, seamless fold/unfold. Don't build anything from a later tier unless asked.
+Current tier: **Tier 1 (Core)**: one star system, modular pixel ships with mass and destruction,
+cargo and data gigs, deliverable-based pay, Zen Mode, cover-screen play. Don't build anything from a
+later tier unless asked.
 
 Art lives in `art/`. Sprites are pixel art at native scale (pilot about 35x40 px, small ships
 about 100x200 px); never resize them with smoothing, and import them in Godot with

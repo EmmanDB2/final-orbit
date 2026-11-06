@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | Tier 0 finished and Tier 1 started. Module grid set at 64 x 64 px \[Leaning\]. Ships are defined in data, with mass, center of mass, and spin resistance measured from pixels. Materials go by art color \[Leaning\] |
 | 2026-11-05 | The view center now follows the zoom directly, so zooming has no jumps. The ship icon only shows at the Orbit view and farther. Closer in, the sprite scales to true size, which is an exception to the never-change-pixel-size rule, at Manny's request, so the zoom reads as one clean move \[Leaning\] |
 | 2026-11-05 | First real UI built for Tier 0: top bar, throttle lever, BURN under its cover, ASS and STAB buttons, zoom buttons, heading dial, drag to point, and auto-hide with side tabs. Replaces the throwaway touch controls and rough readout. Smooth zoom built \[Leaning\]. Gravity interface gains `get_body_velocity` and `get_orbit_apsides` |
 | 2026-11-05 | STAB picks its direction automatically, from whichever is closest to where the nose points \[Leaning\] |
@@ -144,6 +145,7 @@ Construction:
 
 - Modules snap to a fixed grid (starting guess: about 64 x 64 px cells, scaled to the 35 x 40 px pilot; small craft around 100 x 200 px): cockpit, engines, RCS thrusters, fuel tanks, cargo, hull plating, heat shields, radiators, landing gear, solar panels. \[Leaning\]
 - Each material has a density; the ship's total mass, center of mass, and spin resistance are summed from its pixels. \[Locked\]
+- A pixel's material goes by its art color, from a table in `data/materials/`, so drawing a part in gold foil makes it light. \[Leaning\]
 - Fuel has mass and burns off, so ships get lighter and more agile as they fly. \[Locked\]
 - Staging: drop empty tanks or used heat shields to save mass; dropped parts become debris. \[Leaning\]
 - Repairs and customization happen at the pixel level, so patched plating shows on the hull. Liveries and paint use the agency palette. \[Leaning\]
@@ -480,7 +482,7 @@ Open questions:
 - [ ] Destroy gigs: real combat with armed ships and AI pilots, or only non-combat targets (dead satellites, derelicts, rogue asteroids)?
 - [ ] Pilot identity: named character, customizable, or anonymous?
 - [x] Exact internal pixel resolutions for the inner and cover screens: 816 x 616 at 3x on the 2448 x 1848 inner screen and 986 x 624 at 2x on the 1972 x 1248 cover screen, from the screen fitting rule under Platform. Sizes confirmed on the device 2026-11-05.
-- [ ] Module grid size (64 x 64 px is a starting guess)
+- [x] Module grid size: 64 x 64 px. The lander fills 2 x 4 cells.
 - [ ] Touch controls for maneuver planning. Burns and rotation are settled in the UI section.
 - [ ] Economy numbers: gig pay, ship prices, repair costs, tow cost
 - [x] C# on Android stable yet, or stay with C++ GDExtension? Still experimental in Godot 4.7 (checked 2026-11-05); stay with C++

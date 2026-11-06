@@ -119,3 +119,11 @@ Files: `scripts/ui/*`, `data/agency_palette.tres`, `scripts/ship.gd`, `scripts/f
 - custom-drawn `Control` nodes and `_draw`
 - routing several fingers to different widgets
 - steering to a heading with a bang-bang control law
+
+## 2026-11-05: Tier 1, ticket 1: ships as data, with mass from pixels
+
+Files: `scripts/ship/*`, `data/materials/*`, `data/lander_design.tres`, `scripts/ship.gd`, `scenes/ship.tscn`, `tests/test_ship_body.gd`, `docs/DESIGN.md`, `CLAUDE.md`
+
+- custom resources that hold other resources
+- center of mass and moment of inertia
+- reading an image's pixels with `Image.get_pixel`
