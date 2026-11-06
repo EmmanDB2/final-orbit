@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-05 | The view center now follows the zoom directly, so zooming has no jumps. The ship icon only shows at the Orbit view and farther. Closer in, the sprite scales to true size, which is an exception to the never-change-pixel-size rule, at Manny's request, so the zoom reads as one clean move \[Leaning\] |
 | 2026-11-05 | First real UI built for Tier 0: top bar, throttle lever, BURN under its cover, ASS and STAB buttons, zoom buttons, heading dial, drag to point, and auto-hide with side tabs. Replaces the throwaway touch controls and rough readout. Smooth zoom built \[Leaning\]. Gravity interface gains `get_body_velocity` and `get_orbit_apsides` |
 | 2026-11-05 | STAB picks its direction automatically, from whichever is closest to where the nose points \[Leaning\] |
 | 2026-11-05 | Clean landing limit lowered from 150 to 50 \[Leaning\] |
@@ -295,14 +296,14 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 | 7 | Surface | Flat ground, terrain, pads, the pilot through the canopy |
 
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
-- Tier 0 builds tiers 3 to 7. Planet centers on the middle of the system, Orbit centers on whichever body you're orbiting, and Approach, Descent, and Surface center on the ship. \[Leaning\]
+- Tier 0 builds tiers 3 to 7. Planet centers on the middle of the system, Orbit centers on whichever body you're orbiting, and Approach, Descent, and Surface center on the ship. In between, the center slides steadily with the zoom. \[Leaning\]
 - The far tiers draw each moon's rails and sphere of influence in dark canopy glass from the agency palette, behind the planet and moons. A moon's orbit line stops at its sphere of influence ring. \[Leaning\]
 - A ship rests on its engine bell, and on the ground it settles upright and the turn keys do nothing, so thrust always lifts it straight off. \[Leaning\]
 - Tier 0 has no damage: a touchdown only reports LANDED (up to 50 units/s and within about 30 degrees of upright), HARD LANDING, or CRASH (over 500 units/s). \[Leaning\]
 - Up close, patches of the next color speckle the ground so you can see drift. \[Leaning\]
 - Zooming changes what is drawn, never the pixel size: each tier swaps detail levels on a fixed pixel grid. \[Locked\]
+- One exception: closer than the Orbit view, the ship is its normal sprite at true size, with no smoothing, down to about 17 px tall. At the Orbit view and farther it's a clean icon, and very far out it's a dot. \[Leaning\]
 - Terrain detail is generated only when you zoom in close. \[Leaning\]
-- Far zooms show ships as clean icons; close zooms show the pilot. \[Leaning\]
 - Zoom moves smoothly and has no outer limit, so the ship can shrink to a single dot. The tiers set what detail is drawn at each distance. \[Leaning\]
 - Interiors use an FTL-style cutaway: zoom in and the roof comes off, with top-down movement inside. \[Locked for design, built in Tier 3\]
 - Inside derelicts and stations: zero-g movement, flashlight cones in darkness, per-room pressure (a room graph, not per-pixel air), loot and logs. Destruction can create new entrances. \[Leaning\]

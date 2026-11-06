@@ -4,8 +4,9 @@
 #
 # The ship's real position and velocity live in a 64-bit ShipState, because Vector2
 # is only 32-bit, and gravity moves it through the GravityModel interface. The node
-# only shows the result: it's placed on screen from the current view, close up as the
-# full sprite and far out as an icon.
+# only shows the result: it's placed on screen from the current view. Closer than the
+# Orbit view it's the sprite, at true size down to a minimum, with no smoothing. At the
+# Orbit view and farther it's the icon, and very far out it's a dot.
 #
 # Three things can steer the nose, strongest first: the turn keys, drag to point, and
 # STAB, which holds whichever of four directions was closest when it took over (along
@@ -48,8 +49,10 @@ signal flight_data_changed(data: Dictionary)
 @export var assist_enabled: bool = true
 ## Below this zoom the ship is drawn as a dot.
 @export var dot_max_zoom: float = 0.0001
-## The full sprite shows at this zoom and closer, and the icon at anything farther.
-@export var full_sprite_min_zoom: float = 0.5
+## The icon shows at this zoom and farther, and the sprite at anything closer.
+@export var icon_max_zoom: float = 1.0 / 800.0
+## The smallest the sprite gets, as a share of its full size. About the icon's height.
+@export var sprite_min_scale: float = 0.08
 ## Height of the ship's center when it's resting on its engine bell, in world units.
 @export var ground_clearance: float = 105.0
 ## How fast the ship straightens up on the ground, in radians per second.
@@ -72,7 +75,9 @@ var state: ShipState
 var _gravity_model: GravityModel
 var _thrusting: bool = false
 var _was_on_surface: bool = false
-var _show_full_sprite: bool = true
+var _show_sprite: bool = true
+var _sprite_scale: float = 1.0
+var _flame_position: Vector2 = Vector2.ZERO
 var _show_dot: bool = false
 var _point_active: bool = false
 var _point_heading: float = 0.0
@@ -86,6 +91,7 @@ var _flame_time: float = 0.0
 
 
 func _ready() -> void:
+	_flame_position = _flame.position
 	# Nothing flies until start_flight hands over gravity and a starting state.
 	set_physics_process(false)
 	assist_changed.emit(assist_enabled)
@@ -158,7 +164,7 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	_flame_time += delta
 	_flame.frame = floori(_flame_time * flame_fps) % _flame.hframes
-	_flame.visible = _thrusting and _show_full_sprite
+	_flame.visible = _thrusting and _show_sprite
 	_icon.frame = 1 if _thrusting else 0
 
 
@@ -175,7 +181,7 @@ func stop_pointing() -> void:
 
 ## How far out the turn guide's ring sits around the ship, in screen pixels.
 func guide_radius() -> float:
-	return 125.0 if _show_full_sprite else 16.0
+	return maxf(125.0 * _sprite_scale, 16.0) if _show_sprite else 16.0
 
 
 func _on_throttle_changed(value: float) -> void:
@@ -241,13 +247,17 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	position = Vector2(
 			(state.x - center_x) * pixels_per_unit,
 			(state.y - center_y) * pixels_per_unit).round()
-	_show_full_sprite = pixels_per_unit >= full_sprite_min_zoom
+	_show_sprite = pixels_per_unit > icon_max_zoom
+	_sprite_scale = clampf(pixels_per_unit, sprite_min_scale, 1.0)
+	_sprite.scale = Vector2.ONE * _sprite_scale
+	_flame.scale = Vector2.ONE * _sprite_scale
+	_flame.position = _flame_position * _sprite_scale
 	var show_dot: bool = pixels_per_unit < dot_max_zoom
 	if show_dot != _show_dot:
 		_show_dot = show_dot
 		queue_redraw()
-	_sprite.visible = _show_full_sprite
-	_icon.visible = not _show_full_sprite and not show_dot
+	_sprite.visible = _show_sprite
+	_icon.visible = not _show_sprite and not show_dot
 
 
 func _draw() -> void:

@@ -2,8 +2,9 @@
 # From DESIGN.md, "Camera, zoom, and landing" and "UI".
 #
 # Zoom moves smoothly and has no outer limit. The stops are where the buttons and keys
-# land, and how far out you are decides what stays centered: the ship up close, the body
-# you're orbiting further out, and the middle of the system beyond that.
+# land. What stays centered depends only on the zoom, so the view can't jump: the ship up
+# close, the body you're orbiting at the ORBIT zoom, and the middle of the system at the
+# SYS zoom. In between, the ship or body slides steadily toward the middle as you zoom.
 #
 # Zooming changes what gets drawn, never the pixel size, so the Camera2D's own zoom stays
 # at 1 and its position stays at 0,0. Instead, this signals the current view and each
@@ -14,13 +15,6 @@ extends Camera2D
 ## the zoom in screen pixels per world unit.
 signal view_changed(center_x: float, center_y: float, pixels_per_unit: float)
 
-## What stays in the middle of the screen.
-enum Focus {
-	SHIP,
-	DOMINANT_BODY,
-	SYSTEM_CENTER,
-}
-
 ## Where keys land, closest to farthest, in screen pixels per world unit.
 @export var zoom_stops: PackedFloat64Array = PackedFloat64Array([1.0, 1.0 / 8.0, 1.0 / 128.0, 1.0 / 800.0, 1.0 / 2400.0])
 ## How far each key press moves past the last stop.
@@ -29,13 +23,13 @@ enum Focus {
 @export var orbit_zoom: float = 1.0 / 800.0
 ## The zoom the SYS button goes to.
 @export var system_zoom: float = 1.0 / 2400.0
-## The ship stays centered at this zoom and closer.
-@export var ship_focus_zoom: float = 1.0 / 200.0
-## The orbited body stays centered at this zoom and closer, down from ship_focus_zoom.
-@export var body_focus_zoom: float = 1.0 / 1600.0
+## The ship is fully centered at this zoom and closer.
+@export var ship_focus_zoom: float = 1.0 / 128.0
 ## How quickly zoom closes in on its target. Higher is snappier.
 @export var zoom_speed: float = 10.0
-## How long the view takes to slide to a new center, in seconds.
+## The most the zoom can change per second, as a natural log, so a long button zoom glides.
+@export var zoom_max_rate: float = 6.0
+## How long the view takes to slide to a new body when the dominant body changes, in seconds.
 @export var focus_blend_seconds: float = 0.5
 ## The screen height the ORBIT and SYS zooms are set for, in game pixels. On a shorter
 ## screen they zoom out to match, so the same orbits still fit.
@@ -46,9 +40,9 @@ var _state: ShipState
 var _far_fit: float = 1.0
 var _zoom: float = 1.0 / 800.0
 var _target_zoom: float = 1.0 / 800.0
-var _focus: Focus = Focus.DOMINANT_BODY
-var _previous_focus: Focus = Focus.DOMINANT_BODY
-var _focus_blend: float = 1.0
+var _body: int = 0
+var _previous_body: int = 0
+var _body_blend: float = 1.0
 
 
 ## Starts following a flight.
@@ -63,8 +57,6 @@ func start_view(gravity_model: GravityModel, state: ShipState) -> void:
 func set_zoom_now(zoom: float) -> void:
 	_zoom = zoom
 	_target_zoom = zoom
-	_focus = _focus_for(zoom)
-	_focus_blend = 1.0
 
 
 ## The zoom the view is heading toward.
@@ -100,52 +92,52 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 		_target_zoom = _next_stop_out()
 
 	var delta: float = get_physics_process_delta_time()
-	_zoom = exp(lerpf(log(_zoom), log(_target_zoom), 1.0 - exp(-zoom_speed * delta)))
+	var log_zoom: float = log(_zoom)
+	var eased: float = lerpf(log_zoom, log(_target_zoom), 1.0 - exp(-zoom_speed * delta))
+	_zoom = exp(move_toward(log_zoom, eased, zoom_max_rate * delta))
 	if absf(_zoom / _target_zoom - 1.0) < 0.002:
 		_zoom = _target_zoom
 
-	var focus: Focus = _focus_for(_zoom)
-	if focus != _focus:
-		_previous_focus = _focus
-		_focus = focus
-		_focus_blend = 0.0
-	_focus_blend = minf(_focus_blend + delta / focus_blend_seconds, 1.0)
+	var body: int = _gravity_model.get_dominant_body(x, y, _state.time)
+	if body != _body:
+		_previous_body = _body
+		_body = body
+		_body_blend = 0.0
+	_body_blend = minf(_body_blend + delta / focus_blend_seconds, 1.0)
 
-	var target_x: float = _focus_x(_focus, x, y)
-	var target_y: float = _focus_y(_focus, x, y)
-	if _focus_blend < 1.0:
-		var share: float = smoothstep(0.0, 1.0, _focus_blend)
-		target_x = lerpf(_focus_x(_previous_focus, x, y), target_x, share)
-		target_y = lerpf(_focus_y(_previous_focus, x, y), target_y, share)
-	view_changed.emit(target_x, target_y, _zoom)
+	var now: PackedFloat64Array = _gravity_model.get_body_position(_body, _state.time)
+	var body_x: float = now[0]
+	var body_y: float = now[1]
+	if _body_blend < 1.0:
+		var before: PackedFloat64Array = _gravity_model.get_body_position(_previous_body, _state.time)
+		var share: float = smoothstep(0.0, 1.0, _body_blend)
+		body_x = lerpf(before[0], body_x, share)
+		body_y = lerpf(before[1], body_y, share)
+
+	var orbit: float = orbit_zoom * _far_fit
+	var system: float = system_zoom * _far_fit
+	var center_x: float = 0.0
+	var center_y: float = 0.0
+	if _zoom >= ship_focus_zoom:
+		center_x = x
+		center_y = y
+	elif _zoom >= orbit:
+		var keep: float = _share_left(_zoom, orbit, ship_focus_zoom)
+		center_x = x + (body_x - x) * keep
+		center_y = y + (body_y - y) * keep
+	elif _zoom >= system:
+		var keep: float = _share_left(_zoom, system, orbit)
+		center_x = body_x - body_x * keep
+		center_y = body_y - body_y * keep
+	view_changed.emit(center_x, center_y, _zoom)
 
 
-func _focus_for(zoom: float) -> Focus:
-	if zoom >= ship_focus_zoom:
-		return Focus.SHIP
-	if zoom >= body_focus_zoom:
-		return Focus.DOMINANT_BODY
-	return Focus.SYSTEM_CENTER
-
-
-func _focus_x(focus: Focus, ship_x: float, ship_y: float) -> float:
-	match focus:
-		Focus.SHIP:
-			return ship_x
-		Focus.DOMINANT_BODY:
-			var body: int = _gravity_model.get_dominant_body(ship_x, ship_y, _state.time)
-			return _gravity_model.get_body_position(body, _state.time)[0]
-	return 0.0
-
-
-func _focus_y(focus: Focus, ship_x: float, ship_y: float) -> float:
-	match focus:
-		Focus.SHIP:
-			return ship_y
-		Focus.DOMINANT_BODY:
-			var body: int = _gravity_model.get_dominant_body(ship_x, ship_y, _state.time)
-			return _gravity_model.get_body_position(body, _state.time)[1]
-	return 0.0
+# How much of the old center remains at this zoom, between a far zoom and a near one. It's
+# chosen so the new center's distance from the middle of the screen, in pixels, shrinks
+# steadily as the zoom changes, even though the world is growing underneath it.
+func _share_left(zoom: float, far: float, near: float) -> float:
+	var progress: float = clampf((log(zoom) - log(far)) / (log(near) - log(far)), 0.0, 1.0)
+	return (far / zoom) * (1.0 - progress)
 
 
 func _next_stop_in() -> float:
