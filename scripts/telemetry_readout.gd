@@ -17,7 +17,7 @@ const LINE_ADVANCE: int = 12
 ## Darkest hull color, for the 1 px outline all human-made things get.
 @export var outline_color: Color = Color("0E0F12")
 ## Top speed for a clean landing, in world units per second.
-@export var soft_touchdown_speed: float = 150.0
+@export var soft_touchdown_speed: float = 50.0
 ## Top speed for a hard landing rather than a crash.
 @export var hard_touchdown_speed: float = 500.0
 ## How long the touchdown message stays up, in seconds.
