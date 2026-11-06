@@ -77,6 +77,9 @@ public:
 	// [height, map color band, height, ...]. Starts at a column and steps by p_step columns,
 	// leaving out bumps narrower than a step.
 	virtual godot::PackedFloat32Array get_ground_strip(int p_index, int64_t p_first_column, int64_t p_step, int p_count) const = 0;
+	// A far-off line of mountains for drawing behind the skyline, flat [height, height, ...]. It
+	// goes around the body at p_loop_share of the ground's speed, so it seems far away.
+	virtual godot::PackedFloat32Array get_distant_ridge(int p_index, double p_first_column, double p_step, int p_count, double p_loop_share) const = 0;
 	// How thick the air is at this point: 1.0 is the home planet's ground, and 0 is no air.
 	virtual double get_air_density(double p_x, double p_y, double p_time) const = 0;
 	// One lap of a body's rails around its parent, relative to the parent, flat

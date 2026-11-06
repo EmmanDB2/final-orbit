@@ -56,6 +56,8 @@ extends Resource
 ## How tall each cliff step is, in world units. Zero means none.
 @export var terrain_cliff_step: float = 0.0
 
+## How tall the far-off line of mountains behind the skyline gets, in world units.
+@export var terrain_ridge_height: float = 0.0
 ## What's under the ground, from the top down: dirt, rock, deep rock, and the dark core.
 @export var strata_colors: PackedColorArray = PackedColorArray()
 

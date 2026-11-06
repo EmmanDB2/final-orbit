@@ -42,7 +42,7 @@ public:
 	// Gives a body's rim seeded ground: mountains, hills, roughness, and rocks by their tallest,
 	// then craters and cliffs. The sea level and largest feature come from its surface map, so
 	// the sea stays flat where the map shows sea.
-	void set_body_terrain(int p_index, int64_t p_seed, double p_mountains, double p_hills, double p_rough, double p_rocks, double p_crater_depth, double p_crater_share, double p_cliff_step, double p_sea_level, double p_largest_feature);
+	void set_body_terrain(int p_index, int64_t p_seed, double p_mountains, double p_hills, double p_rough, double p_rocks, double p_crater_depth, double p_crater_share, double p_cliff_step, double p_sea_level, double p_largest_feature, double p_ridge_height = 0.0);
 
 	godot::PackedFloat64Array get_acceleration(double p_x, double p_y, double p_time) const override;
 	void propagate(const godot::Ref<ShipState> &p_state, double p_dt) const override;
@@ -55,6 +55,7 @@ public:
 	double get_ground_height(double p_x, double p_y, double p_time) const override;
 	double get_ground_column(double p_x, double p_y, double p_time) const override;
 	double get_highest_ground(int p_index) const override;
+	godot::PackedFloat32Array get_distant_ridge(int p_index, double p_first_column, double p_step, int p_count, double p_loop_share) const override;
 	godot::PackedFloat32Array get_ground_strip(int p_index, int64_t p_first_column, int64_t p_step, int p_count) const override;
 	int get_body_count() const override;
 	int get_body_parent(int p_index) const override;

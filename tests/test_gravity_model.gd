@@ -927,6 +927,20 @@ func _test_terrain() -> void:
 	_check("up close there are small bumps", 1.0 if fine_change > 50 else 0.0, 1.0, 0.0)
 	_check("and far out the steps are bigger", 1.0 if is_equal_approx(fposmod(coarse[0], 128.0), 0.0) else 0.0, 1.0, 0.0)
 
+	# The far-off mountains loop too, and are the same for the same seed.
+	var ridged := PatchedConicsModel.new()
+	ridged.set_central_body(MU, RADIUS)
+	ridged.set_body_terrain(0, 7, 2600.0, 420.0, 46.0, 7.0, 0.0, 0.0, 220.0, 0.0, RADIUS * 0.6, 150.0)
+	var loop_columns: float = ceilf(TAU * RADIUS / 2.0) * 0.3
+	var ridge_here: PackedFloat32Array = ridged.get_distant_ridge(0, 100.0, 1.0, 1, 0.3)
+	var ridge_again: PackedFloat32Array = ridged.get_distant_ridge(0, 100.0 + loop_columns, 1.0, 1, 0.3)
+	_check("the far mountains loop", ridge_here[0], ridge_again[0], 2.0)
+	var ridge_many: PackedFloat32Array = ridged.get_distant_ridge(0, 0.0, 8.0, 2000, 0.3)
+	var ridge_top: float = 0.0
+	for value: float in ridge_many:
+		ridge_top = maxf(ridge_top, value)
+	_check("the far mountains have height", 1.0 if ridge_top > 50.0 and ridge_top <= 160.0 else 0.0, 1.0, 0.0)
+
 	# Sea stays flat where the map says sea.
 	var with_sea := PatchedConicsModel.new()
 	with_sea.set_central_body(MU, RADIUS)

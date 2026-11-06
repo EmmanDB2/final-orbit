@@ -26,6 +26,7 @@ void GravityModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_ground_height", "x", "y", "time"), &GravityModel::get_ground_height);
 	ClassDB::bind_method(D_METHOD("get_ground_column", "x", "y", "time"), &GravityModel::get_ground_column);
 	ClassDB::bind_method(D_METHOD("get_highest_ground", "index"), &GravityModel::get_highest_ground);
+	ClassDB::bind_method(D_METHOD("get_distant_ridge", "index", "first_column", "step", "count", "loop_share"), &GravityModel::get_distant_ridge);
 	ClassDB::bind_method(D_METHOD("get_ground_strip", "index", "first_column", "step", "count"), &GravityModel::get_ground_strip);
 	ClassDB::bind_method(D_METHOD("get_body_count"), &GravityModel::get_body_count);
 	ClassDB::bind_method(D_METHOD("get_body_parent", "index"), &GravityModel::get_body_parent);

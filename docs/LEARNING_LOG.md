@@ -309,3 +309,11 @@ Files: `scripts/surface_props.gd`, `scripts/body_data.gd`, `scripts/main.gd`, `s
 
 - placing things from a seed so they're always the same
 - caching what's expensive to work out
+
+## 2026-11-06: Terrain ticket 7: juice
+
+Files: `scripts/ground_effects.gd`, `scripts/spark_field.gd`, `scripts/ship.gd`, `scripts/body_view.gd`, `scripts/body_data.gd`, `scripts/main.gd`, `shaders/planet.gdshader`, `native/src/terrain_profile.*`, `native/src/patched_conics_model.*`, `native/src/gravity_model.*`, `scenes/main.tscn`, `tests/test_gravity_model.gd`
+
+- parallax by moving through noise slower
+- process priority to keep systems at the same moment
+- raycasting down to the ground

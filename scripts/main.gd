@@ -37,7 +37,9 @@ func _ready() -> void:
 	$Trajectory.start_preview(gravity_model, state)
 	$Sparks.start_sparks(gravity_model, state)
 	$Debris.start_debris(gravity_model, state, $Ship, $Sparks)
-	$SurfaceProps.start_props(gravity_model, state, {planet_index: planet, moon_index: moon})
+	var bodies: Dictionary = {planet_index: planet, moon_index: moon}
+	$SurfaceProps.start_props(gravity_model, state, bodies)
+	$GroundEffects.start_effects(gravity_model, state, $Ship, $Sparks, bodies)
 	$TurnGuide.ship = $Ship
 	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide)
 	$Ship.start_flight(gravity_model, state, PI / 2.0)
@@ -51,5 +53,5 @@ func _add_body(gravity_model: PatchedConicsModel, parent: int, body: BodyData) -
 	gravity_model.set_body_atmosphere(index, body.air_density, body.air_scale_height)
 	gravity_model.set_body_terrain(index, body.terrain_seed, body.terrain_mountains, body.terrain_hills,
 			body.terrain_rough, body.terrain_rocks, body.terrain_crater_depth, body.terrain_crater_share,
-			body.terrain_cliff_step, body.sea_level, body.radius * 0.6)
+			body.terrain_cliff_step, body.sea_level, body.radius * 0.6, body.terrain_ridge_height)
 	return index

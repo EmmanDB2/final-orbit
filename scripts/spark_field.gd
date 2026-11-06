@@ -14,6 +14,7 @@ class SparkFrame:
 	var age: float = 0.0
 	var angle: float = 0.0
 	var resting: bool = false
+	var is_dust: bool = false
 	var gravity: float = 0.0
 	var air_slowing: float = 0.0
 	var xs := PackedFloat32Array()
@@ -77,10 +78,11 @@ func spark_count() -> int:
 
 ## Adds sparks at these offsets from a point in the world, all moving with that point, plus a
 ## push of their own: away from the hit by up to blast, and along kick.
-func scatter(offsets: PackedVector2Array, colors: PackedColorArray, size: int, x: float, y: float, velocity_x: float, velocity_y: float, kick: Vector2, hit_offset: Vector2, blast: float) -> void:
+## Dust is blown off the ground, so it starts resting there, never glows, and settles sooner.
+func scatter(offsets: PackedVector2Array, colors: PackedColorArray, size: int, x: float, y: float, velocity_x: float, velocity_y: float, kick: Vector2, hit_offset: Vector2, blast: float, is_dust: bool = false) -> void:
 	if offsets.is_empty():
 		return
-	var frame: SparkFrame = _frame_for(x, y, velocity_x, velocity_y)
+	var frame: SparkFrame = _frame_for(x, y, velocity_x, velocity_y, is_dust)
 	while _total + offsets.size() > spark_budget and _frames[0] != frame:
 		_drop_oldest_frame()
 	var adding: int = mini(offsets.size(), spark_budget - _total)
@@ -100,15 +102,15 @@ func scatter(offsets: PackedVector2Array, colors: PackedColorArray, size: int, x
 		frame.ys.append(place.y)
 		frame.vxs.append(way.x)
 		frame.vys.append(way.y)
-		frame.left.append(_rng.randf_range(shortest_life, longest_life))
-		frame.hot.append(_rng.randf_range(0.05, longest_hot) if _rng.randf() < hot_chance else 0.0)
+		frame.left.append(_rng.randf_range(0.5, 1.5) if is_dust else _rng.randf_range(shortest_life, longest_life))
+		frame.hot.append(_rng.randf_range(0.05, longest_hot) if not is_dust and _rng.randf() < hot_chance else 0.0)
 		frame.sizes.append(size)
 		frame.colors.append(colors[i])
 	_total += adding
 
 
 func _on_ship_pixels_scattered(offsets: PackedVector2Array, colors: PackedColorArray, size: int, x: float, y: float, velocity_x: float, velocity_y: float, kick: Vector2, hit_offset: Vector2, blast: float) -> void:
-	scatter(offsets, colors, size, x, y, velocity_x, velocity_y, kick, hit_offset, blast)
+	scatter(offsets, colors, size, x, y, velocity_x, velocity_y, kick, hit_offset, blast, false)
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
@@ -117,10 +119,10 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	_pixels_per_unit = pixels_per_unit
 
 
-func _frame_for(x: float, y: float, velocity_x: float, velocity_y: float) -> SparkFrame:
+func _frame_for(x: float, y: float, velocity_x: float, velocity_y: float, is_dust: bool) -> SparkFrame:
 	if not _frames.is_empty():
 		var newest: SparkFrame = _frames[_frames.size() - 1]
-		if newest.age < frame_join_seconds:
+		if newest.age < frame_join_seconds and newest.is_dust == is_dust:
 			return newest
 
 	var frame := SparkFrame.new()
@@ -132,8 +134,9 @@ func _frame_for(x: float, y: float, velocity_x: float, velocity_y: float) -> Spa
 	frame.state.time = _state.time
 	# Over the ground already, it stays exactly as high as the ship's middle, which is resting.
 	var altitude: float = _gravity_model.get_altitude(x, y, _state.time)
-	frame.state.ground_clearance = altitude if _state.is_on_surface() else 1.0
-	frame.resting = _state.is_on_surface()
+	frame.is_dust = is_dust
+	frame.resting = is_dust or _state.is_on_surface()
+	frame.state.ground_clearance = maxf(altitude, 0.5) if frame.resting else 1.0
 	if frame.resting:
 		frame.angle = _angle_on_body(frame)
 		_gravity_model.propagate(frame.state, 0.0)

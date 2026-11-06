@@ -13,6 +13,11 @@ const STRIP_SIZE: int = 1024
 ## orbit. It's only the drawing: the ground is the same height from everywhere.
 @export var rim_gone_zoom: float = 400.0
 @export var rim_full_zoom: float = 128.0
+## The far-off mountains fade in between these zooms, in world units per pixel.
+@export var ridge_gone_zoom: float = 96.0
+@export var ridge_full_zoom: float = 48.0
+## How fast the far-off mountains go by, as a share of the ground's speed.
+@export var ridge_speed: float = 0.3
 ## How wide a pixel of the ground is at the closest zoom, in world units.
 @export var world_pixel: float = 2.0
 ## Once a body is at least this big on screen, in pixels, its surface goes on the ground's grid.
@@ -29,6 +34,8 @@ var _air_height: float = 0.0
 var _gravity_model: GravityModel
 var _strip_image: Image
 var _strip_texture: ImageTexture
+var _ridge_image: Image
+var _ridge_texture: ImageTexture
 var _state: ShipState
 
 @onready var _material: ShaderMaterial = material
@@ -104,6 +111,22 @@ func _feed_rim(column: int, step: int, pixels_per_unit: float) -> void:
 		_strip_texture.update(_strip_image)
 	var zoomed_out: float = 1.0 / pixels_per_unit
 	_material.set_shader_parameter("rim_fade", clampf((rim_gone_zoom - zoomed_out) / (rim_gone_zoom - rim_full_zoom), 0.0, 1.0))
+
+	# The far-off mountains stand on the ground in the middle of the view, and go by slower.
+	var ridge_fade: float = clampf((ridge_gone_zoom - zoomed_out) / (ridge_gone_zoom - ridge_full_zoom), 0.0, 1.0)
+	_material.set_shader_parameter("ridge_fade", ridge_fade)
+	if ridge_fade <= 0.0:
+		return
+	var first: float = (column * step) * ridge_speed - STRIP_SIZE / 2.0 * step * ridge_speed
+	var ridge: PackedFloat32Array = _gravity_model.get_distant_ridge(_index, first, step * ridge_speed, STRIP_SIZE, ridge_speed)
+	if _ridge_image == null:
+		_ridge_image = Image.create_from_data(STRIP_SIZE, 1, false, Image.FORMAT_RF, ridge.to_byte_array())
+		_ridge_texture = ImageTexture.create_from_image(_ridge_image)
+		_material.set_shader_parameter("ridge_strip", _ridge_texture)
+	else:
+		_ridge_image.set_data(STRIP_SIZE, 1, false, Image.FORMAT_RF, ridge.to_byte_array())
+		_ridge_texture.update(_ridge_image)
+	_material.set_shader_parameter("ridge_base_px", strip[STRIP_SIZE] * pixels_per_unit)
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:

@@ -80,6 +80,28 @@ double TerrainProfile::noise_1d(int64_t p_column, int p_bits, uint32_t p_salt) c
 	return a + (b - a) * smooth(part);
 }
 
+double TerrainProfile::ridge_at(double p_column, double p_loop_columns) const {
+	if (ridge_height <= 0.0) {
+		return 0.0;
+	}
+	double total = 0.0;
+	double weight = 0.66;
+	double size = 170.0;
+	for (int layer = 0; layer < 3; layer++) {
+		const int64_t cells = std::max<int64_t>(1, static_cast<int64_t>(std::round(p_loop_columns / size)));
+		const double place = (p_column / p_loop_columns - std::floor(p_column / p_loop_columns)) * static_cast<double>(cells);
+		const int64_t cell = static_cast<int64_t>(std::floor(place));
+		const double a = random_at(cell % cells, seed + 300u + static_cast<uint32_t>(layer));
+		const double b = random_at((cell + 1) % cells, seed + 300u + static_cast<uint32_t>(layer));
+		// Folded over at the middle, so it comes to peaks instead of round hills.
+		const double value = a + (b - a) * smooth(place - std::floor(place));
+		total += (1.0 - std::abs(2.0 * value - 1.0)) * weight;
+		weight *= 0.42;
+		size *= 0.34;
+	}
+	return std::floor(total * ridge_height / WORLD_PIXEL) * WORLD_PIXEL;
+}
+
 double TerrainProfile::band_at(int64_t p_column) const {
 	const int64_t columns = column_count();
 	const int64_t column = ((p_column % columns) + columns) % columns;

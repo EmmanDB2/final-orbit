@@ -14,6 +14,7 @@ crater_amount = 0.5
 strata_colors = PackedColorArray(0.4, 0.38, 0.38, 1, 0.3, 0.29, 0.31, 1, 0.2, 0.2, 0.23, 1, 0.11, 0.11, 0.14, 1)
 prop_kinds = PackedStringArray("boulder", "crater", "boulder")
 prop_density = 0.34
+terrain_ridge_height = 105.0
 terrain_mountains = 700.0
 terrain_hills = 140.0
 terrain_rough = 26.0

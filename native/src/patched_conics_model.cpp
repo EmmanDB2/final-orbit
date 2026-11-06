@@ -49,7 +49,7 @@ void PatchedConicsModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_body", "parent", "mu", "radius", "semi_major_axis", "eccentricity", "argument_of_periapsis", "mean_anomaly_at_start", "entry_altitude"), &PatchedConicsModel::add_body, DEFVAL(0.0));
 	ClassDB::bind_method(D_METHOD("set_body_spin", "index", "rate"), &PatchedConicsModel::set_body_spin);
 	ClassDB::bind_method(D_METHOD("set_body_atmosphere", "index", "surface_density", "scale_height"), &PatchedConicsModel::set_body_atmosphere);
-	ClassDB::bind_method(D_METHOD("set_body_terrain", "index", "seed", "mountains", "hills", "rough", "rocks", "crater_depth", "crater_share", "cliff_step", "sea_level", "largest_feature"), &PatchedConicsModel::set_body_terrain);
+	ClassDB::bind_method(D_METHOD("set_body_terrain", "index", "seed", "mountains", "hills", "rough", "rocks", "crater_depth", "crater_share", "cliff_step", "sea_level", "largest_feature", "ridge_height"), &PatchedConicsModel::set_body_terrain, DEFVAL(0.0));
 }
 
 void PatchedConicsModel::set_central_body(double p_mu, double p_radius, double p_entry_altitude) {
@@ -87,7 +87,7 @@ void PatchedConicsModel::set_body_atmosphere(int p_index, double p_surface_densi
 	bodies[p_index].air_scale_height = p_scale_height;
 }
 
-void PatchedConicsModel::set_body_terrain(int p_index, int64_t p_seed, double p_mountains, double p_hills, double p_rough, double p_rocks, double p_crater_depth, double p_crater_share, double p_cliff_step, double p_sea_level, double p_largest_feature) {
+void PatchedConicsModel::set_body_terrain(int p_index, int64_t p_seed, double p_mountains, double p_hills, double p_rough, double p_rocks, double p_crater_depth, double p_crater_share, double p_cliff_step, double p_sea_level, double p_largest_feature, double p_ridge_height) {
 	ERR_FAIL_INDEX(p_index, static_cast<int>(bodies.size()));
 	TerrainProfile &terrain = bodies[p_index].terrain;
 	terrain.seed = static_cast<uint32_t>(p_seed);
@@ -101,6 +101,7 @@ void PatchedConicsModel::set_body_terrain(int p_index, int64_t p_seed, double p_
 	terrain.cliff_step = p_cliff_step;
 	terrain.sea_level = p_sea_level;
 	terrain.largest_feature = p_largest_feature;
+	terrain.ridge_height = p_ridge_height;
 }
 
 double PatchedConicsModel::along_rim(const Body &p_body, double p_x, double p_y, double p_time) const {
@@ -713,6 +714,20 @@ PackedFloat32Array PatchedConicsModel::get_ground_strip(int p_index, int64_t p_f
 		const int64_t column = p_first_column + p_step * i + p_step / 2;
 		values[i * 2] = flat ? 0.0f : static_cast<float>(terrain.height_at(column, p_step));
 		values[i * 2 + 1] = flat ? 3.0f : static_cast<float>(terrain.band_at(column));
+	}
+	return strip;
+}
+
+PackedFloat32Array PatchedConicsModel::get_distant_ridge(int p_index, double p_first_column, double p_step, int p_count, double p_loop_share) const {
+	PackedFloat32Array strip;
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(bodies.size()), strip);
+	ERR_FAIL_COND_V(p_count < 1, strip);
+	const TerrainProfile &terrain = bodies[p_index].terrain;
+	const double loop = static_cast<double>(terrain.column_count()) * p_loop_share;
+	strip.resize(p_count);
+	float *values = strip.ptrw();
+	for (int i = 0; i < p_count; i++) {
+		values[i] = static_cast<float>(terrain.ridge_at(p_first_column + p_step * i, loop));
 	}
 	return strip;
 }

@@ -41,6 +41,12 @@ uniform float cell_units = 2.0;
 // column, with the middle of the view at the middle. How much of its height to show, too.
 uniform sampler2D rim_strip : filter_nearest, repeat_disable;
 uniform float rim_fade = 0.0;
+// A far-off line of mountains behind the skyline, and how high its foot stands, on screen.
+uniform sampler2D ridge_strip : filter_nearest, repeat_disable;
+uniform float ridge_fade = 0.0;
+uniform float ridge_base_px = 0.0;
+// How far the distance fades those mountains into the sky, or into the dark without air.
+uniform float ridge_haze = 0.62;
 // How high the air reaches on screen, in pixels. Zero means airless.
 uniform float air_px = 0.0;
 
@@ -322,6 +328,7 @@ void fragment() {
 	float ground_px = 0.0;
 	float height_px = 0.0;
 	float rim_band = 4.0;
+	float ridge_top_px = -1.0e9;
 	float along_rim = 0.0;
 	float depth_units = 0.0;
 	vec2 grid_ground = vec2(0.0);
@@ -342,6 +349,9 @@ void fragment() {
 				vec4 rim = texelFetch(rim_strip, ivec2(int(strip_at), 0), 0);
 				ground_px = rim.r * rim_fade / units_per_px;
 				rim_band = rim.g;
+				if (ridge_fade > 0.0) {
+					ridge_top_px = ridge_base_px + texelFetch(ridge_strip, ivec2(int(strip_at), 0), 0).r * ridge_fade / units_per_px;
+				}
 			}
 			along_rim = (float(view_column) + column + 0.5) * cell_units;
 			depth_units = (floor(ground_px / cell_px) * cell_px - (row + 0.5) * cell_px) * units_per_px;
@@ -374,6 +384,11 @@ void fragment() {
 			COLOR = vec4(mix(sky, air_sunset_color, sunset), level * air_strength * mix(0.05, 1.0, air_day));
 		} else {
 			COLOR = vec4(0.0);
+		}
+		if (on_grid && height_px < ridge_top_px) {
+			// Solid against the sky, faded toward whatever color the sky is here.
+			vec3 lit_rock = strata_colors[1].rgb * mix(night_share, vec3(1.0), air_day);
+			COLOR = vec4(mix(lit_rock, COLOR.rgb * COLOR.a, ridge_haze), 1.0);
 		}
 	} else {
 		// Turn the screen offset back by the spin to find which ground is under this pixel.

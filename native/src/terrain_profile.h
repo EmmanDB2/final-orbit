@@ -23,6 +23,7 @@ public:
 	double rock_height = 0.0;
 	double crater_depth = 0.0;
 	double crater_share = 0.0;
+	double ridge_height = 0.0;
 	double cliff_step = 0.0;
 	// The look of the surface map, which decides where the sea is. See planet.gdshader.
 	double sea_level = 0.0;
@@ -38,6 +39,9 @@ public:
 	// Ground height above the base radius at a column, in world units. Bumps narrower than
 	// p_detail_columns are left out, which is how a far-out view skips detail it can't show.
 	double height_at(int64_t p_column, int64_t p_detail_columns = 1) const;
+	// The height of a far-off line of mountains behind the skyline, at any point along a loop of
+	// p_loop_columns. Moving through it slower than the ground makes it look far away.
+	double ridge_at(double p_column, double p_loop_columns) const;
 	// Which of the surface map's six colors the rim is at a column, from 0 to just under 6.
 	double band_at(int64_t p_column) const;
 

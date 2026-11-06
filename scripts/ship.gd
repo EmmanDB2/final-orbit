@@ -58,6 +58,8 @@ signal stab_changed(enabled: bool)
 ## Emitted when the ship reaches the ground, with its speed relative to the ground, whether
 ## its nose was pointing away from the surface, and the fastest landing that does no damage.
 signal touched_down(speed: float, upright: bool, safe_speed: float)
+## Emitted when how hard the engine is pushing changes, from 0 for off to 1 for flat out.
+signal engine_changed(share: float)
 ## Emitted when the legs start or finish moving: which way they're going, and whether they
 ## still are.
 signal legs_changed(down: bool, moving: bool)
@@ -169,6 +171,7 @@ var _legs_out: float = 0.0
 var _legs_moving: bool = false
 var _rest_angle: float = 0.0
 var _ground_lean: float = 0.0
+var _engine_reported: float = 0.0
 var _sink: Vector2 = Vector2.ZERO
 var _sink_per_tick: float = 0.0
 var _jolt_ticks: int = 0
@@ -304,6 +307,10 @@ func _physics_process(delta: float) -> void:
 	_was_on_surface = on_surface
 	_check_stranded()
 	_show_damage()
+	var engine_now: float = throttle * _engine_share if _thrusting else 0.0
+	if engine_now != _engine_reported:
+		_engine_reported = engine_now
+		engine_changed.emit(engine_now)
 
 	world_position_changed.emit(state.x, state.y)
 
@@ -540,6 +547,19 @@ func repair() -> void:
 	_lost = false
 	_warned_modules.clear()
 	_update_for_damage()
+
+
+## The corners of the ship's outline, as offsets from it in the world.
+func world_outline() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for point: Vector2 in body.outline_now():
+		points.append(_art_to_world(point))
+	return points
+
+
+## Whether there's anything left of the ship.
+func has_shape() -> bool:
+	return body.pixel_count > 0
 
 
 ## True if there's a pixel of the ship at this offset from it in the world.
