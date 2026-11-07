@@ -5,6 +5,8 @@
 class_name StarData
 extends BodyData
 
+## How hot its surface is, in kelvin.
+@export var temperature: float = 5800.0
 ## The color of the star's light, which tints the space around it.
 @export var color: Color = Color.WHITE
 ## Distance at which the star's light has dropped to half. Bigger means a brighter star.

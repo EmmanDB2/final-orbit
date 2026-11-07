@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | UI reworked from Manny's mockups: thin outlined instruments with no plates, one layout for both screens, a comms line along the bottom with a log, a FLIGHT menu, the TRANS / ROT switch everywhere, ASSIST on the button, and a card on holding a finger on anything, with SET TARGET and FOCUS. Tap still focuses. The home system is named KEPLA-2 \[Leaning\] |
 | 2026-11-06 | Tap anything to focus the camera on it at every zoom, replacing the center depending only on the zoom. The dossier card loses the tap and needs another gesture \[Open\] |
 | 2026-11-06 | Camera turns so down is down from the Orbit view in, and stays a fixed map farther out, replacing the fixed camera \[Leaning\] |
 | 2026-11-06 | Docking built, with the ship's nose as the hatch, free refueling and repair, and a speed readout against the station. The station now turns with its orbit, replacing holding still \[Leaning\] |
@@ -375,7 +376,7 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 | 7 | Surface | Flat ground, terrain, pads, the pilot through the canopy |
 
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
-- Tiers 2 to 7 are built. Whatever was tapped last is the focus and stays in the middle at every zoom: the ship to start with, or a station, moon, planet, or the star. The zoom buttons land on the same stops as before, and SHIP also brings the focus back to the ship. A body can't be zoomed past filling the screen, since its middle has nothing to see. Only out past the Planet tier does the middle slide to the star, so the whole system fits. The smallest thing under a tap wins, and brackets show what was picked. This was Manny's call, and replaces the center depending only on the zoom. \[Leaning\]
+- Tiers 2 to 7 are built. Whatever was tapped last is the focus and stays in the middle at every zoom: the home planet at the SYS zoom to start with, or a ship, station, moon, or the star. The zoom buttons land on the same stops as before, and SHIP also brings the focus back to the ship. A body can't be zoomed past filling the screen, since its middle has nothing to see. Only out past the Planet tier does the middle slide to the star, so the whole system fits. The smallest thing under a tap wins, and brackets show what was picked. This was Manny's call, and replaces the center depending only on the zoom. \[Leaning\]
 - From the Orbit view in, the view turns so that down on screen is really down at whatever's in focus: toward the body below, or a nearby station's bottom within 2,000 m. The ground and stations stay flat, and the ship turning shows against them. The screen's pixels stay square, and only what they show turns. It takes a moment to swing to a new down, and farther out than Orbit, or with a body in focus, it settles back to a fixed map. This was Manny's call, and replaces the fixed camera. \[Leaning\]
 - The far tiers draw each body's rails and sphere of influence in dark canopy glass from the agency palette, behind the bodies. An orbit line stops at that body's sphere of influence ring, and rails or rings too small to read aren't drawn. \[Leaning\]
 - A ship rests on whatever's lowest: its feet with the legs down, or its engine bell with them up. On the ground the turn keys do nothing, and it settles upright if it's whole, so thrust lifts it straight off. A damaged ship settles on whichever side of its outline it can balance on, nearest upright, so losing a leg leaves it leaning. \[Leaning\]
@@ -401,12 +402,12 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 
 ## UI
 
-The UI is built around seeing space, with NASApunk flight hardware at the screen edges. Mockups for both screens: https://claude.ai/artifact/D1QGC4XQJXpQjdn2XcpQat
+The UI is built around seeing space, with thin NASApunk instruments floating at the screen edges. Manny reworked it on 2026-11-06 from his own mockups, which replace the earlier ones at https://claude.ai/artifact/D1QGC4XQJXpQjdn2XcpQat
 
 UI principles: \[Locked\]
 
 - Space comes first. Seeing space is the point of the game, so the UI never clutters the center of the screen.
-- The UI is NASApunk hardware: panels hugging the screen edges, styled as physical 1970s flight equipment in pixel art (metal plates, stencil labels, chunky buttons).
+- The UI is thin outlined instruments over open space, with no metal plates behind them: cyan for what's on, agency orange for BURN and targets, and stencil labels. Manny's rework, replacing the metal plates. \[Leaning\]
 - The UI uses the agency palette only.
 - Numbers use a pixel or 7-segment style font.
 - All touch targets are at least 44 game pixels.
@@ -414,14 +415,16 @@ UI principles: \[Locked\]
 Top bar: \[Locked\]
 
 - Always visible; it never auto-hides.
-- Contains, left to right: the FLIGHT menu button, the comms line (mission control radio text), flight readouts (ALT, SPD, AP, PE, mission clock, delta-v), Master Caution, and the split-flap pending-payout counter.
-- Master Caution lives here so warnings are never hidden by auto-hide.
+- Contains, left to right: ALT, SPD, AP, PE, delta-v, and the mission clock, split by thin dividers, then the comms log button and the FLIGHT menu button.
+- Master Caution and the pending-payout counter are still to come, once what feeds them exists. \[Open\]
 
 Side panels: \[Locked\]
 
-- Left edge: LED bar gauges for fuel, hull, and heat, plus a notched throttle lever.
-- Bottom-left, next to the left panel: zoom buttons. SYS shows the local system, and pressing it again shows the whole star system. ORBIT shows what you're orbiting, and SHIP goes to the closest view of the ship.
-- Right side, at the bottom: flight mode buttons (ASS, STAB, NODE) and the BURN button under a red flip-up safety cover.
+- Left edge: a notched throttle lever and a thin fuel gauge, cyan, then amber and red as it runs low. Hull and heat gauges are still to come.
+- Bottom-left: zoom buttons. SYS shows the local system, and pressing it again shows the whole star system. ORBIT shows what you're orbiting, and SHIP goes to the closest view of the ship. Whichever one the zoom is on is lit.
+- Along the bottom, from the zoom buttons to BURN: the comms line, reading COMMS: and how the flight stands, like ORBIT STABLE, DOCKED, or IMPACT TRAJECTORY. Each thing that happens takes it over for a few seconds, in order, and the comms log button at the top lists them with their times. All pilot messages go here now, so the center stays clear. \[Leaning\]
+- Right side, from the top: the heading dial, the TRANS / ROT switch, the four arrows, then LEGS, STAB, and ASSIST, with BURN at the bottom. NODE joins them when it's built.
+- BURN is orange, and hatched over while its safety cover is down.
 - The throttle lever sets thrust power, and BURN activates it.
 - The first touch lifts BURN's cover and the button fires while held. The cover drops again after 6 seconds with no burning. \[Leaning\]
 - The center stays clear for the planet, orbit line, ship, and markers.
@@ -429,21 +432,18 @@ Side panels: \[Locked\]
 Auto-hide: \[Locked\]
 
 - After a few seconds with no input, the side panels shrink into thin strips at the screen edges.
-- The strips still show the fuel level and where BURN is.
+- The strips still show the fuel level and where BURN is. The comms line stays where it is.
 - A small tab sticks out from each side while the panels are hidden, and dragging in from either side brings them back.
 - Zen Mode can hide everything except a minimal top bar. \[Leaning\]
 
 Cover screen (folded): \[Leaning\]
 
-- Same rules with fewer controls.
-- The always-visible top bar has FLIGHT, a short comms line, ALT, SPD, delta-v, Master Caution, and payout.
-- Fuel and throttle sit bottom-left.
-- STAB, NODE, and BURN sit bottom-right.
+- Same layout and same controls as the inner screen, since both are about the same height. It just has more open space across the middle.
 
 Menus: \[Leaning\]
 
 - Most menus only exist when docked at a station: gig board, hangar, repairs, refuel, full map, settings. Docking is like walking into the agency office.
-- In flight, the FLIGHT button opens a clipboard drawer from the edge with: Pause, Manifest (active gigs and what is still undelivered), Ship (damage schematic), Map, Settings.
+- In flight, the FLIGHT button opens a menu. It has Pause and Restart so far, and Manifest (active gigs and what is still undelivered), Ship (damage schematic), Map, and Settings join it as they're built. Pausing stops the flight and leaves only the way back working. \[Leaning\]
 - Closing the drawer returns to the space view.
 
 Turning and RCS controls: \[Leaning\]
@@ -452,37 +452,42 @@ Turning and RCS controls: \[Leaning\]
 - While turning, a dashed heading ring appears around the ship and fades when released.
 - Drag to point works even when the side panels are auto-hidden, and leaves them hidden.
 - Two fingers on open space pinch to zoom. \[Leaning\]
-- RCS pad (right panel, inner screen): rotate left, rotate right, and four translate arrows (forward, back, left, right).
+- RCS pad (right side): four arrows, on every screen. The TRANS / ROT switch above them says what they do: translate (forward, back, left, right), or rotate left and right, with up and down gone. It replaces the separate rotate buttons. \[Leaning\]
 - Translation moves the ship without turning it and is required for docking and precise landings.
-- A ROT / TRANS switch sits above the cover screen's compact pad, flipping its four arrows between rotation and translation, with STAB in the middle. The inner screen's pad shows rotate and translate at once, so it has no switch.
-- LEGS sits above the mode buttons on the inner screen, and in the top-left corner of the pad on the cover screen. Its lamp is amber while the legs move and green when they're down. \[Leaning\]
-- Heading dial above the pad: nose direction, prograde (cyan) and retrograde (orange) markers, and a rate bar showing spin speed. The markers hide when landed or barely moving, since there's no direction of travel to show. Inner screen only.
-- The right panel on the inner screen is full height and 140 game pixels wide: heading dial, RCS pad, modes, then BURN at the bottom. On the cover screen it only rises as far as its controls need.
+- The button for ASS reads ASSIST on Manny's rework, and RAW when it's off. LEGS lights up amber while the legs move and cyan when they're down, and STAB is cyan when on. \[Leaning\]
+- Heading dial at the top of the right side, on every screen: nose direction, prograde (cyan) and retrograde (orange) markers, and spin as an amber arc along the rim, which is gone when the ship is still. The markers hide when landed or barely moving, since there's no direction of travel to show.
+- The right side is 148 game pixels wide, full height. Buttons can be drawn smaller than 44 game pixels as long as what a finger can touch isn't.
 - Translation gives the lander about 30 m/s² when full and uses RCS fuel. It's too weak to lift off from the planet or the moon, and ASS doesn't cancel it. \[Leaning\]
 
 Edge markers: \[Leaning\]
 
 - Off-screen targets (gig destinations, stations, bodies) show at the screen edge as small agency-orange arrows with a callsign and distance (for example "HOME 236 km").
-- Only the station has one so far, it stays inside the part of the view the panels leave clear, and it goes away once part of the station could be in view. Zoomed out far enough that the station is a dot, its callsign and distance show beside the dot. \[Leaning\]
+- There's one target at a time, set from a card. The first station starts as the target. The marker stays inside the part of the view the panels leave clear, and it goes away once part of the target could be in view. Zoomed out until it's small, the callsign and distance show beside it instead. \[Leaning\]
 
 Control reference: the old mobile game Space Agency (rotate and translate button pads, off-screen target markers).
 
 ### Planet info
 
-Tapping a body opens an agency dossier card: typewriter text, stamps, and a pixel portrait that fills in as more is learned. \[Locked for design, Tier 1\]
+A tap on open space focuses the camera on what's under it. Holding a finger there for 0.4 seconds opens that thing's card instead, for anything that can be focused: the star, planets, moons, stations, and ships. This was Manny's call. It replaces the typewriter dossier look with a small card, beside the thing with a line to it, and a tap away closes it. \[Leaning\]
 
-Tapping a body now focuses the camera, so the dossier card needs another way in once it's built. A long press is the likely one, since a held finger on open space isn't a tap, and only turns the ship once it's dragged. \[Open\]
+Each card has a name, a chip saying what kind of thing it is, rows of what's known, and two buttons: SET TARGET and FOCUS. Your own ship has no target button. \[Leaning\]
+
+- A planet or moon shows its size, mass, gravity, temperature, atmosphere, moons, and day length. Gravity reads against the home planet's, which is 1.00 g.
+- The star shows its size, mass, temperature, planets, and distance.
+- A station shows what it orbits, its height and period, its rooms, free ports, services, and distance.
+- Your ship shows its mass, fuel, delta-v, hull, engine, and legs.
+- The home system is named KEPLA-2, with KEPLA-2b as the home planet and KEPLA-2b I its moon. \[Leaning\]
 
 What the card shows depends on how the player has studied the body: \[Locked for design, Tier 1\]
 
-- Never visited: "UNCHARTED" stamp and a silhouette only.
+- Never visited: its numbers show ??? and the card says Orbit to reveal. The UNCHARTED stamp and silhouette wait on the dossier look coming back, if it does. \[Leaning\]
 - Orbited it: mass, radius, gravity, day length (the orbit itself reveals the mass).
 - Scanned it (requires a scanner module, which adds mass): atmosphere, surface temperature, radiation, hazards.
 - Landed on it: surface type, biome, and a "visited" stamp.
 
 Knowledge and ties to other systems: \[Locked for design, Tier 1\]
 
-- Knowledge is saved permanently once gathered.
+- Knowledge is saved permanently once gathered. There's no saving yet, so for now it lasts one flight.
 - First to chart pays the discovery bonus.
 - Survey gigs are scanning jobs.
 - Landing somewhere unscanned means flying in without knowing its surface temperature or atmosphere.

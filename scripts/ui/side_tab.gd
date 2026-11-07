@@ -29,10 +29,7 @@ func touch_rect() -> Rect2:
 
 func _draw() -> void:
 	var palette: AgencyPalette = UiStyle.palette()
-	var rect := Rect2(Vector2.ZERO, size)
-	draw_rect(rect, palette.hull_darkest)
-	draw_rect(rect.grow(-1.0), palette.hull_light)
+	UiStyle.draw_box(self, Rect2(Vector2.ZERO, size), palette.hull_lighter, UiStyle.box_fill())
 	var middle: float = floorf(size.y / 2.0)
 	for i in range(3):
-		var y: float = middle - 6.0 + i * 5.0
-		draw_rect(Rect2(3.0, y, size.x - 6.0, 2.0), palette.hull_dark)
+		draw_rect(Rect2(3.0, middle - 5.0 + i * 5.0, size.x - 6.0, 1.0), palette.hull_lighter)

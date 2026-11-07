@@ -36,19 +36,25 @@ func _ready() -> void:
 	$Background/Star.show_star(star)
 	$Background/Planet.show_body(planet_index, planet, gravity_model, state, star)
 	$Background/Moon.show_body(moon_index, moon, gravity_model, state, star)
-	$Camera2D.start_view(gravity_model, state)
+	$Camera2D.start_view(gravity_model, state, {"kind": "body", "index": planet_index})
 	$Background/BodyGuides.start_guides(gravity_model, state)
 	$Trajectory.start_preview(gravity_model, state)
 	$Station.start_station(gravity_model, state, station, station_index, $Ship)
 	$Hud/SafeArea/TargetMarkers.start_markers(gravity_model, state)
-	$Hud/SafeArea/TargetMarkers.add_satellite_target(station.callsign, station_index, $Station.reach())
+	var catalog := WorldCatalog.new(gravity_model, state, $Ship, planet.surface_gravity)
+	catalog.add_body(0, star)
+	catalog.add_body(planet_index, planet)
+	catalog.add_body(moon_index, moon)
+	catalog.add_station(station_index, station, $Station.reach(), $Station.layout.free_ports.size())
+	var station_thing: Dictionary = {"kind": "satellite", "index": station_index}
+	$Hud/SafeArea/TargetMarkers.set_target(station_thing, station.callsign, $Station.reach(), $Camera2D.point_getter(station_thing))
 	$Sparks.start_sparks(gravity_model, state)
 	$Debris.start_debris(gravity_model, state, $Ship, $Sparks)
 	var bodies: Dictionary = {planet_index: planet, moon_index: moon}
 	$SurfaceProps.start_props(gravity_model, state, bodies)
 	$GroundEffects.start_effects(gravity_model, state, $Ship, $Sparks, bodies)
 	$TurnGuide.ship = $Ship
-	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide)
+	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide, catalog, $Hud/SafeArea/TargetMarkers, $Hud/SafeArea/CommsLine)
 	$Ship.start_flight(gravity_model, state, PI / 2.0)
 
 

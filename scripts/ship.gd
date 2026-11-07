@@ -361,6 +361,20 @@ func _hold_docked(delta: float) -> void:
 		undock()
 
 
+## How the ship is doing, for its card.
+func status() -> Dictionary:
+	return {
+		"name": design.display_name,
+		"chip": design.chip,
+		"mass": _mass_now,
+		"fuel_share": fuel / body.original_fuel_capacity,
+		"delta_v": delta_v(),
+		"hull_share": float(body.pixel_count) / body.original_pixel_count,
+		"engine_share": _engine_share,
+		"legs_down": legs_down,
+	}
+
+
 ## Whether the hatch is still there to dock with.
 func has_hatch() -> bool:
 	return not _lost and not state.is_on_surface() and body.has_pixel(design.hatch_point + Vector2(0.0, 3.0))
@@ -1011,6 +1025,8 @@ func _report_telemetry() -> void:
 		"altitude": _gravity_model.get_altitude(state.x, state.y, state.time) - _rest_height,
 		"speed": sqrt(relative_x * relative_x + relative_y * relative_y),
 		"against_station": _nearby_moving.is_valid(),
+		"docked": docked,
+		"landed": state.is_on_surface(),
 		"periapsis": apsides[0],
 		"apoapsis": apsides[1],
 		"time": state.time,

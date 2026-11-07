@@ -1,5 +1,5 @@
 # heading_dial.gd: nose direction, prograde and retrograde markers, and spin rate.
-# From DESIGN.md, "UI" (turning and RCS controls). Inner screen only.
+# From DESIGN.md, "UI" (turning and RCS controls).
 class_name HeadingDial
 extends UiWidget
 
@@ -33,20 +33,19 @@ func _point(angle: float, radius: float, center: Vector2) -> Vector2:
 
 func _draw() -> void:
 	var palette: AgencyPalette = UiStyle.palette()
-	var radius: float = floorf(size.x / 2.0) - 1.0
-	var center := Vector2(floorf(size.x / 2.0), radius + 1.0)
-	draw_circle(center, radius, palette.hull_darkest)
-	draw_arc(center, radius, 0.0, TAU, 32, palette.hull_light, -1.0)
-	for i in range(8):
-		draw_line(_point(i * TAU / 8.0, radius - 3.0, center), _point(i * TAU / 8.0, radius - 1.0, center), palette.hull_light, -1.0)
+	var radius: float = floorf(minf(size.x, size.y) / 2.0) - 1.0
+	var center: Vector2 = (size / 2.0).floor()
+	draw_circle(center, radius, UiStyle.box_fill())
+	draw_arc(center, radius, 0.0, TAU, 48, palette.hull_lighter, -1.0)
+	for i in range(4):
+		draw_line(_point(i * TAU / 4.0, radius - 4.0, center), _point(i * TAU / 4.0, radius - 1.0, center), palette.hull_lighter, -1.0)
 	if _moving:
-		draw_rect(Rect2(_point(_prograde - _roll + PI, radius - 6.0, center) - Vector2(1, 1), Vector2(3, 3)), palette.agency_orange)
-		draw_rect(Rect2(_point(_prograde - _roll, radius - 6.0, center) - Vector2(1, 1), Vector2(3, 3)), palette.telemetry_cyan)
-	draw_line(center, _point(_heading - _roll, radius - 4.0, center), palette.hull_lightest, -1.0)
+		draw_rect(Rect2(_point(_prograde - _roll + PI, radius - 8.0, center) - Vector2(2, 2), Vector2(4, 4)), palette.agency_orange)
+		draw_rect(Rect2(_point(_prograde - _roll, radius - 8.0, center) - Vector2(2, 2), Vector2(4, 4)), palette.telemetry_cyan)
+	draw_line(center, _point(_heading - _roll, radius - 6.0, center), palette.hull_lightest, -1.0)
 
-	var bar_y: float = radius * 2.0 + 5.0
-	draw_rect(Rect2(0.0, bar_y, size.x, 6.0), palette.hull_darkest)
-	var middle: float = floorf(size.x / 2.0)
-	var fill: float = clampf(_spin / full_rate, -1.0, 1.0) * (middle - 1.0)
-	draw_rect(Rect2(middle + minf(fill, 0.0), bar_y + 1.0, absf(fill), 4.0), palette.telemetry_amber)
-	draw_rect(Rect2(middle, bar_y, 1.0, 6.0), palette.hull_lighter)
+	# Spin shows as an arc along the rim from the top, the way it's turning, and nothing when still.
+	var share: float = clampf(_spin / full_rate, -1.0, 1.0)
+	if absf(share) > 0.01:
+		var from: float = -PI / 2.0
+		draw_arc(center, radius + 2.0, from, from + share * PI, 24, palette.telemetry_amber, 1.0)

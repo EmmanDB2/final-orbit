@@ -5,6 +5,8 @@ class_name BodyData
 extends Resource
 
 @export var display_name: String = ""
+## What kind of body it is, for its card.
+@export var body_kind: String = ""
 ## Radius in world units. One world unit is one pixel at the closest zoom.
 @export var radius: float = 150000.0
 ## Gravity at the surface, in world units per second squared.

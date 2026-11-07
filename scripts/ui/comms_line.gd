@@ -1,48 +1,72 @@
-# telemetry_readout.gd: shows short messages to the pilot: how each touchdown went, and
-# what damage has taken out.
-# From DESIGN.md, "Camera, zoom, and landing" and "Destruction".
+# comms_line.gd: the line along the bottom of the screen where the pilot hears what's going on: each
+# touchdown, what damage has taken out, and otherwise how the flight stands. It keeps a log for the
+# comms button. From DESIGN.md, "UI" (comms line), "Camera, zoom, and landing", and "Destruction".
+class_name CommsLine
 extends Node2D
 
-## Telemetry green and amber, and agency red, from the agency palette.
-@export var good_color: Color = Color("6BCB5A")
-@export var warning_color: Color = Color("F2B33A")
-@export var bad_color: Color = Color("C8302C")
-## Darkest hull color, for the 1 px outline all human-made things get.
-@export var outline_color: Color = Color("0E0F12")
 ## Top speed for a hard landing rather than a crash, in world units per second.
 @export var hard_touchdown_speed: float = 250.0
-## How long the touchdown message stays up, in seconds.
+## How long a message stays up, and how long it gets if another is waiting, in seconds.
 @export var message_seconds: float = 4.0
-## How far below the top of the safe area the touchdown message goes.
-@export var message_height: float = 56.0
+@export var waiting_seconds: float = 1.5
+## How many messages the log keeps.
+@export var most_remembered: int = 40
 
-## Most messages shown at once, newest at the bottom.
-@export var most_messages: int = 4
-## Pixels between one message and the next.
-@export var message_spacing: float = 16.0
+## What's been said, oldest first: each with its "time", "text", and "color".
+var history: Array[Dictionary] = []
 
 var _messages: Array[Dictionary] = []
 var _ship_lost: bool = false
+var _status: String = "ORBIT STABLE"
+var _area := Rect2()
+var _time: float = 0.0
 
 
 func _process(delta: float) -> void:
-	var changed: bool = false
-	for i in range(_messages.size() - 1, -1, -1):
-		_messages[i]["time_left"] -= delta
-		if _messages[i]["time_left"] <= 0.0 and not _messages[i]["stays"]:
-			_messages.remove_at(i)
-			changed = true
-	if changed:
+	if _messages.is_empty():
+		return
+	var current: Dictionary = _messages[0]
+	if current["stays"]:
+		return
+	current["time_left"] -= delta
+	if _messages.size() > 1:
+		current["time_left"] = minf(current["time_left"], waiting_seconds)
+	if current["time_left"] <= 0.0:
+		_messages.remove_at(0)
+		queue_redraw()
+
+
+func _on_comms_area_changed(area: Rect2) -> void:
+	_area = area
+	queue_redraw()
+
+
+func _on_flight_data(data: Dictionary) -> void:
+	_time = data["time"]
+	var status: String = "ORBIT STABLE"
+	if data["docked"]:
+		status = "DOCKED"
+	elif data["landed"]:
+		status = "LANDED"
+	elif data["periapsis"] < 0.0:
+		status = "IMPACT TRAJECTORY"
+	elif data["apoapsis"] < 0.0:
+		status = "ESCAPE TRAJECTORY"
+	elif data["against_station"]:
+		status = "STATION CLOSE"
+	if status != _status:
+		_status = status
 		queue_redraw()
 
 
 func _on_ship_touched_down(speed: float, upright: bool, safe_speed: float) -> void:
+	var palette: AgencyPalette = UiStyle.palette()
 	if speed > hard_touchdown_speed:
-		_show_message("CRASH", bad_color)
+		_show_message("CRASH", palette.agency_red)
 	elif speed > safe_speed or not upright:
-		_show_message("HARD LANDING", warning_color)
+		_show_message("HARD LANDING", palette.telemetry_amber)
 	else:
-		_show_message("LANDED", good_color)
+		_show_message("LANDED", palette.telemetry_green)
 
 
 func _on_ship_lifted_off() -> void:
@@ -53,31 +77,41 @@ func _on_ship_lifted_off() -> void:
 
 
 func _on_ship_warning_raised(text: String) -> void:
-	_show_message(text, warning_color)
+	_show_message(text, UiStyle.palette().telemetry_amber)
 
 
 func _on_ship_docked_changed(is_docked: bool) -> void:
 	if is_docked:
-		_show_message("DOCKED", good_color)
-		_show_message("REFUELED AND REPAIRED", good_color)
+		_show_message("DOCKED", UiStyle.palette().telemetry_green)
+		_show_message("REFUELED AND REPAIRED", UiStyle.palette().telemetry_green)
 
 
 func _on_ship_lost() -> void:
-	_show_message("SHIP LOST", bad_color, true)
+	_messages.clear()
+	_show_message("SHIP LOST", UiStyle.palette().agency_red, true)
 
 
 func _show_message(text: String, color: Color, stays: bool = false) -> void:
 	_messages.append({"text": text, "color": color, "time_left": message_seconds, "stays": stays})
-	while _messages.size() > most_messages:
-		_messages.remove_at(0)
+	history.append({"time": _time, "text": text, "color": color})
+	while history.size() > most_remembered:
+		history.remove_at(0)
 	queue_redraw()
 
 
 func _draw() -> void:
-	for i in range(_messages.size()):
-		var text: String = _messages[i]["text"]
-		var left: float = floorf(((get_parent() as Control).size.x - UiStyle.text_width(text)) / 2.0)
-		var at := Vector2(left, message_height + i * message_spacing)
-		for offset: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
-			UiStyle.draw_text(self, text, at + offset, outline_color)
-		UiStyle.draw_text(self, text, at, _messages[i]["color"])
+	if _area.size.x <= 0.0:
+		return
+	var palette: AgencyPalette = UiStyle.palette()
+	var text: String = _status
+	var color: Color = palette.hull_lightest
+	if not _messages.is_empty():
+		text = _messages[0]["text"]
+		color = _messages[0]["color"]
+	var y: float = _area.position.y + floorf((_area.size.y - 7.0) / 2.0)
+	var underline_y: float = y + 12.0
+	draw_rect(Rect2(_area.position.x, _area.position.y + 6.0, 1.0, _area.size.y - 12.0), palette.hull_lighter)
+	draw_rect(Rect2(_area.position.x + 10.0, underline_y, _area.size.x - 10.0, 1.0), palette.hull_lighter)
+	var line: String = "COMMS: %s." % text
+	var room: int = int((_area.size.x - 12.0) / 6.0)
+	UiStyle.draw_text(self, line.substr(0, room), Vector2(_area.position.x + 12.0, y), color, 1)

@@ -4,6 +4,9 @@
 class_name ShipDesign
 extends Resource
 
+## What it's called, and what kind of ship it is, for its card.
+@export var display_name: String = ""
+@export var chip: String = ""
 ## Size of one module grid cell, in pixels.
 @export var cell_size: int = 64
 @export var modules: Array[ModuleData] = []

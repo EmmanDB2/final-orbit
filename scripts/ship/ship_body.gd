@@ -67,6 +67,7 @@ var module_masses: Dictionary = {}
 var fuel_capacity: float = 0.0
 ## What the tanks held when the ship was whole.
 var original_fuel_capacity: float = 0.0
+var original_pixel_count: int = 1
 ## How wide and long what's left of the ship is, in pixels. Sets how much air it pushes.
 var width: float = 0.0
 var length: float = 0.0
@@ -166,6 +167,7 @@ static func measure(design: ShipDesign) -> ShipBody:
 			body.tanks.append({"position": middle, "capacity": module.fuel_capacity, "full": module.fuel_capacity, "module": i})
 			body.fuel_capacity += module.fuel_capacity
 	body.original_fuel_capacity = body.fuel_capacity
+	body.original_pixel_count = maxi(body.pixel_count, 1)
 	body._weld_drawn_gaps()
 	body._refresh()
 	return body

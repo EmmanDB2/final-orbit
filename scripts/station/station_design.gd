@@ -4,6 +4,8 @@ class_name StationDesign
 extends Resource
 
 @export var display_name: String = ""
+## What kind of station it is, for its card.
+@export var chip: String = "STATION"
 ## The short name it shows on the pilot's markers.
 @export var callsign: String = ""
 ## The first room is the middle of the station, and its middle is the point on the rails.

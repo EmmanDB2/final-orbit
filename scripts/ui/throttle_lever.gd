@@ -6,7 +6,7 @@ extends UiWidget
 signal throttle_changed(value: float)
 
 const NOTCHES: int = 10
-const HANDLE_HEIGHT: float = 22.0
+const HANDLE_HEIGHT: float = 16.0
 
 var value: float = 1.0
 
@@ -29,11 +29,12 @@ func _draw() -> void:
 	var palette: AgencyPalette = UiStyle.palette()
 	var center: float = floorf(size.x / 2.0)
 	var travel: float = size.y - HANDLE_HEIGHT
-	draw_rect(Rect2(center - 3.0, 0.0, 6.0, size.y), palette.hull_darkest)
+	draw_rect(Rect2(center, 0.0, 1.0, size.y), palette.hull_lighter)
 	for i in range(NOTCHES + 1):
 		var y: float = floorf(HANDLE_HEIGHT / 2.0 + travel * i / NOTCHES)
-		var long: bool = i % 5 == 0
-		draw_rect(Rect2(center - (14.0 if long else 9.0), y, 28.0 if long else 18.0, 1.0), palette.hull_lighter if long else palette.hull_light)
+		var half: float = 9.0 if i % 5 == 0 else 6.0
+		draw_rect(Rect2(center - half, y, half * 2.0 + 1.0, 1.0), palette.hull_lighter)
 	var handle_y: float = floorf((1.0 - value) * travel)
-	UiStyle.draw_button(self, Rect2(1.0, handle_y, size.x - 2.0, HANDLE_HEIGHT), false)
-	draw_rect(Rect2(4.0, handle_y + floorf(HANDLE_HEIGHT / 2.0), size.x - 8.0, 2.0), palette.agency_orange)
+	var handle := Rect2(center - 16.0, handle_y, 33.0, HANDLE_HEIGHT)
+	UiStyle.draw_box(self, handle, palette.hull_lighter, palette.hull_dark)
+	draw_rect(Rect2(handle.position.x + 3.0, handle_y + floorf(HANDLE_HEIGHT / 2.0) - 1.0, handle.size.x - 6.0, 3.0), palette.agency_orange)

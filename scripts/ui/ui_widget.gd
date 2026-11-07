@@ -20,6 +20,10 @@ func finger_up() -> void:
 	pass
 
 
-## Where this widget can be touched, in screen coordinates.
+## Where this widget can be touched, in screen coordinates. Never less than 44 game pixels each way,
+## whatever size it's drawn.
 func touch_rect() -> Rect2:
-	return get_global_rect()
+	var rect: Rect2 = get_global_rect()
+	return rect.grow_individual(
+			maxf((44.0 - rect.size.x) / 2.0, 0.0), maxf((44.0 - rect.size.y) / 2.0, 0.0),
+			maxf((44.0 - rect.size.x) / 2.0, 0.0), maxf((44.0 - rect.size.y) / 2.0, 0.0))

@@ -387,3 +387,11 @@ Files: `scripts/flight_view.gd`, `scripts/ui/flight_hud.gd`, `docs/DESIGN.md`
 - telling a tap from a drag and a hold
 - turning a screen position back into a world position
 - a Dictionary as a small tagged value
+
+## 2026-11-06: Flight UI rework and context cards
+
+Files: `tools/make_hud_font.gd`, `art/hud_font.png`, `scripts/ui/`, `scripts/world_catalog.gd`, `scripts/flight_view.gd`, `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/ship/ship_design.gd`, `scripts/station/station_design.gd`, `scripts/body_data.gd`, `scripts/star_data.gd`, `scripts/main.gd`, `data/`, `scenes/main.tscn`, `docs/DESIGN.md`
+
+- telling a tap, a hold, and a drag apart
+- pausing the tree while one branch keeps running
+- bitmap fonts drawn from a texture atlas

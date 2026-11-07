@@ -1,15 +1,21 @@
-# plate_panel.gd: a side panel's metal backing. Its edge carries a red mark showing where
-# BURN is, or an LED fuel gauge, so the strip still shows them when the panel is hidden.
-# From DESIGN.md, "UI" (side panels and auto-hide).
-class_name PlatePanel
+# side_panel.gd: holds one side's controls, and slides off with them when they hide. Its inner edge
+# carries the fuel gauge or a mark showing where BURN is, so the strip left on screen still shows
+# them. From DESIGN.md, "UI" (side panels and auto-hide).
+class_name SidePanel
 extends Control
 
-const GAUGE_SEGMENTS: int = 20
-const GAUGE_WIDTH: float = 4.0
+const GAUGE_WIDTH: float = 3.0
 
 var burn_mark: Rect2 = Rect2()
+## The mark's only there for the strip left when hidden.
+var mark_shows: bool = false:
+	set(value):
+		if value != mark_shows:
+			mark_shows = value
+			queue_redraw()
 var shows_fuel: bool = false
-var _lit_segments: int = GAUGE_SEGMENTS
+var gauge_height: float = 0.0
+var _fuel_share: float = 1.0
 
 
 func _init() -> void:
@@ -17,30 +23,28 @@ func _init() -> void:
 
 
 func on_flight_data(data: Dictionary) -> void:
-	var lit: int = ceili(data["fuel_share"] * GAUGE_SEGMENTS)
-	if lit != _lit_segments:
-		_lit_segments = lit
+	var share: float = data["fuel_share"]
+	if absf(share - _fuel_share) >= 0.002:
+		_fuel_share = share
 		queue_redraw()
 
 
 func _draw() -> void:
-	UiStyle.draw_plate(self, Rect2(Vector2.ZERO, size))
 	if shows_fuel:
 		_draw_fuel_gauge()
-	if burn_mark.size != Vector2.ZERO:
-		draw_rect(burn_mark.grow_individual(0.0, 0.0, 2.0, 0.0), UiStyle.palette().agency_red)
+	if mark_shows and burn_mark.size != Vector2.ZERO:
+		draw_rect(burn_mark, UiStyle.palette().agency_orange)
 
 
 func _draw_fuel_gauge() -> void:
 	var palette: AgencyPalette = UiStyle.palette()
-	var color: Color = palette.telemetry_green
-	if _lit_segments <= GAUGE_SEGMENTS / 10:
+	var color: Color = palette.telemetry_cyan
+	if _fuel_share <= 0.1:
 		color = palette.agency_red
-	elif _lit_segments <= GAUGE_SEGMENTS / 4:
+	elif _fuel_share <= 0.25:
 		color = palette.telemetry_amber
 	var x: float = size.x - GAUGE_WIDTH - 1.0
-	var segment_height: float = floorf((size.y - 8.0) / GAUGE_SEGMENTS)
-	var bottom: float = size.y - 4.0
-	for i in range(GAUGE_SEGMENTS):
-		var y: float = bottom - (i + 1) * segment_height
-		draw_rect(Rect2(x, y, GAUGE_WIDTH, segment_height - 1.0), color if i < _lit_segments else palette.hull_darkest)
+	var height: float = gauge_height if gauge_height > 0.0 else size.y
+	draw_rect(Rect2(x, 0.0, GAUGE_WIDTH, height), palette.hull_dark)
+	var lit: float = roundf(height * clampf(_fuel_share, 0.0, 1.0))
+	draw_rect(Rect2(x, height - lit, GAUGE_WIDTH, lit), color)

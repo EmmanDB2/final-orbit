@@ -1,6 +1,6 @@
-# target_markers.gd: small agency-orange arrows at the screen edge for targets that are off screen,
-# each with its callsign and distance. Zoomed out far enough that a target's only a dot, the label
-# goes beside the dot instead.
+# target_markers.gd: a small agency-orange arrow at the screen edge for the target when it's off
+# screen, with its callsign and distance. Zoomed out far enough that it's small, the label goes beside
+# it instead. The pilot picks the target from a card, and the first station starts out as it.
 # From DESIGN.md, "UI" (edge markers).
 class_name TargetMarkers
 extends Node2D
@@ -14,7 +14,7 @@ extends Node2D
 
 var _gravity_model: GravityModel
 var _state: ShipState
-var _targets: Array[Dictionary] = []
+var _target: Dictionary = {}
 var _clear_area := Rect2()
 var _center_x: float = 0.0
 var _center_y: float = 0.0
@@ -28,10 +28,20 @@ func start_markers(gravity_model: GravityModel, state: ShipState) -> void:
 	_state = state
 
 
-## Adds a marker for a satellite, given its number in the gravity model and how far it reaches from
-## its middle in world units.
-func add_satellite_target(callsign: String, index: int, reach: float) -> void:
-	_targets.append({"callsign": callsign, "index": index, "reach": reach})
+## Makes this the target, given what to call it, how far it reaches from its middle in world units,
+## and a way to ask where it is right now.
+func set_target(thing: Dictionary, callsign: String, reach: float, point_of: Callable) -> void:
+	_target = {"thing": thing, "callsign": callsign, "reach": reach, "point_of": point_of}
+	queue_redraw()
+
+
+func clear_target() -> void:
+	_target = {}
+	queue_redraw()
+
+
+func is_target(thing: Dictionary) -> bool:
+	return not _target.is_empty() and _target["thing"] == thing
 
 
 func _on_clear_area_changed(area: Rect2) -> void:
@@ -56,27 +66,29 @@ func _draw() -> void:
 	# The view's center is the middle of the whole screen, wherever the panels are.
 	var middle: Vector2 = get_viewport_rect().size / 2.0 - global_position
 	var area: Rect2 = _clear_area.grow(-edge_margin)
-	for target: Dictionary in _targets:
-		var at: PackedFloat64Array = _gravity_model.get_satellite_position(target["index"], _state.time)
-		var offset: Vector2 = Vector2((at[0] - _center_x) * _pixels_per_unit, (at[1] - _center_y) * _pixels_per_unit).rotated(-_roll)
-		var away := Vector2(at[0] - _state.x, at[1] - _state.y)
-		var text: String = "%s %s" % [target["callsign"], UiStyle.distance_text(away.length())]
-		var spot: Vector2 = middle + offset
-		if area.has_point(spot):
-			if _pixels_per_unit <= label_zoom:
-				_draw_label(text, spot + Vector2(7.0, -3.0), area)
-			continue
-		# With its middle off screen but part of it in view, the arrow would only sit on top of it.
-		if area.grow(target["reach"] * _pixels_per_unit).has_point(spot):
-			continue
-		var direction: Vector2 = offset.normalized()
-		var tip: Vector2 = _edge_point(middle, direction, area)
-		_draw_arrow(tip, direction)
-		# Far enough back along the arrow to clear it, however wide the words are that way.
-		var half_width: float = UiStyle.text_width(text, 1) / 2.0
-		var clearance: float = absf(direction.x) * half_width + absf(direction.y) * 4.0 + 4.0
-		var label_middle: Vector2 = tip - direction * (arrow_length + clearance)
-		_draw_label(text, label_middle - Vector2(half_width, 3.0), area)
+	if _target.is_empty():
+		return
+	var at: PackedFloat64Array = _target["point_of"].call()
+	var offset: Vector2 = Vector2((at[0] - _center_x) * _pixels_per_unit, (at[1] - _center_y) * _pixels_per_unit).rotated(-_roll)
+	var away := Vector2(at[0] - _state.x, at[1] - _state.y)
+	var text: String = "%s %s" % [_target["callsign"], UiStyle.distance_text(away.length())]
+	var spot: Vector2 = middle + offset
+	var reach_px: float = _target["reach"] * _pixels_per_unit
+	if area.has_point(spot):
+		if _pixels_per_unit <= label_zoom:
+			_draw_label(text, spot + Vector2(maxf(reach_px, 3.0) + 4.0, -3.0), area)
+		return
+	# With its middle off screen but part of it in view, the arrow would only sit on top of it.
+	if area.grow(reach_px).has_point(spot):
+		return
+	var direction: Vector2 = offset.normalized()
+	var tip: Vector2 = _edge_point(middle, direction, area)
+	_draw_arrow(tip, direction)
+	# Far enough back along the arrow to clear it, however wide the words are that way.
+	var half_width: float = UiStyle.text_width(text, 1) / 2.0
+	var clearance: float = absf(direction.x) * half_width + absf(direction.y) * 4.0 + 4.0
+	var label_middle: Vector2 = tip - direction * (arrow_length + clearance)
+	_draw_label(text, label_middle - Vector2(half_width, 3.0), area)
 
 
 # Where a line from the middle of the view leaves the clear area.

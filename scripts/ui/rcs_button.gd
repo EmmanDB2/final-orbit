@@ -45,10 +45,12 @@ func finger_up() -> void:
 
 
 func _draw() -> void:
-	var palette: AgencyPalette = UiStyle.palette()
-	UiStyle.draw_button(self, Rect2(Vector2.ZERO, size), _pressed)
+	# With no action it isn't there at all, so rotating leaves only left and right.
 	if action == &"":
 		return
+	var palette: AgencyPalette = UiStyle.palette()
+	var fill: Color = palette.hull_mid if _pressed else UiStyle.box_fill()
+	UiStyle.draw_box(self, Rect2(Vector2.ZERO, size), palette.telemetry_cyan if _pressed else palette.hull_lighter, fill)
 	var color: Color = palette.telemetry_cyan if _pressed else palette.hull_lightest
 	var middle: Vector2 = (size / 2.0).floor()
 	if rotation_sign != 0:

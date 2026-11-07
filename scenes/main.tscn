@@ -25,7 +25,7 @@
 [ext_resource type="Script" uid="uid://bm1ld2bvlu7he" path="res://scripts/ui/turn_guide.gd" id="21_guide"]
 [ext_resource type="Script" uid="uid://co4i4uj4wulek" path="res://scripts/screen_fit.gd" id="18_fit"]
 [ext_resource type="Script" uid="uid://ioh3iggb6omw" path="res://scripts/safe_area.gd" id="19_safe"]
-[ext_resource type="Script" uid="uid://q3hnub1kat2q" path="res://scripts/telemetry_readout.gd" id="17_readout"]
+[ext_resource type="Script" path="res://scripts/ui/comms_line.gd" id="17_readout"]
 [ext_resource type="Script" uid="uid://dgnu0r1ib3jsn" path="res://scripts/body_guides.gd" id="16_guides"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_star"]
@@ -148,7 +148,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("20_hud")
 
-[node name="TelemetryReadout" type="Node2D" parent="Hud/SafeArea" unique_id=1469035722]
+[node name="CommsLine" type="Node2D" parent="Hud/SafeArea" unique_id=1469035722]
 script = ExtResource("17_readout")
 
 [connection signal="world_position_changed" from="Ship" to="Camera2D" method="_on_ship_world_position_changed"]
@@ -172,21 +172,23 @@ script = ExtResource("17_readout")
 [connection signal="view_rolled" from="Camera2D" to="Hud/SafeArea/TargetMarkers" method="_on_view_rolled"]
 [connection signal="view_changed" from="Camera2D" to="Hud/SafeArea/TargetMarkers" method="_on_view_changed"]
 [connection signal="clear_area_changed" from="Hud/SafeArea/FlightHud" to="Hud/SafeArea/TargetMarkers" method="_on_clear_area_changed"]
+[connection signal="comms_area_changed" from="Hud/SafeArea/FlightHud" to="Hud/SafeArea/CommsLine" method="_on_comms_area_changed"]
+[connection signal="flight_data_changed" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_flight_data"]
 [connection signal="engine_changed" from="Ship" to="GroundEffects" method="_on_ship_engine_changed"]
 [connection signal="part_detached" from="Ship" to="Debris" method="_on_ship_part_detached"]
 [connection signal="pixels_scattered" from="Ship" to="Sparks" method="_on_ship_pixels_scattered"]
 [connection signal="view_changed" from="Camera2D" to="Sparks" method="_on_view_changed"]
-[connection signal="warning_raised" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_warning_raised"]
-[connection signal="ship_lost" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_lost"]
-[connection signal="docked_changed" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_docked_changed"]
-[connection signal="message_raised" from="Station" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_warning_raised"]
+[connection signal="warning_raised" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_warning_raised"]
+[connection signal="ship_lost" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_lost"]
+[connection signal="docked_changed" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_docked_changed"]
+[connection signal="message_raised" from="Station" to="Hud/SafeArea/CommsLine" method="_on_ship_warning_raised"]
 [connection signal="orbit_changed" from="Ship" to="Trajectory" method="_on_ship_orbit_changed"]
 [connection signal="world_position_changed" from="Ship" to="Trajectory" method="_on_ship_world_position_changed"]
 [connection signal="screen_fitted" from="ScreenFit" to="Hud/SafeArea" method="_on_screen_fitted"]
 [connection signal="screen_fitted" from="ScreenFit" to="Camera2D" method="_on_screen_fitted"]
 [connection signal="screen_fitted" from="ScreenFit" to="Hud/SafeArea/FlightHud" method="_on_screen_fitted"]
-[connection signal="touched_down" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_touched_down"]
-[connection signal="lifted_off" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_lifted_off"]
+[connection signal="touched_down" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_touched_down"]
+[connection signal="lifted_off" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_lifted_off"]
 [connection signal="world_position_changed" from="Ship" to="StarLight" method="_on_ship_world_position_changed"]
 [connection signal="star_light_changed" from="StarLight" to="Background/Starfield" method="_on_star_light_changed"]
 [connection signal="star_heat_changed" from="StarLight" to="Ship" method="_on_star_heat_changed"]

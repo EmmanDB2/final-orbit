@@ -23,6 +23,8 @@ extends Camera2D
 signal view_changed(center_x: float, center_y: float, pixels_per_unit: float)
 ## Emitted just before view_changed, with how far the view is turned, clockwise, in radians.
 signal view_rolled(angle: float)
+## Emitted when the zoom settles on a different button's stop, with its name or nothing.
+signal zoom_stop_changed(stop_name: String)
 
 ## Where keys land, closest to farthest, in screen pixels per world unit.
 @export var zoom_stops: PackedFloat64Array = PackedFloat64Array([1.0, 1.0 / 8.0, 1.0 / 128.0, 1.0 / 800.0, 1.0 / 2400.0])
@@ -71,19 +73,22 @@ var _focus: Dictionary = {"kind": "ship", "index": 0}
 var _previous_focus: Dictionary = {"kind": "ship", "index": 0}
 var _focus_blend: float = 1.0
 var _focus_mark: float = 0.0
+var _lit_stop: String = "?"
 var _center_x: float = 0.0
 var _center_y: float = 0.0
 var _roll: float = 0.0
 var _roll_started: bool = false
 
 
-## Starts following a flight.
-func start_view(gravity_model: GravityModel, state: ShipState) -> void:
+## Starts following a flight, with something in focus at the SYS zoom.
+func start_view(gravity_model: GravityModel, state: ShipState, start_focus: Dictionary) -> void:
 	_gravity_model = gravity_model
 	_state = state
 	ignore_rotation = false
-	_zoom = orbit_zoom
-	_target_zoom = orbit_zoom
+	_zoom = system_zoom
+	_target_zoom = system_zoom
+	_focus = start_focus
+	_previous_focus = start_focus
 	var widest: float = 0.0
 	for index in range(1, gravity_model.get_body_count()):
 		if gravity_model.get_body_parent(index) == 0:
@@ -163,7 +168,21 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 	_center_x = center[0]
 	_center_y = center[1]
 	_turn_toward_down(x, y, delta)
+	_update_lit_stop()
 	view_changed.emit(center[0], center[1], _zoom)
+
+
+func _update_lit_stop() -> void:
+	var lit: String = ""
+	if absf(_target_zoom / (orbit_zoom * _far_fit) - 1.0) < 0.01:
+		lit = "ORBIT"
+	elif absf(_target_zoom / (system_zoom * _far_fit) - 1.0) < 0.01 or absf(_target_zoom / (_whole_system_zoom * _far_fit) - 1.0) < 0.01:
+		lit = "SYS"
+	elif absf(_target_zoom / zoom_stops[0] - 1.0) < 0.01:
+		lit = "SHIP"
+	if lit != _lit_stop:
+		_lit_stop = lit
+		zoom_stop_changed.emit(lit)
 
 
 func _turn_toward_down(x: float, y: float, delta: float) -> void:
@@ -219,9 +238,37 @@ func _closest_zoom() -> float:
 	return minf(fits, zoom_stops[0])
 
 
-## Whatever's under a tap becomes the focus. The smallest thing wins where they overlap, so a ship
-## can be picked in front of a planet. A tap on empty space does nothing.
+## Whatever's under a tap becomes the focus. A tap on empty space does nothing.
 func _on_space_tapped(screen_position: Vector2) -> void:
+	var found: Dictionary = thing_at(screen_position)
+	if not found.is_empty():
+		_set_focus(found)
+
+
+## Makes this the focus.
+func set_focus(thing: Dictionary) -> void:
+	_set_focus(thing)
+
+
+func is_focus(thing: Dictionary) -> bool:
+	return thing == _focus
+
+
+## A way to ask where this thing is right now, as [x, y].
+func point_getter(thing: Dictionary) -> Callable:
+	return func() -> PackedFloat64Array: return _point_of(thing, PackedFloat64Array([_state.x, _state.y]))
+
+
+## Where this thing shows on screen: its "center", and its "radius" in pixels.
+func screen_spot_of(thing: Dictionary) -> Dictionary:
+	var at: PackedFloat64Array = _point_of(thing, PackedFloat64Array([_state.x, _state.y]))
+	var from_middle: Vector2 = Vector2((at[0] - _center_x) * _zoom, (at[1] - _center_y) * _zoom).rotated(-_roll)
+	return {"center": _view_size / 2.0 + from_middle, "radius": _tap_radius_of(thing) * _zoom}
+
+
+## What's at this point on screen, or nothing. The smallest thing wins where they overlap, so a ship
+## can be picked in front of a planet.
+func thing_at(screen_position: Vector2) -> Dictionary:
 	var from_middle: Vector2 = (screen_position - _view_size / 2.0).rotated(_roll) / _zoom
 	var tapped := Vector2(_center_x + from_middle.x, _center_y + from_middle.y)
 	var best: Dictionary = {}
@@ -238,8 +285,7 @@ func _on_space_tapped(screen_position: Vector2) -> void:
 		if Vector2(at[0] - tapped.x, at[1] - tapped.y).length() <= reach and radius < smallest:
 			smallest = radius
 			best = candidate
-	if not best.is_empty():
-		_set_focus(best)
+	return best
 
 
 func _tap_radius_of(focus: Dictionary) -> float:

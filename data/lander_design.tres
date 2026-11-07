@@ -145,6 +145,8 @@ folds = true
 
 [resource]
 script = ExtResource("1_design")
+display_name = "Lander"
+chip = "YOUR SHIP"
 hatch_point = Vector2(-1.5, -106)
 cell_size = 64
 modules = Array[Object]([SubResource("Module_0_0"), SubResource("Module_0_1"), SubResource("Module_1_0"), SubResource("Module_1_1"), SubResource("Module_2_0"), SubResource("Module_2_1"), SubResource("Module_3_0"), SubResource("Module_3_1"), SubResource("Module_leg_0"), SubResource("Module_leg_1")])
