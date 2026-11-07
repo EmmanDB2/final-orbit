@@ -25,7 +25,6 @@ const EDGE: float = 8.0
 const PAD_BUTTON: float = 44.0
 const ROW_HEIGHT: float = 40.0
 const ROW_GAP: float = 4.0
-const SWITCH_HEIGHT: float = 28.0
 const DIAL_SIZE: float = 76.0
 const ZOOM_WIDTH: float = 68.0
 const BURN_HEIGHT: float = 72.0
@@ -55,8 +54,8 @@ var _pad_up: RcsButton
 var _pad_down: RcsButton
 var _pad_left: RcsButton
 var _pad_right: RcsButton
-var _rot_trans_switch: SegmentedSwitch
-var _pad_rotates: bool = false
+var _rotate_left: RcsButton
+var _rotate_right: RcsButton
 var _right_height: float = 0.0
 var _left_height: float = 0.0
 var _assist_button: UiButton
@@ -191,14 +190,13 @@ func _build() -> void:
 
 	_dial = HeadingDial.new()
 	_right_panel.add_child(_dial)
-	_rot_trans_switch = SegmentedSwitch.new().setup(PackedStringArray(["TRANS", "ROT"]))
-	_rot_trans_switch.changed.connect(_on_pad_mode_changed)
-	_right_panel.add_child(_rot_trans_switch)
 	_pad_up = RcsButton.new().setup(Vector2.UP, 0, &"translate_forward")
 	_pad_down = RcsButton.new().setup(Vector2.DOWN, 0, &"translate_back")
 	_pad_left = RcsButton.new().setup(Vector2.LEFT, 0, &"translate_left")
 	_pad_right = RcsButton.new().setup(Vector2.RIGHT, 0, &"translate_right")
-	for button: RcsButton in [_pad_up, _pad_down, _pad_left, _pad_right]:
+	_rotate_left = RcsButton.new().setup(Vector2.ZERO, -1, &"turn_left")
+	_rotate_right = RcsButton.new().setup(Vector2.ZERO, 1, &"turn_right")
+	for button: RcsButton in [_pad_up, _pad_down, _pad_left, _pad_right, _rotate_left, _rotate_right]:
 		_right_panel.add_child(button)
 	_eva_button = UiButton.new().setup("EVA", palette.telemetry_cyan)
 	_eva_button.visible = false
@@ -292,16 +290,16 @@ func _layout() -> void:
 	var inner_width: float = RIGHT_WIDTH - EDGE * 2.0
 	_dial.size = Vector2(DIAL_SIZE, DIAL_SIZE)
 	_dial.position = Vector2(floorf((RIGHT_WIDTH - DIAL_SIZE) / 2.0), 6.0)
-	_rot_trans_switch.size = Vector2(inner_width, SWITCH_HEIGHT)
-	_rot_trans_switch.position = Vector2(EDGE, _dial.position.y + DIAL_SIZE + 12.0)
-	var pad_y: float = _rot_trans_switch.position.y + SWITCH_HEIGHT + 10.0
+	var pad_y: float = _dial.position.y + DIAL_SIZE + 12.0
+	# The arrows make a cross, and the two turns sit in its top corners.
+	_rotate_left.position = Vector2(EDGE, pad_y)
+	_rotate_right.position = Vector2(EDGE + PAD_BUTTON * 2.0, pad_y)
 	_pad_up.position = Vector2(EDGE + PAD_BUTTON, pad_y)
 	_pad_left.position = Vector2(EDGE, pad_y + PAD_BUTTON)
 	_pad_right.position = Vector2(EDGE + PAD_BUTTON * 2.0, pad_y + PAD_BUTTON)
 	_pad_down.position = Vector2(EDGE + PAD_BUTTON, pad_y + PAD_BUTTON * 2.0)
-	for button: RcsButton in [_pad_up, _pad_down, _pad_left, _pad_right]:
+	for button: RcsButton in [_pad_up, _pad_down, _pad_left, _pad_right, _rotate_left, _rotate_right]:
 		button.size = Vector2(PAD_BUTTON, PAD_BUTTON)
-	_apply_pad_mode()
 
 	_burn.size = Vector2(inner_width, BURN_HEIGHT)
 	_burn.position = Vector2(EDGE, _right_height - EDGE - BURN_HEIGHT)
@@ -377,25 +375,6 @@ func _physics_process(_delta: float) -> void:
 		Input.action_release(action)
 	_actions_to_release = _tapped_actions
 	_tapped_actions = []
-
-
-func _on_pad_mode_changed(selected: int) -> void:
-	_pad_rotates = selected == 1
-	_apply_pad_mode()
-
-
-# Sets what the four arrows do. Rotating only uses left and right, so up and down go away.
-func _apply_pad_mode() -> void:
-	if _pad_rotates:
-		_pad_up.set_action(&"", Vector2.UP, 0)
-		_pad_down.set_action(&"", Vector2.DOWN, 0)
-		_pad_left.set_action(&"turn_left", Vector2.ZERO, -1)
-		_pad_right.set_action(&"turn_right", Vector2.ZERO, 1)
-	else:
-		_pad_up.set_action(&"translate_forward", Vector2.UP, 0)
-		_pad_down.set_action(&"translate_back", Vector2.DOWN, 0)
-		_pad_left.set_action(&"translate_left", Vector2.LEFT, 0)
-		_pad_right.set_action(&"translate_right", Vector2.RIGHT, 0)
 
 
 func _show_panels() -> void:
@@ -592,13 +571,10 @@ func _show_flight_data(data: Dictionary) -> void:
 func _on_pilot_mode_changed(mode: String) -> void:
 	_mode = mode
 	var aboard: bool = mode == Pilot.ABOARD
-	for control: Control in [_lever, _burn, _legs_button, _stab_button, _assist_button, _rot_trans_switch]:
+	for control: Control in [_lever, _burn, _legs_button, _stab_button, _assist_button, _rotate_left, _rotate_right]:
 		control.visible = aboard
 	_eva_button.visible = aboard and _can_leave
 	_right_panel.burn_mark = Rect2(0.0, _burn.position.y, 2.0, BURN_HEIGHT) if aboard else Rect2()
-	if not aboard and _rot_trans_switch.selected != 0:
-		_rot_trans_switch.selected = 0
-		_on_pad_mode_changed(0)
 	_show_panels()
 	_turn_guide.ship = _ship if aboard else _pilot
 	_markers.measure_from(_view.point_getter({"kind": "ship", "index": 0} if aboard else {"kind": "pilot", "index": 0}))
@@ -631,7 +607,7 @@ func _widgets_in_reach() -> Array[UiWidget]:
 		widgets.append(_lever)
 		widgets.append(_burn)
 		widgets.append_array([_eva_button, _stab_button, _legs_button, _assist_button])
-		widgets.append_array([_pad_up, _pad_down, _pad_left, _pad_right, _rot_trans_switch])
+		widgets.append_array([_pad_up, _pad_down, _pad_left, _pad_right, _rotate_left, _rotate_right])
 		widgets.append_array(_zoom_buttons)
 	return widgets
 

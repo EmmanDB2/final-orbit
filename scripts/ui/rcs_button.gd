@@ -18,36 +18,20 @@ func setup(arrow: Vector2, turn: int, input_action: StringName) -> RcsButton:
 	return self
 
 
-## Points the button at a different action, letting go of the old one first.
-func set_action(input_action: StringName, arrow: Vector2, turn: int) -> void:
-	if _pressed and action != &"":
-		Input.action_release(action)
-	action = input_action
-	direction = arrow
-	rotation_sign = turn
-	if _pressed and action != &"":
-		Input.action_press(action)
-	queue_redraw()
-
-
 func finger_down(_position: Vector2) -> void:
 	_pressed = true
-	if action != &"":
-		Input.action_press(action)
+	Input.action_press(action)
 	queue_redraw()
 
 
 func finger_up() -> void:
-	if _pressed and action != &"":
+	if _pressed:
 		Input.action_release(action)
 	_pressed = false
 	queue_redraw()
 
 
 func _draw() -> void:
-	# With no action it isn't there at all, so rotating leaves only left and right.
-	if action == &"":
-		return
 	var palette: AgencyPalette = UiStyle.palette()
 	var fill: Color = palette.hull_mid if _pressed else UiStyle.box_fill()
 	UiStyle.draw_box(self, Rect2(Vector2.ZERO, size), palette.telemetry_cyan if _pressed else palette.hull_lighter, fill)
