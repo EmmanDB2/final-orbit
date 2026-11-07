@@ -15,6 +15,10 @@ extends Resource
 @export var engine_force: float = 0.0
 ## Where the docking hatch is on the art, from the middle of the grid: the ship's nose.
 @export var hatch_point: Vector2 = Vector2.ZERO
+## Where the pilot comes out on EVA, and where they get back in, on the art from the middle of the
+## grid.
+@export var eva_exit: Vector2 = Vector2.ZERO
+@export var cockpit_point: Vector2 = Vector2.ZERO
 ## How fast the ship drifts backward off a station when it undocks, in world units per second.
 @export var undock_speed: float = 3.0
 ## How much of its speed the ship keeps bouncing off something solid in space, from 0 to 1.

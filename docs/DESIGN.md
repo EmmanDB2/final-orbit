@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | EVA and station boarding built ahead of gigs, on Manny's call: jetpack, walking inside with the roof off, airlocks, boarding from a docked ship, and a gig board terminal to walk up to. Moves those parts of Tier 2 and Tier 3 up, behind feature flags \[Leaning\] |
 | 2026-11-06 | UI reworked from Manny's mockups: thin outlined instruments with no plates, one layout for both screens, a comms line along the bottom with a log, a FLIGHT menu, the TRANS / ROT switch everywhere, ASSIST on the button, and a card on holding a finger on anything, with SET TARGET and FOCUS. Tap still focuses. The home system is named KEPLA-2 \[Leaning\] |
 | 2026-11-06 | Tap anything to focus the camera on it at every zoom, replacing the center depending only on the zoom. The dossier card loses the tap and needs another gesture \[Open\] |
 | 2026-11-06 | Camera turns so down is down from the Orbit view in, and stays a fixed map farther out, replacing the fixed camera \[Leaning\] |
@@ -162,8 +163,10 @@ You are a pilot inside the ship, not the ship itself. Mission control is the voi
 - The cockpit canopy is about 40-48 px wide, made of breakable glass pixels with the pilot visible underneath. \[Leaning\]
 - A cracked canopy depressurizes the cockpit and starts a suit-only timer. \[Leaning\]
 - Escape pod: a hard crash can eject the pilot into a tiny, flyable pod. Surviving keeps any already-delivered pay. \[Leaning\]
-- EVA: the pilot leaves the ship on a jetpack to patch breaches, grab salvage, or reattach floating parts. Same sprite scale inside and outside. \[Locked for design, built in Tier 2\]
-- The suit has its own limits: oxygen, temperature, jetpack fuel. \[Leaning\]
+- EVA: the pilot leaves the ship on a jetpack to patch breaches, grab salvage, or reattach floating parts. Same sprite scale inside and outside. \[Locked for design\]
+- Built so far, moved ahead of gigs by Manny: the EVA button puts the pilot out beside the cockpit, unless the ship's landed or lost. The ship takes no orders then, though ASS and STAB keep holding it. The arrows and dragging go by the screen, so up is up on screen, and the view follows the pilot. The jetpack pushes at 12 m/s² for 60 seconds, fills up aboard the ship or a station, and obeys orbital mechanics like anything else. Running out of reach of anything, or hitting the ground, needs a restart. Patching, salvage, and reattaching are still to come. \[Leaning\]
+- While the pilot's out, the top bar and gauge are theirs: delta-v and the gauge read the jetpack. A cyan marker points the way back to the ship, and SHIP on the zoom buttons brings the view back to the pilot. \[Leaning\]
+- The suit has its own limits: oxygen, temperature, jetpack fuel. Only the jetpack is built so far. \[Leaning\]
 - The pilot can carry a name, suit livery, and career record. \[Open\]
 
 ## Ships
@@ -341,6 +344,8 @@ Terrain and biomes per body: \[Leaning\]
 - Docking: the ship's nose is the hatch, and it docks at any free port. The hatch has to come within 14 m of the port's middle, slower than 6 m/s against it, with the nose within 10 degrees of straight in. A dashed line shows from the nearest free port once the hatch is within 700 m, amber until those are all met and then green. Otherwise it's only a bump, and the pilot is told TOO FAST TO DOCK or LINE UP TO DOCK. A ship with its nose gone can't dock. \[Leaning\]
 - Docking draws the ship the last bit into place, then fills the tanks and repairs the hull, for free until money exists. UNDOCK, or U on the Mac, lets it drift off backward at 3 m/s. \[Leaning\]
 - Within 2,000 m of a station, the speed readout turns to REL and it and the dial's markers read against the station, including its turning. \[Leaning\]
+- Boarding: BOARD STATION takes the pilot in from a docked ship, or from outside within 90 m of a free port's hatch. Inside, at a free port's inner door it's EXIT STATION, and at the port the ship's docked to it's BOARD SHIP. Nothing's checked for speed at a station's hatch, since the jetpack's slow. \[Leaning\]
+- A station's terminals are spots set per room in the data. The first is the gig board, in the hub's console room on the upper right, which only says no gigs are posted until gigs exist. USE TERMINAL shows when the pilot's next to it. This is what gigs will be picked from. \[Leaning\]
 
 ## Hazards
 
@@ -397,8 +402,8 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 - One exception: closer than the Orbit view, the ship is its normal sprite at true scale, with no smoothing and no minimum size, so it can shrink out of sight just before the icon takes over. At the Orbit view and farther it's a clean icon, and very far out it's a dot. \[Leaning\]
 - Terrain detail is generated only when you zoom in close. \[Leaning\]
 - Zoom moves smoothly and has no outer limit, so the ship can shrink to a single dot. The tiers set what detail is drawn at each distance. \[Leaning\]
-- Interiors use an FTL-style cutaway: zoom in and the roof comes off, with top-down movement inside. \[Locked for design, built in Tier 3\]
-- Inside derelicts and stations: zero-g movement, flashlight cones in darkness, per-room pressure (a room graph, not per-pixel air), loot and logs. Destruction can create new entrances. \[Leaning\]
+- Interiors use an FTL-style cutaway with top-down movement inside. Built for stations, moved ahead of gigs by Manny: the roof comes off while the pilot's inside, rather than on zooming in, and goes back when they leave. \[Leaning\]
+- Inside stations, the pilot walks: arrows or a drag move them at 120 units/s with no jetpack, stopping when let go. Manny's word was walks, which replaces zero-g movement inside for now. Walls are rectangles of floor set per room in the data, and rooms packed with machines are closed off. Flashlight cones in darkness, per-room pressure (a room graph, not per-pixel air), loot and logs, and destruction making new entrances are still to come. \[Leaning\]
 
 ## UI
 
@@ -424,6 +429,7 @@ Side panels: \[Locked\]
 - Bottom-left: zoom buttons. SYS shows the local system, and pressing it again shows the whole star system. ORBIT shows what you're orbiting, and SHIP goes to the closest view of the ship. Whichever one the zoom is on is lit.
 - Along the bottom, from the zoom buttons to BURN: the comms line, reading COMMS: and how the flight stands, like ORBIT STABLE, DOCKED, or IMPACT TRAJECTORY. Each thing that happens takes it over for a few seconds, in order, and the comms log button at the top lists them with their times. All pilot messages go here now, so the center stays clear. \[Leaning\]
 - Right side, from the top: the heading dial, the TRANS / ROT switch, the four arrows, then LEGS, STAB, and ASSIST, with BURN at the bottom. NODE joins them when it's built.
+- EVA sits above LEGS. Out of the ship, the only controls are the arrows and the action button, which appears under the top bar with whatever can be done here: BOARD SHIP, BOARD STATION, EXIT STATION, or USE TERMINAL. On the Mac, V is EVA and F is the action. \[Leaning\]
 - BURN is orange, and hatched over while its safety cover is down.
 - The throttle lever sets thrust power, and BURN activates it.
 - The first touch lifts BURN's cover and the button fires while held. The cover drops again after 6 seconds with no burning. \[Leaning\]
@@ -577,9 +583,9 @@ Design for all four tiers, build one at a time. Each tier is a complete, playabl
    - Gate: flying and landing feel good on the Fold.
 2. **Tier 1, Core:** one star system, modular pixel ships with mass and destruction, cargo and data gigs, deliverable-based pay, Zen Mode, cover-screen play.
    - Gate: a single gig is fun, and a long greedy flight is tense.
-3. **Tier 2, Pilot:** escape pod, EVA outside the ship, repairs, salvage of floating parts and lost cargo, more hazards, Observatory Mode.
+3. **Tier 2, Pilot:** escape pod, repairs, salvage of floating parts and lost cargo, more hazards, Observatory Mode. The jetpack part of EVA moved up into Tier 1.
    - Gate: crashing becomes a story, not just a loss.
-4. **Tier 3, Interiors:** enterable derelicts and stations, pressure, darkness, loot.
+4. **Tier 3, Interiors:** enterable derelicts, pressure, darkness, loot. Walking around a station moved up into Tier 1, since gigs get picked at a terminal.
 5. **Tier 4, Big universe:** many star systems, galaxy view, black holes, rogue planets, maybe combat, maybe n-body physics.
 
 ## Open questions and parking lot

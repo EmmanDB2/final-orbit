@@ -74,8 +74,19 @@ var _card: ContextCard
 var _tap_possible: bool = false
 var _tap_started: int = 0
 var _legs_button: UiButton
+var _eva_button: UiButton
+var _action_button: UiButton
+var _center_view_x: float = 0.0
 
 var _ship: Node2D
+var _pilot: Pilot
+var _turn_guide: Node
+var _comms: CommsLine
+var _mode: String = Pilot.ABOARD
+var _can_leave: bool = false
+var _ship_stranded: bool = false
+var _pilot_stranded: bool = false
+var _docked: bool = false
 var _view: Node
 var _catalog: WorldCatalog
 var _markers: TargetMarkers
@@ -107,16 +118,22 @@ func _ready() -> void:
 
 ## Connects the UI to the flight. The UI only talks to the ship and camera through signals
 ## and input actions, so the flight code doesn't know it's here.
-func connect_flight(ship: Node2D, view: Node, turn_guide: Node, catalog: WorldCatalog, markers: TargetMarkers, comms: CommsLine) -> void:
+func connect_flight(ship: Node2D, view: Node, turn_guide: Node, catalog: WorldCatalog, markers: TargetMarkers, comms: CommsLine, pilot: Pilot) -> void:
 	_ship = ship
+	_pilot = pilot
+	_turn_guide = turn_guide
+	_comms = comms
 	_view = view
 	_catalog = catalog
 	_markers = markers
 	_comms_log.comms = comms
-	ship.flight_data_changed.connect(_top_bar.on_flight_data)
-	ship.flight_data_changed.connect(_dial.on_flight_data)
-	ship.flight_data_changed.connect(_left_panel.on_flight_data)
+	ship.flight_data_changed.connect(_on_ship_data)
 	ship.flight_data_changed.connect(catalog.on_flight_data)
+	pilot.flight_data_changed.connect(_show_flight_data)
+	pilot.mode_changed.connect(_on_pilot_mode_changed)
+	pilot.action_changed.connect(_on_action_changed)
+	pilot.can_leave_changed.connect(_on_can_leave_changed)
+	pilot.stranded_changed.connect(_on_pilot_stranded_changed)
 	ship.assist_changed.connect(_on_assist_changed)
 	ship.stab_changed.connect(_on_stab_changed)
 	ship.stranded_changed.connect(_on_stranded_changed)
@@ -152,6 +169,11 @@ func _build() -> void:
 	_undock_button.visible = false
 	_undock_button.tapped.connect(_tap_action.bind(&"undock"))
 	add_child(_undock_button)
+	_action_button = UiButton.new().setup("", palette.telemetry_cyan)
+	_action_button.lamp_on = true
+	_action_button.visible = false
+	_action_button.tapped.connect(_tap_action.bind(&"interact"))
+	add_child(_action_button)
 
 	_chat_button = UiButton.new().setup("", palette.telemetry_cyan)
 	_chat_button.icon = "chat"
@@ -178,6 +200,10 @@ func _build() -> void:
 	_pad_right = RcsButton.new().setup(Vector2.RIGHT, 0, &"translate_right")
 	for button: RcsButton in [_pad_up, _pad_down, _pad_left, _pad_right]:
 		_right_panel.add_child(button)
+	_eva_button = UiButton.new().setup("EVA", palette.telemetry_cyan)
+	_eva_button.visible = false
+	_right_panel.add_child(_eva_button)
+	_eva_button.tapped.connect(_tap_action.bind(&"eva"))
 	_legs_button = UiButton.new().setup("LEGS", palette.telemetry_cyan)
 	_stab_button = UiButton.new().setup("STAB", palette.telemetry_cyan)
 	_assist_button = UiButton.new().setup("ASSIST", palette.telemetry_cyan)
@@ -245,9 +271,8 @@ func _layout() -> void:
 	_chat_button.size = Vector2(CHAT_WIDTH, 30.0)
 	_chat_button.position = Vector2(_flight_button.position.x - 6.0 - CHAT_WIDTH, 7.0)
 
-	for button: UiButton in [_restart_button, _undock_button]:
-		button.size = Vector2(CENTER_BUTTON_WIDTH, ROW_HEIGHT)
-		button.position = Vector2(floorf((view.x - CENTER_BUTTON_WIDTH) / 2.0), BAR_HEIGHT + CENTER_BUTTON_DROP)
+	_center_view_x = view.x / 2.0
+	_place_center_buttons()
 
 	# The lever and fuel gauge stop above the zoom buttons, and the gauge is what stays as the strip.
 	_left_height = bottom_row_y - BAR_HEIGHT - 16.0
@@ -282,7 +307,7 @@ func _layout() -> void:
 	_burn.position = Vector2(EDGE, _right_height - EDGE - BURN_HEIGHT)
 	_right_panel.burn_mark = Rect2(0.0, _burn.position.y, 2.0, BURN_HEIGHT)
 	var row_y: float = _burn.position.y - 12.0 - ROW_HEIGHT
-	for button: UiButton in [_assist_button, _stab_button, _legs_button]:
+	for button: UiButton in [_assist_button, _stab_button, _legs_button, _eva_button]:
 		button.size = Vector2(inner_width, ROW_HEIGHT)
 		button.position = Vector2(EDGE, row_y)
 		row_y -= ROW_HEIGHT + ROW_GAP
@@ -297,6 +322,20 @@ func _layout() -> void:
 	var comms_left: float = EDGE + (ZOOM_WIDTH + ROW_GAP) * 3.0 + 8.0
 	comms_area_changed.emit(Rect2(comms_left, bottom_row_y, view.x - RIGHT_WIDTH - comms_left - 4.0, ROW_HEIGHT))
 	_place_panels()
+
+
+# Whichever of these are up sit side by side, under the top bar.
+func _place_center_buttons() -> void:
+	var showing: Array[UiButton] = []
+	for button: UiButton in [_restart_button, _undock_button, _action_button]:
+		if button.visible:
+			showing.append(button)
+	var total: float = showing.size() * CENTER_BUTTON_WIDTH + maxi(showing.size() - 1, 0) * ROW_GAP
+	var x: float = floorf(_center_view_x - total / 2.0)
+	for button: UiButton in showing:
+		button.size = Vector2(CENTER_BUTTON_WIDTH, ROW_HEIGHT)
+		button.position = Vector2(x, BAR_HEIGHT + CENTER_BUTTON_DROP)
+		x += CENTER_BUTTON_WIDTH + ROW_GAP
 
 
 # Slides the panels by how far hidden they are, leaving strips at the edges.
@@ -501,11 +540,72 @@ func _input(event: InputEvent) -> void:
 
 
 func _on_stranded_changed(stranded: bool) -> void:
-	_restart_button.visible = stranded
+	_ship_stranded = stranded
+	_update_center_buttons()
+
+
+func _on_pilot_stranded_changed(stranded: bool) -> void:
+	_pilot_stranded = stranded
+	_update_center_buttons()
 
 
 func _on_docked_changed(is_docked: bool) -> void:
-	_undock_button.visible = is_docked
+	_docked = is_docked
+	_update_center_buttons()
+
+
+func _on_action_changed(label: String) -> void:
+	_action_button.label = label
+	_action_button.visible = label != ""
+	_action_button.queue_redraw()
+	_place_center_buttons()
+
+
+func _on_can_leave_changed(can_leave: bool) -> void:
+	_can_leave = can_leave
+	_eva_button.visible = can_leave and _mode == Pilot.ABOARD
+
+
+func _update_center_buttons() -> void:
+	var aboard: bool = _mode == Pilot.ABOARD
+	_restart_button.visible = _pilot_stranded or (_ship_stranded and aboard)
+	_undock_button.visible = _docked and aboard
+	_place_center_buttons()
+
+
+# While the pilot's out of the ship, the readouts are theirs.
+func _on_ship_data(data: Dictionary) -> void:
+	if _mode == Pilot.ABOARD:
+		_show_flight_data(data)
+
+
+func _show_flight_data(data: Dictionary) -> void:
+	_top_bar.on_flight_data(data)
+	_dial.on_flight_data(data)
+	_left_panel.on_flight_data(data)
+	_comms._on_flight_data(data)
+
+
+# Out of the ship, the only controls are the arrows and the fuel gauge, which reads the jetpack.
+func _on_pilot_mode_changed(mode: String) -> void:
+	_mode = mode
+	var aboard: bool = mode == Pilot.ABOARD
+	for control: Control in [_lever, _burn, _legs_button, _stab_button, _assist_button, _rot_trans_switch]:
+		control.visible = aboard
+	_eva_button.visible = aboard and _can_leave
+	_right_panel.burn_mark = Rect2(0.0, _burn.position.y, 2.0, BURN_HEIGHT) if aboard else Rect2()
+	if not aboard and _rot_trans_switch.selected != 0:
+		_rot_trans_switch.selected = 0
+		_on_pad_mode_changed(0)
+	_show_panels()
+	_turn_guide.ship = _ship if aboard else _pilot
+	_markers.measure_from(_view.point_getter({"kind": "ship", "index": 0} if aboard else {"kind": "pilot", "index": 0}))
+	if mode == Pilot.EVA:
+		_markers.set_way_home("SHIP", 110.0, _view.point_getter({"kind": "ship", "index": 0}))
+	else:
+		_markers.clear_way_home()
+	_markers.hide_target(mode == Pilot.INSIDE)
+	_update_center_buttons()
 
 
 func _widgets_in_reach() -> Array[UiWidget]:
@@ -521,14 +621,14 @@ func _widgets_in_reach() -> Array[UiWidget]:
 		widgets.append(_comms_log)
 	if _card.visible:
 		widgets.append_array(_card.buttons())
-	widgets.append_array([_restart_button, _undock_button])
+	widgets.append_array([_restart_button, _undock_button, _action_button])
 	if _hidden:
 		widgets.append(_left_tab)
 		widgets.append(_right_tab)
 	else:
 		widgets.append(_lever)
 		widgets.append(_burn)
-		widgets.append_array([_stab_button, _legs_button, _assist_button])
+		widgets.append_array([_eva_button, _stab_button, _legs_button, _assist_button])
 		widgets.append_array([_pad_up, _pad_down, _pad_left, _pad_right, _rot_trans_switch])
 		widgets.append_array(_zoom_buttons)
 	return widgets

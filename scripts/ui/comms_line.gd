@@ -44,7 +44,9 @@ func _on_comms_area_changed(area: Rect2) -> void:
 func _on_flight_data(data: Dictionary) -> void:
 	_time = data["time"]
 	var status: String = "ORBIT STABLE"
-	if data["docked"]:
+	if data.has("status"):
+		status = data["status"]
+	elif data["docked"]:
 		status = "DOCKED"
 	elif data["landed"]:
 		status = "LANDED"

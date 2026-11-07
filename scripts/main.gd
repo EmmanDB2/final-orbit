@@ -54,7 +54,10 @@ func _ready() -> void:
 	$SurfaceProps.start_props(gravity_model, state, bodies)
 	$GroundEffects.start_effects(gravity_model, state, $Ship, $Sparks, bodies)
 	$TurnGuide.ship = $Ship
-	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide, catalog, $Hud/SafeArea/TargetMarkers, $Hud/SafeArea/CommsLine)
+	$Pilot.start_pilot(gravity_model, $Ship, $Station)
+	$Camera2D.set_pilot($Pilot)
+	catalog.set_pilot($Pilot)
+	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide, catalog, $Hud/SafeArea/TargetMarkers, $Hud/SafeArea/CommsLine, $Pilot)
 	$Ship.start_flight(gravity_model, state, PI / 2.0)
 
 

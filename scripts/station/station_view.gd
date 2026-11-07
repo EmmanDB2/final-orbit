@@ -31,14 +31,23 @@ signal message_raised(text: String)
 @export var undock_clear: float = 60.0
 ## How long between telling the pilot why a docking didn't take, in seconds.
 @export var message_seconds: float = 3.0
+## How far inside a port's outer edge its inner door is, in world units.
+@export var port_door_depth: float = 44.0
+## How long the roof takes to come off, in seconds.
+@export var roof_seconds: float = 0.3
 
 var layout: StationLayout
+## Which free port the ship's docked at, or -1.
+var docked_port: int = -1
 
 var _gravity_model: GravityModel
 var _state: ShipState
 var _design: StationDesign
 var _index: int = 0
 var _sprite := Sprite2D.new()
+var _inside_sprite := Sprite2D.new()
+var _roof_off: bool = false
+var _roof_gone: float = 0.0
 var _show_dot: bool = false
 var _ship: Node2D
 var _contact_range: float = 0.0
@@ -77,6 +86,12 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 	_sprite.texture = ImageTexture.create_from_image(layout.image)
 	_sprite.centered = false
 	_sprite.offset = -Vector2(layout.origin)
+	_inside_sprite.texture = ImageTexture.create_from_image(layout.interior_image)
+	_inside_sprite.centered = false
+	_inside_sprite.offset = -Vector2(layout.origin)
+	_inside_sprite.visible = false
+	# Under the roof, which fades off it.
+	add_child(_inside_sprite)
 	add_child(_sprite)
 
 
@@ -84,6 +99,121 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 func reach() -> float:
 	var size := Vector2(layout.image.get_size() - layout.origin)
 	return maxf(maxf(layout.origin.x, layout.origin.y), maxf(size.x, size.y)) * _design.art_pixel_size
+
+
+## Takes the roof off, or puts it back.
+func set_roof_off(off: bool) -> void:
+	_roof_off = off
+
+
+func _process(delta: float) -> void:
+	var wanted: float = 1.0 if _roof_off else 0.0
+	if _roof_gone == wanted:
+		return
+	_roof_gone = move_toward(_roof_gone, wanted, delta / roof_seconds)
+	_inside_sprite.visible = _roof_gone > 0.0 and not _show_dot
+	_sprite.modulate.a = 1.0 - _roof_gone
+
+
+## The station at a moment in time: its "x" and "y", how it's "moving", which way it's turned as an
+## "angle", and how fast that's changing as a "rate".
+func frame_at(time: float) -> Dictionary:
+	return _frame_at(time)
+
+
+## How the part of the station at this offset from its middle is moving, turning included.
+func moving_at(frame: Dictionary, offset: Vector2) -> Vector2:
+	return _moving_at(frame, offset)
+
+
+## True if this point in the world is close enough that the station counts as nearby.
+func is_nearby(x: float, y: float, time: float) -> bool:
+	var frame: Dictionary = _frame_at(time)
+	return Vector2(x - frame["x"], y - frame["y"]).length() <= nearby_reach
+
+
+## Which way a free port faces, in the station's frame.
+func port_face(port: int) -> Vector2:
+	return _ports[port]["face"]
+
+
+## Where the inner door of a free port is, in the station's frame.
+func port_inner(port: int) -> Vector2:
+	return _ports[port]["at"] - _ports[port]["face"] * port_door_depth
+
+
+## A point just outside a free port, in the station's frame.
+func port_outer(port: int, clearance: float) -> Vector2:
+	return _ports[port]["at"] + _ports[port]["face"] * clearance
+
+
+## The free port with nothing docked at it that's within reach of this point in the world, or -1.
+func free_port_near(x: float, y: float, time: float, port_reach: float) -> int:
+	var frame: Dictionary = _frame_at(time)
+	var local: Vector2 = Vector2(x - frame["x"], y - frame["y"]).rotated(-frame["angle"])
+	for i in range(_ports.size()):
+		if i != docked_port and local.distance_to(_ports[i]["at"]) <= port_reach:
+			return i
+	return -1
+
+
+## The free port whose inner door is within reach of this point in the station's frame, or -1.
+func port_near_inside(local: Vector2, door_reach: float) -> int:
+	for i in range(_ports.size()):
+		if local.distance_to(port_inner(i)) <= door_reach:
+			return i
+	return -1
+
+
+## Something to use within reach of this point in the station's frame, or nothing.
+func spot_near(local: Vector2, spot_reach: float) -> Dictionary:
+	for spot: Dictionary in layout.spots:
+		var at: Vector2 = (Vector2(spot["point"]) - Vector2(layout.origin)) * _design.art_pixel_size
+		if local.distance_to(at) <= spot_reach:
+			return spot
+	return {}
+
+
+## True if someone this big can stand at this point in the station's frame.
+func pilot_fits(local: Vector2, radius: float) -> bool:
+	if not layout.is_walkable(_on_picture(local)):
+		return false
+	for i in range(8):
+		if not layout.is_walkable(_on_picture(local + Vector2.UP.rotated(i * TAU / 8.0) * radius)):
+			return false
+	return true
+
+
+## If someone this big at this point in the world is touching the station from outside, says the
+## "normal" out of it, how far to "push" them along that, and how the station's "moving" there.
+func push_pilot_out(x: float, y: float, time: float, radius: float) -> Dictionary:
+	var frame: Dictionary = _frame_at(time)
+	var to_pilot := Vector2(x - frame["x"], y - frame["y"])
+	if to_pilot.length_squared() > _contact_range * _contact_range:
+		return {}
+	var angle: float = frame["angle"]
+	var local: Vector2 = to_pilot.rotated(-angle)
+	var touching: bool = false
+	for i in range(8):
+		if _is_solid(local + Vector2.UP.rotated(i * TAU / 8.0) * radius):
+			touching = true
+			break
+	if not touching:
+		return {}
+	var normal: Vector2 = layout.normal_at(_on_picture(local))
+	if normal == Vector2.ZERO:
+		normal = local.normalized()
+	var push: float = 1.0
+	while push < most_push:
+		var clear: bool = true
+		for i in range(8):
+			if _is_solid(local + normal * push + Vector2.UP.rotated(i * TAU / 8.0) * radius):
+				clear = false
+				break
+		if clear:
+			break
+		push += 1.0
+	return {"normal": normal.rotated(angle), "push": push, "moving": _moving_at(frame, to_pilot)}
 
 
 # The station at a moment in time: where it is, how it's moving, which way it's turned, and how
@@ -134,6 +264,7 @@ func _physics_process(delta: float) -> void:
 	if _was_docked:
 		_was_docked = false
 		_leaving_port = true
+		docked_port = -1
 	_find_guide(frame, to_ship)
 	if distance > _contact_range or not _ship.has_shape():
 		return
@@ -164,6 +295,10 @@ func _find_guide(frame: Dictionary, to_ship: Vector2) -> void:
 	var was_ready: bool = _guide_ready
 	_guide_port = -1
 	_guide_ready = false
+	if not _ship.pilot_aboard:
+		if was >= 0:
+			queue_redraw()
+		return
 	var hatch: Vector2 = _hatch_in_frame(frame, to_ship)
 	var nearest: float = guide_reach
 	for i in range(_ports.size()):
@@ -209,6 +344,7 @@ func _try_docking(frame: Dictionary, to_ship: Vector2) -> bool:
 	if off > deg_to_rad(_design.dock_angle_degrees):
 		_tell_pilot("LINE UP TO DOCK")
 		return false
+	docked_port = nearest
 	_ship.dock(_docked_point)
 	_dock_goal_heading = _heading_into(port)
 	_dock_heading = _ship.heading - frame["angle"]
@@ -289,6 +425,8 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	var show_dot: bool = pixels_per_unit <= dot_max_zoom
 	_sprite.visible = not show_dot
 	_sprite.scale = Vector2.ONE * _design.art_pixel_size * pixels_per_unit
+	_inside_sprite.scale = _sprite.scale
+	_inside_sprite.visible = _roof_gone > 0.0 and not show_dot
 	if show_dot != _show_dot:
 		_show_dot = show_dot
 		queue_redraw()

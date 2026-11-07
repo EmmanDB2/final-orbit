@@ -50,6 +50,7 @@ signal zoom_stop_changed(stop_name: String)
 ## How wide the ship and a station count as for a tap, as a radius in world units.
 @export var ship_tap_radius: float = 110.0
 @export var station_tap_radius: float = 700.0
+@export var pilot_tap_radius: float = 24.0
 ## How long the brackets around a new focus last, in seconds.
 @export var focus_mark_seconds: float = 1.0
 ## The screen height the ORBIT and SYS zooms are set for, in game pixels. On a shorter
@@ -74,6 +75,9 @@ var _previous_focus: Dictionary = {"kind": "ship", "index": 0}
 var _focus_blend: float = 1.0
 var _focus_mark: float = 0.0
 var _lit_stop: String = "?"
+var _pilot: Node2D
+# What the SHIP button brings the view back to: the ship, or the pilot while they're out of it.
+var _avatar: Dictionary = {"kind": "ship", "index": 0}
 var _center_x: float = 0.0
 var _center_y: float = 0.0
 var _roll: float = 0.0
@@ -125,7 +129,7 @@ func _on_zoom_button_pressed(button_name: String) -> void:
 		"ORBIT":
 			_target_zoom = orbit_zoom * _far_fit
 		"SHIP":
-			_set_focus({"kind": "ship", "index": 0})
+			_set_focus(_avatar)
 			_target_zoom = zoom_stops[0]
 
 
@@ -217,6 +221,8 @@ func _point_of(focus: Dictionary, ship: PackedFloat64Array) -> PackedFloat64Arra
 			return _gravity_model.get_body_position(focus["index"], _state.time)
 		"satellite":
 			return _gravity_model.get_satellite_position(focus["index"], _state.time)
+		"pilot":
+			return PackedFloat64Array([_pilot.state.x, _pilot.state.y])
 	return ship
 
 
@@ -236,6 +242,21 @@ func _closest_zoom() -> float:
 		return zoom_stops[0]
 	var fits: float = minf(_view_size.x, _view_size.y) * 0.5 * body_fill / _gravity_model.get_body_radius(_focus["index"])
 	return minf(fits, zoom_stops[0])
+
+
+## Tells the view about the pilot.
+func set_pilot(pilot: Node2D) -> void:
+	_pilot = pilot
+
+
+## When the pilot leaves the ship the view goes with them, up close. When they're back, it goes to
+## the ship. Between EVA and inside a station it only stays on them.
+func _on_pilot_mode_changed(mode: String) -> void:
+	var was_aboard: bool = _avatar["kind"] == "ship"
+	_avatar = {"kind": "ship", "index": 0} if mode == Pilot.ABOARD else {"kind": "pilot", "index": 0}
+	if was_aboard != (mode == Pilot.ABOARD):
+		_set_focus(_avatar)
+		_target_zoom = zoom_stops[0]
 
 
 ## Whatever's under a tap becomes the focus. A tap on empty space does nothing.
@@ -274,6 +295,8 @@ func thing_at(screen_position: Vector2) -> Dictionary:
 	var best: Dictionary = {}
 	var smallest: float = INF
 	var candidates: Array[Dictionary] = [{"kind": "ship", "index": 0}]
+	if _avatar["kind"] == "pilot":
+		candidates.append(_avatar)
 	for index in range(_gravity_model.get_satellite_count()):
 		candidates.append({"kind": "satellite", "index": index})
 	for index in range(_gravity_model.get_body_count()):
@@ -294,6 +317,8 @@ func _tap_radius_of(focus: Dictionary) -> float:
 			return _gravity_model.get_body_radius(focus["index"])
 		"satellite":
 			return station_tap_radius
+		"pilot":
+			return pilot_tap_radius
 	return ship_tap_radius
 
 

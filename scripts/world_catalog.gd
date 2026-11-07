@@ -11,6 +11,7 @@ const G: float = 6.674e-11
 var _gravity_model: GravityModel
 var _state: ShipState
 var _ship: Node2D
+var _pilot: Node2D
 var _bodies: Dictionary = {}
 var _stations: Dictionary = {}
 var _home_gravity: float = 1.0
@@ -22,6 +23,11 @@ func _init(gravity_model: GravityModel, state: ShipState, ship: Node2D, home_gra
 	_state = state
 	_ship = ship
 	_home_gravity = home_gravity
+
+
+## Tells it about the pilot.
+func set_pilot(pilot: Node2D) -> void:
+	_pilot = pilot
 
 
 func add_body(index: int, data: BodyData) -> void:
@@ -43,6 +49,8 @@ func callsign_of(thing: Dictionary) -> String:
 			return _bodies[thing["index"]].display_name
 		"satellite":
 			return _stations[thing["index"]]["design"].callsign
+		"pilot":
+			return "PILOT"
 	return "SHIP"
 
 
@@ -53,6 +61,8 @@ func reach_of(thing: Dictionary) -> float:
 			return _gravity_model.get_body_radius(thing["index"])
 		"satellite":
 			return _stations[thing["index"]]["reach"]
+		"pilot":
+			return 24.0
 	return 110.0
 
 
@@ -64,6 +74,8 @@ func info_of(thing: Dictionary) -> Dictionary:
 			return _body_info(thing["index"])
 		"satellite":
 			return _station_info(thing["index"])
+		"pilot":
+			return _pilot_info()
 	return _ship_info()
 
 
@@ -141,6 +153,16 @@ func _ship_info() -> Dictionary:
 		["LEGS", "DOWN" if status["legs_down"] else "UP", true],
 	]
 	return {"name": status["name"], "chip": status["chip"], "rows": rows, "note": "", "can_target": false}
+
+
+func _pilot_info() -> Dictionary:
+	var away := Vector2(_pilot.state.x - _state.x, _pilot.state.y - _state.y).length()
+	var rows: Array = [
+		["JETPACK", "%d%%" % roundi(_pilot.gas / _pilot.data.jet_seconds * 100.0), true],
+		["ΔV", "%s m/s" % _grouped(int(_pilot.gas * _pilot.data.jet_acceleration)), true],
+		["SHIP", _meters(away), true],
+	]
+	return {"name": "Pilot", "chip": "ON EVA" if _pilot.mode == Pilot.EVA else "INSIDE", "rows": rows, "note": "", "can_target": false}
 
 
 # Thousands split with commas.

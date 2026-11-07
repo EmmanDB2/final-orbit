@@ -144,6 +144,8 @@ var _show_sprite: bool = true
 var _sprite_scale: float = 1.0
 ## True while the ship is held at a station's port.
 var docked: bool = false
+## False while the pilot's out. The ship takes no orders then, though ASS and STAB keep working.
+var pilot_aboard: bool = true
 var _dock_holder: Callable
 # Says how a nearby station is moving at a point and time, if there's one close.
 var _nearby_moving: Callable
@@ -232,12 +234,12 @@ func start_flight(gravity_model: GravityModel, start_state: ShipState, start_hea
 # Godot calls this at a fixed 60 ticks per second, so the flight is the same
 # on any screen. delta is the length of one tick in seconds.
 func _physics_process(delta: float) -> void:
-	if Input.is_action_just_pressed("toggle_assist"):
+	if pilot_aboard and Input.is_action_just_pressed("toggle_assist"):
 		assist_enabled = not assist_enabled
 		assist_changed.emit(assist_enabled)
-	if Input.is_action_just_pressed("toggle_legs"):
+	if pilot_aboard and Input.is_action_just_pressed("toggle_legs"):
 		_toggle_legs()
-	if Input.is_action_just_pressed("toggle_stab"):
+	if pilot_aboard and Input.is_action_just_pressed("toggle_stab"):
 		stab_enabled = not stab_enabled
 		_stab_needs_pick = true
 		stab_changed.emit(stab_enabled)
@@ -252,7 +254,7 @@ func _physics_process(delta: float) -> void:
 			heading = rotate_toward(heading, _local_up_heading() - _rest_angle + _ground_lean, settle_speed * delta)
 	else:
 		var spin_before: float = angular_velocity
-		var turn_input: float = Input.get_axis("turn_left", "turn_right")
+		var turn_input: float = Input.get_axis("turn_left", "turn_right") if pilot_aboard else 0.0
 		if fuel <= 0.0 or _lost:
 			pass
 		elif turn_input != 0.0:
@@ -278,7 +280,7 @@ func _physics_process(delta: float) -> void:
 		heading += angular_velocity * delta
 	rotation = heading
 
-	_thrusting = Input.is_action_pressed("thrust") and throttle > 0.0 and fuel > 0.0 and _engine_share > 0.0 and not _lost
+	_thrusting = pilot_aboard and Input.is_action_pressed("thrust") and throttle > 0.0 and fuel > 0.0 and _engine_share > 0.0 and not _lost
 	if _thrusting:
 		state.velocity_x += sin(heading) * thrust_acceleration * throttle * delta
 		state.velocity_y -= cos(heading) * thrust_acceleration * throttle * delta
@@ -286,8 +288,8 @@ func _physics_process(delta: float) -> void:
 		var thrust_force: float = design.engine_force * _engine_share * throttle
 		angular_velocity -= (_thrust_x - _pivot.x) * thrust_force / _spin_resistance_now * delta
 		_burn_fuel(thrust_force / design.exhaust_velocity * delta)
-	var translate_forward: float = _usable_forward(Input.get_axis("translate_back", "translate_forward"))
-	var translate_right: float = _usable_right(Input.get_axis("translate_left", "translate_right"))
+	var translate_forward: float = _usable_forward(Input.get_axis("translate_back", "translate_forward")) if pilot_aboard else 0.0
+	var translate_right: float = _usable_right(Input.get_axis("translate_left", "translate_right")) if pilot_aboard else 0.0
 	var translating: bool = fuel > 0.0 and not _lost and (translate_forward != 0.0 or translate_right != 0.0)
 	_translate_forward = translate_forward if translating else 0.0
 	_translate_right = translate_right if translating else 0.0
@@ -357,7 +359,7 @@ func _hold_docked(delta: float) -> void:
 	world_position_changed.emit(state.x, state.y)
 	if Engine.get_physics_frames() % telemetry_interval_ticks == 0:
 		_report_telemetry()
-	if Input.is_action_just_pressed("undock"):
+	if pilot_aboard and Input.is_action_just_pressed("undock"):
 		undock()
 
 
@@ -375,9 +377,35 @@ func status() -> Dictionary:
 	}
 
 
+## Whether the pilot can step out from here. A landed ship keeps them in for now.
+func can_be_left() -> bool:
+	return not _lost and not state.is_on_surface()
+
+
+## Whether there's still somewhere to get back in.
+func can_be_boarded() -> bool:
+	return not _lost
+
+
+## Says whether the pilot's aboard.
+func set_pilot_aboard(aboard: bool) -> void:
+	pilot_aboard = aboard
+	_point_active = false
+
+
+## Where the pilot comes out, as an offset from the ship in the world.
+func eva_exit_offset() -> Vector2:
+	return _art_to_world(design.eva_exit)
+
+
+## Where the pilot gets back in, as an offset from the ship in the world.
+func cockpit_offset() -> Vector2:
+	return _art_to_world(design.cockpit_point)
+
+
 ## Whether the hatch is still there to dock with.
 func has_hatch() -> bool:
-	return not _lost and not state.is_on_surface() and body.has_pixel(design.hatch_point + Vector2(0.0, 3.0))
+	return pilot_aboard and not _lost and not state.is_on_surface() and body.has_pixel(design.hatch_point + Vector2(0.0, 3.0))
 
 
 ## Where the hatch is from the ship's center, in the ship's own frame.

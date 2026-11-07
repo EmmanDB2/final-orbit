@@ -1,6 +1,7 @@
 # target_markers.gd: a small agency-orange arrow at the screen edge for the target when it's off
 # screen, with its callsign and distance. Zoomed out far enough that it's small, the label goes beside
-# it instead. The pilot picks the target from a card, and the first station starts out as it.
+# it instead. The pilot picks the target from a card, and the first station starts out as it. While
+# the pilot's out on EVA, a cyan one points the way back to the ship.
 # From DESIGN.md, "UI" (edge markers).
 class_name TargetMarkers
 extends Node2D
@@ -15,6 +16,10 @@ extends Node2D
 var _gravity_model: GravityModel
 var _state: ShipState
 var _target: Dictionary = {}
+var _way_home: Dictionary = {}
+var _hide_target: bool = false
+# Where distances are measured from, as a way to ask for [x, y]. The ship's position until it's set.
+var _from_point: Callable
 var _clear_area := Rect2()
 var _center_x: float = 0.0
 var _center_y: float = 0.0
@@ -33,6 +38,25 @@ func start_markers(gravity_model: GravityModel, state: ShipState) -> void:
 func set_target(thing: Dictionary, callsign: String, reach: float, point_of: Callable) -> void:
 	_target = {"thing": thing, "callsign": callsign, "reach": reach, "point_of": point_of}
 	queue_redraw()
+
+
+## Measures distances from this from now on, as a way to ask for [x, y], or the ship with nothing.
+func measure_from(point_of: Callable) -> void:
+	_from_point = point_of
+
+
+## Shows the way back to something while the pilot's out, or nothing.
+func set_way_home(callsign: String, reach: float, point_of: Callable) -> void:
+	_way_home = {"callsign": callsign, "reach": reach, "point_of": point_of}
+
+
+func clear_way_home() -> void:
+	_way_home = {}
+
+
+## Hides the target's marker, for when there's no use going anywhere.
+func hide_target(hidden: bool) -> void:
+	_hide_target = hidden
 
 
 func clear_target() -> void:
@@ -66,29 +90,41 @@ func _draw() -> void:
 	# The view's center is the middle of the whole screen, wherever the panels are.
 	var middle: Vector2 = get_viewport_rect().size / 2.0 - global_position
 	var area: Rect2 = _clear_area.grow(-edge_margin)
-	if _target.is_empty():
-		return
-	var at: PackedFloat64Array = _target["point_of"].call()
+	var palette: AgencyPalette = UiStyle.palette()
+	if not _target.is_empty() and not _hide_target:
+		_draw_marker(_target, middle, area, palette.agency_orange, palette.agency_orange_light)
+	if not _way_home.is_empty():
+		_draw_marker(_way_home, middle, area, palette.telemetry_cyan, palette.telemetry_cyan)
+
+
+func _draw_marker(marker: Dictionary, middle: Vector2, area: Rect2, arrow_color: Color, label_color: Color) -> void:
+	var at: PackedFloat64Array = marker["point_of"].call()
 	var offset: Vector2 = Vector2((at[0] - _center_x) * _pixels_per_unit, (at[1] - _center_y) * _pixels_per_unit).rotated(-_roll)
-	var away := Vector2(at[0] - _state.x, at[1] - _state.y)
-	var text: String = "%s %s" % [_target["callsign"], UiStyle.distance_text(away.length())]
+	var from_x: float = _state.x
+	var from_y: float = _state.y
+	if _from_point.is_valid():
+		var from: PackedFloat64Array = _from_point.call()
+		from_x = from[0]
+		from_y = from[1]
+	var away := Vector2(at[0] - from_x, at[1] - from_y)
+	var text: String = "%s %s" % [marker["callsign"], UiStyle.distance_text(away.length())]
 	var spot: Vector2 = middle + offset
-	var reach_px: float = _target["reach"] * _pixels_per_unit
+	var reach_px: float = marker["reach"] * _pixels_per_unit
 	if area.has_point(spot):
 		if _pixels_per_unit <= label_zoom:
-			_draw_label(text, spot + Vector2(maxf(reach_px, 3.0) + 4.0, -3.0), area)
+			_draw_label(text, spot + Vector2(maxf(reach_px, 3.0) + 4.0, -3.0), area, label_color)
 		return
 	# With its middle off screen but part of it in view, the arrow would only sit on top of it.
 	if area.grow(reach_px).has_point(spot):
 		return
 	var direction: Vector2 = offset.normalized()
 	var tip: Vector2 = _edge_point(middle, direction, area)
-	_draw_arrow(tip, direction)
+	_draw_arrow(tip, direction, arrow_color)
 	# Far enough back along the arrow to clear it, however wide the words are that way.
 	var half_width: float = UiStyle.text_width(text, 1) / 2.0
 	var clearance: float = absf(direction.x) * half_width + absf(direction.y) * 4.0 + 4.0
 	var label_middle: Vector2 = tip - direction * (arrow_length + clearance)
-	_draw_label(text, label_middle - Vector2(half_width, 3.0), area)
+	_draw_label(text, label_middle - Vector2(half_width, 3.0), area, label_color)
 
 
 # Where a line from the middle of the view leaves the clear area.
@@ -106,7 +142,7 @@ func _edge_point(middle: Vector2, direction: Vector2, area: Rect2) -> Vector2:
 
 
 # A dart with a notch in its tail, so it's clear which way it points even at this size.
-func _draw_arrow(tip: Vector2, direction: Vector2) -> void:
+func _draw_arrow(tip: Vector2, direction: Vector2, color: Color) -> void:
 	var palette: AgencyPalette = UiStyle.palette()
 	var side: Vector2 = direction.orthogonal()
 	var back: Vector2 = tip - direction * arrow_length
@@ -117,10 +153,10 @@ func _draw_arrow(tip: Vector2, direction: Vector2) -> void:
 		draw_set_transform(offset)
 		draw_colored_polygon(dart, palette.hull_darkest)
 	draw_set_transform(Vector2.ZERO)
-	draw_colored_polygon(dart, palette.agency_orange)
+	draw_colored_polygon(dart, color)
 
 
-func _draw_label(text: String, top_left: Vector2, area: Rect2) -> void:
+func _draw_label(text: String, top_left: Vector2, area: Rect2, color: Color) -> void:
 	var palette: AgencyPalette = UiStyle.palette()
 	var width: float = UiStyle.text_width(text, 1)
 	var at: Vector2 = Vector2(
@@ -128,4 +164,4 @@ func _draw_label(text: String, top_left: Vector2, area: Rect2) -> void:
 			clampf(top_left.y, area.position.y, maxf(area.end.y - 7.0, area.position.y))).round()
 	for offset: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
 		UiStyle.draw_text(self, text, at + offset, palette.hull_darkest, 1)
-	UiStyle.draw_text(self, text, at, palette.agency_orange_light, 1)
+	UiStyle.draw_text(self, text, at, color, 1)

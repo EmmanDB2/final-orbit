@@ -12,6 +12,8 @@
 [ext_resource type="Script" path="res://scripts/ground_effects.gd" id="26_ground"]
 [ext_resource type="Script" path="res://scripts/station/station_view.gd" id="27_station"]
 [ext_resource type="Script" path="res://scripts/ui/target_markers.gd" id="29_markers"]
+[ext_resource type="Script" path="res://scripts/pilot.gd" id="30_pilot"]
+[ext_resource type="Resource" path="res://data/pilot.tres" id="31_pilot_data"]
 [ext_resource type="Resource" path="res://data/station_1.tres" id="28_station_data"]
 [ext_resource type="Resource" path="res://data/home_star.tres" id="7_star"]
 [ext_resource type="Script" uid="uid://drw8htpqo2g5a" path="res://scripts/main.gd" id="8_main"]
@@ -117,6 +119,10 @@ script = ExtResource("21_guide")
 
 [node name="Ship" parent="." unique_id=606153027 instance=ExtResource("1_o5qli")]
 
+[node name="Pilot" type="Node2D" parent="." unique_id=1093385228]
+script = ExtResource("30_pilot")
+data = ExtResource("31_pilot_data")
+
 [node name="Sparks" type="Node2D" parent="." unique_id=1093385227]
 script = ExtResource("24_sparks")
 
@@ -173,7 +179,10 @@ script = ExtResource("17_readout")
 [connection signal="view_changed" from="Camera2D" to="Hud/SafeArea/TargetMarkers" method="_on_view_changed"]
 [connection signal="clear_area_changed" from="Hud/SafeArea/FlightHud" to="Hud/SafeArea/TargetMarkers" method="_on_clear_area_changed"]
 [connection signal="comms_area_changed" from="Hud/SafeArea/FlightHud" to="Hud/SafeArea/CommsLine" method="_on_comms_area_changed"]
-[connection signal="flight_data_changed" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_flight_data"]
+[connection signal="view_changed" from="Camera2D" to="Pilot" method="_on_view_changed"]
+[connection signal="view_rolled" from="Camera2D" to="Pilot" method="_on_view_rolled"]
+[connection signal="mode_changed" from="Pilot" to="Camera2D" method="_on_pilot_mode_changed"]
+[connection signal="message_raised" from="Pilot" to="Hud/SafeArea/CommsLine" method="_on_ship_warning_raised"]
 [connection signal="engine_changed" from="Ship" to="GroundEffects" method="_on_ship_engine_changed"]
 [connection signal="part_detached" from="Ship" to="Debris" method="_on_ship_part_detached"]
 [connection signal="pixels_scattered" from="Ship" to="Sparks" method="_on_ship_pixels_scattered"]

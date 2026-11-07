@@ -395,3 +395,11 @@ Files: `tools/make_hud_font.gd`, `art/hud_font.png`, `scripts/ui/`, `scripts/wor
 - telling a tap, a hold, and a drag apart
 - pausing the tree while one branch keeps running
 - bitmap fonts drawn from a texture atlas
+
+## 2026-11-06: EVA and station boarding
+
+Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `data/pilot.tres`, `scripts/station/station_view.gd`, `scripts/ship.gd`, `scripts/ship/ship_design.gd`, `data/lander_design.tres`, `scripts/flight_view.gd`, `scripts/ui/flight_hud.gd`, `scripts/ui/target_markers.gd`, `scripts/ui/comms_line.gd`, `scripts/world_catalog.gd`, `scripts/feature_flags.gd`, `scripts/main.gd`, `scenes/main.tscn`, `project.godot`, `docs/DESIGN.md`
+
+- a small state machine for who the player is
+- keeping two objects on the same physics clock
+- sliding along walls by moving one axis at a time
