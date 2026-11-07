@@ -11,6 +11,16 @@ extends Resource
 ## How wide one of its art pixels is, in world units.
 @export var art_pixel_size: float = 2.0
 
+@export_group("Docking")
+## How close a ship's hatch has to get to a free port's middle to dock: along the port's line, and
+## off to the side of it, in world units.
+@export var dock_reach: float = 14.0
+@export var dock_across: float = 14.0
+## The fastest a hatch can be moving against the port and still dock, in world units per second.
+@export var dock_speed: float = 6.0
+## How far the nose can point away from the port's line and still dock, in degrees.
+@export var dock_angle_degrees: float = 10.0
+
 @export_group("Rails")
 ## Height above the surface it orbits, in world units.
 @export var orbit_altitude: float = 30000.0

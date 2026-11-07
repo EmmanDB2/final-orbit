@@ -57,6 +57,7 @@ var _left_tab: SideTab
 var _right_tab: SideTab
 var _zoom_buttons: Array[UiButton] = []
 var _restart_button: UiButton
+var _undock_button: UiButton
 var _legs_button: UiButton
 
 var _ship: Node2D
@@ -91,6 +92,7 @@ func connect_flight(ship: Node2D, view: Node, turn_guide: Node) -> void:
 	ship.assist_changed.connect(_on_assist_changed)
 	ship.stab_changed.connect(_on_stab_changed)
 	ship.stranded_changed.connect(_on_stranded_changed)
+	ship.docked_changed.connect(_on_docked_changed)
 	ship.legs_changed.connect(_on_legs_changed)
 	_on_legs_changed(ship.legs_down, false)
 	_lever.throttle_changed.connect(ship._on_throttle_changed)
@@ -113,6 +115,10 @@ func _build() -> void:
 	_restart_button.visible = false
 	_restart_button.tapped.connect(func() -> void: get_tree().reload_current_scene())
 	add_child(_restart_button)
+	_undock_button = UiButton.new().setup("UNDOCK", palette.telemetry_green)
+	_undock_button.visible = false
+	_undock_button.tapped.connect(_tap_action.bind(&"undock"))
+	add_child(_undock_button)
 
 	(_left_panel as PlatePanel).shows_fuel = true
 	_lever = ThrottleLever.new()
@@ -184,6 +190,8 @@ func _layout() -> void:
 
 	_restart_button.size = Vector2(RESTART_WIDTH, BUTTON_HEIGHT)
 	_restart_button.position = Vector2(floorf((view.x - RESTART_WIDTH) / 2.0), BAR_HEIGHT + RESTART_DROP)
+	_undock_button.size = _restart_button.size
+	_undock_button.position = _restart_button.position
 
 	_left_panel.size = Vector2(LEFT_WIDTH, body_height)
 	_lever.position = Vector2(6.0, 10.0)
@@ -381,8 +389,12 @@ func _on_stranded_changed(stranded: bool) -> void:
 	_restart_button.visible = stranded
 
 
+func _on_docked_changed(is_docked: bool) -> void:
+	_undock_button.visible = is_docked
+
+
 func _widgets_in_reach() -> Array[UiWidget]:
-	var widgets: Array[UiWidget] = [_restart_button]
+	var widgets: Array[UiWidget] = [_restart_button, _undock_button]
 	if _hidden:
 		widgets.append(_left_tab)
 		widgets.append(_right_tab)

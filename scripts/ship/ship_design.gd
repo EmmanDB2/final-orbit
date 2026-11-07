@@ -10,6 +10,10 @@ extends Resource
 @export var materials: Array[MaterialData] = []
 ## Main engine thrust, in newtons, with one world unit counting as one meter.
 @export var engine_force: float = 0.0
+## Where the docking hatch is on the art, from the middle of the grid: the ship's nose.
+@export var hatch_point: Vector2 = Vector2.ZERO
+## How fast the ship drifts backward off a station when it undocks, in world units per second.
+@export var undock_speed: float = 3.0
 ## How much of its speed the ship keeps bouncing off something solid in space, from 0 to 1.
 @export var contact_bounce: float = 0.25
 ## How long the engine's flame gets flat out, in art pixels.

@@ -76,6 +76,8 @@ signal warning_raised(text: String)
 ## Emitted when the cockpit is lost, and the ship with it.
 signal ship_lost
 ## Emitted when the ship can or can't fly any more, from damage or an empty tank.
+## Emitted when the ship docks at a station or leaves it.
+signal docked_changed(is_docked: bool)
 signal stranded_changed(stranded: bool)
 ## Emitted several times a second with what the instruments show: altitude, speed,
 ## periapsis, apoapsis, time, heading, prograde, and spin.
@@ -140,6 +142,11 @@ var hull_temperature: float = 0.0
 
 var _show_sprite: bool = true
 var _sprite_scale: float = 1.0
+## True while the ship is held at a station's port.
+var docked: bool = false
+var _dock_holder: Callable
+var _has_nearby_frame: bool = false
+var _nearby_frame := Vector2.ZERO
 var _flame_at: Vector2 = Vector2.ZERO
 var _flame_room: float = 100000.0
 var _air_density: float = 0.0
@@ -234,6 +241,9 @@ func _physics_process(delta: float) -> void:
 		stab_enabled = not stab_enabled
 		_stab_needs_pick = true
 		stab_changed.emit(stab_enabled)
+	if docked:
+		_hold_docked(delta)
+		return
 
 	_spin_firing = 0.0
 	if state.is_on_surface():
@@ -321,6 +331,82 @@ func _physics_process(delta: float) -> void:
 
 	if Engine.get_physics_frames() % telemetry_interval_ticks == 0:
 		_report_telemetry()
+
+
+# Held at the port: the station says where the ship is, and nothing else moves it.
+func _hold_docked(delta: float) -> void:
+	state.time += delta
+	var hold: PackedFloat64Array = _dock_holder.call(state.time)
+	state.x = hold[0]
+	state.y = hold[1]
+	state.velocity_x = hold[2]
+	state.velocity_y = hold[3]
+	heading = hold[4]
+	rotation = heading
+	angular_velocity = hold[5]
+	_spin_firing = 0.0
+	_translate_forward = 0.0
+	_translate_right = 0.0
+	_thrusting = false
+	_move_legs(delta)
+	_check_stranded()
+	_show_damage()
+	if _engine_reported != 0.0:
+		_engine_reported = 0.0
+		engine_changed.emit(0.0)
+	world_position_changed.emit(state.x, state.y)
+	if Engine.get_physics_frames() % telemetry_interval_ticks == 0:
+		_report_telemetry()
+	if Input.is_action_just_pressed("undock"):
+		undock()
+
+
+## Whether the hatch is still there to dock with.
+func has_hatch() -> bool:
+	return not _lost and not state.is_on_surface() and body.has_pixel(design.hatch_point + Vector2(0.0, 3.0))
+
+
+## Where the hatch is from the ship's center, in the ship's own frame.
+func hatch_from_center() -> Vector2:
+	return design.hatch_point - _pivot
+
+
+## Takes the ship onto a station's port. The holder is called each tick with the time, and says
+## where the ship is: [x, y, velocity x, velocity y, heading, spin]. A station fills the tanks and
+## repairs the hull, for free for now.
+func dock(holder: Callable) -> void:
+	docked = true
+	_dock_holder = holder
+	repair()
+	fuel = body.fuel_capacity
+	hull_temperature = 0.0
+	heat_share = 0.0
+	_update_performance()
+	docked_changed.emit(true)
+	orbit_changed.emit()
+
+
+## Lets go of the station, drifting gently backward off the port.
+func undock() -> void:
+	if not docked:
+		return
+	docked = false
+	var backward: Vector2 = Vector2.DOWN.rotated(heading) * design.undock_speed
+	state.velocity_x += backward.x
+	state.velocity_y += backward.y
+	docked_changed.emit(false)
+	orbit_changed.emit()
+
+
+## Says how a nearby station is moving where the ship is, so the pilot's speed and direction markers
+## read against it.
+func set_nearby_frame(moving_x: float, moving_y: float) -> void:
+	_has_nearby_frame = true
+	_nearby_frame = Vector2(moving_x, moving_y)
+
+
+func clear_nearby_frame() -> void:
+	_has_nearby_frame = false
 
 
 # Runs once per rendered frame. Cosmetic only, so it doesn't touch the flight.
@@ -920,12 +1006,13 @@ func _local_up_heading() -> float:
 
 func _report_telemetry() -> void:
 	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
-	var relative_x: float = state.velocity_x - ground[0]
-	var relative_y: float = state.velocity_y - ground[1]
+	var relative_x: float = state.velocity_x - (_nearby_frame.x if _has_nearby_frame else ground[0])
+	var relative_y: float = state.velocity_y - (_nearby_frame.y if _has_nearby_frame else ground[1])
 	var apsides: PackedFloat64Array = _gravity_model.get_orbit_apsides(state)
 	flight_data_changed.emit({
 		"altitude": _gravity_model.get_altitude(state.x, state.y, state.time) - _rest_height,
 		"speed": sqrt(relative_x * relative_x + relative_y * relative_y),
+		"against_station": _has_nearby_frame,
 		"periapsis": apsides[0],
 		"apoapsis": apsides[1],
 		"time": state.time,

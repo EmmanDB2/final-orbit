@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Docking built, with the ship's nose as the hatch, free refueling and repair, and a speed readout against the station. The station now turns with its orbit, replacing holding still \[Leaning\] |
 | 2026-11-06 | Station made solid: the ship bounces off it, and takes damage above its safe speed \[Leaning\] |
 | 2026-11-06 | First edge marker, for the station, with its label beside the dot when zoomed out \[Leaning\] |
 | 2026-11-06 | Home Station in orbit: on rails with no gravity, holding still, with its room layout and start position \[Leaning\] |
@@ -332,8 +333,11 @@ Terrain and biomes per body: \[Leaning\]
 - Off-screen, nothing simulates except the rails math.
 - Stations and colonies are hubs for gigs, fuel, and repairs; NPC traffic is ambiance, not a simulated economy.
 - The first station is a hub with four ports and five rooms that bolt on port to port: comms, crew hab, EVA hab, suit room, and ship refueling. Each room has an outside and an inside sprite on the same canvas, lined up on its ports; the insides wait for Tier 3. \[Leaning\]
-- It rides rails around the home planet like a moon does, but with no gravity of its own, at the height the ship starts, 2,600 m ahead of it. It holds still rather than turning, so its ports always face the same way. Comms is on top, crew hab on the right, suit room then EVA hab on the left, and ship refueling on the bottom, leaving four ports free. \[Leaning\]
+- It rides rails around the home planet like a moon does, but with no gravity of its own, at the height the ship starts, 2,600 m ahead of it. It turns with its orbit so its bottom always faces the planet, the way a real station can be held, so two ships on the same orbit nearby stay put against it. Comms is on top, crew hab on the right, suit room then EVA hab on the left, and ship refueling on the bottom, leaving four ports free. \[Leaning\]
 - Its pixels are solid. The ship bounces off, keeping a quarter of its speed, and crushes on the side that hit above its safe speed of 50 m/s, the same as hitting the ground. The ship's outline is what touches, and the station can't be damaged for now. \[Leaning\]
+- Docking: the ship's nose is the hatch, and it docks at any free port. The hatch has to come within 14 m of the port's middle, slower than 6 m/s against it, with the nose within 10 degrees of straight in. A dashed line shows from the nearest free port once the hatch is within 700 m, amber until those are all met and then green. Otherwise it's only a bump, and the pilot is told TOO FAST TO DOCK or LINE UP TO DOCK. A ship with its nose gone can't dock. \[Leaning\]
+- Docking draws the ship the last bit into place, then fills the tanks and repairs the hull, for free until money exists. UNDOCK, or U on the Mac, lets it drift off backward at 3 m/s. \[Leaning\]
+- Within 2,000 m of a station, the speed readout turns to REL and it and the dial's markers read against the station, including its turning. \[Leaning\]
 
 ## Hazards
 

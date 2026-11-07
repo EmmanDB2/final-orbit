@@ -56,6 +56,12 @@ func _on_ship_warning_raised(text: String) -> void:
 	_show_message(text, warning_color)
 
 
+func _on_ship_docked_changed(is_docked: bool) -> void:
+	if is_docked:
+		_show_message("DOCKED", good_color)
+		_show_message("REFUELED AND REPAIRED", good_color)
+
+
 func _on_ship_lost() -> void:
 	_show_message("SHIP LOST", bad_color, true)
 

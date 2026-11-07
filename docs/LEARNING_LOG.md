@@ -363,3 +363,11 @@ Files: `scripts/station/station_view.gd`, `scripts/station/station_layout.gd`, `
 - collision against a pixel mask
 - a contact impulse with spin
 - physics priority to order systems within a tick
+
+## 2026-11-06: Docking
+
+Files: `scripts/station/station_view.gd`, `scripts/station/station_design.gd`, `scripts/ship.gd`, `scripts/ship/ship_design.gd`, `data/lander_design.tres`, `scripts/ui/flight_hud.gd`, `scripts/ui/top_bar.gd`, `scripts/telemetry_readout.gd`, `scenes/main.tscn`, `project.godot`, `docs/DESIGN.md`
+
+- moving between world and rotating frames
+- velocity of a point on something turning
+- handing a Callable to another system

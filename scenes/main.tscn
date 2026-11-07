@@ -171,6 +171,8 @@ script = ExtResource("17_readout")
 [connection signal="view_changed" from="Camera2D" to="Sparks" method="_on_view_changed"]
 [connection signal="warning_raised" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_warning_raised"]
 [connection signal="ship_lost" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_lost"]
+[connection signal="docked_changed" from="Ship" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_docked_changed"]
+[connection signal="message_raised" from="Station" to="Hud/SafeArea/TelemetryReadout" method="_on_ship_warning_raised"]
 [connection signal="orbit_changed" from="Ship" to="Trajectory" method="_on_ship_orbit_changed"]
 [connection signal="world_position_changed" from="Ship" to="Trajectory" method="_on_ship_world_position_changed"]
 [connection signal="screen_fitted" from="ScreenFit" to="Hud/SafeArea" method="_on_screen_fitted"]

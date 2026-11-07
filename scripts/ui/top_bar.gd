@@ -16,7 +16,7 @@ func on_flight_data(data: Dictionary) -> void:
 	var total: int = int(data["time"])
 	var cells: Array = [
 		["ALT", _distance(maxf(data["altitude"], 0.0))],
-		["SPD", "%d" % roundi(data["speed"])],
+		["REL" if data["against_station"] else "SPD", "%d" % roundi(data["speed"])],
 		["AP", "ESC" if data["apoapsis"] < 0.0 else _distance(data["apoapsis"])],
 		["PE", "HIT" if data["periapsis"] < 0.0 else _distance(data["periapsis"])],
 		["DV", "%d" % roundi(data["delta_v"])],
