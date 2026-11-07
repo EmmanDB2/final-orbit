@@ -5,6 +5,13 @@ extends Resource
 
 @export var display_name: String = ""
 @export var texture: Texture2D
+## The same room with its roof off, on the same canvas.
+@export var interior_texture: Texture2D
+## Where someone can go inside, as rectangles on the sprite: corridors, floors, and doorways.
+@export var walkable: Array[Rect2i] = []
+## Things to use inside: where each one is on the sprite, and what kind it is.
+@export var spot_points: PackedVector2Array = PackedVector2Array()
+@export var spot_kinds: PackedStringArray = PackedStringArray()
 ## The pixel at the outer edge of each port on the sprite, and which way each one faces.
 @export var port_points: PackedVector2Array = PackedVector2Array()
 @export var port_faces: PackedVector2Array = PackedVector2Array()

@@ -6,6 +6,10 @@ extends RefCounted
 
 ## All the rooms as one picture.
 var image: Image
+## The same with the roof off.
+var interior_image: Image
+## Things to use inside, each with its "point" on the picture and its "kind".
+var spots: Array[Dictionary] = []
 ## Where the first room's middle is on the picture. It's the point that rides the rails.
 var origin: Vector2i = Vector2i.ZERO
 ## The ports with nothing on them, each with its outer "point" on the picture and its "face".
@@ -13,6 +17,7 @@ var free_ports: Array[Dictionary] = []
 
 var _size := Vector2i.ZERO
 var _solid := PackedByteArray()
+var _walkable := PackedByteArray()
 
 
 ## True if there's a solid pixel at this point on the picture.
@@ -33,6 +38,15 @@ func normal_at(point: Vector2, reach: int = 8) -> Vector2:
 			if dx * dx + dy * dy <= reach * reach and not is_solid(point + Vector2(dx, dy)):
 				total += Vector2(dx, dy)
 	return total.normalized()
+
+
+## True if someone can stand at this point on the picture.
+func is_walkable(point: Vector2) -> bool:
+	var x: int = floori(point.x)
+	var y: int = floori(point.y)
+	if x < 0 or y < 0 or x >= _size.x or y >= _size.y:
+		return false
+	return _walkable[y * _size.x + x] == 1
 
 
 static func build(design: StationDesign) -> StationLayout:
@@ -70,6 +84,8 @@ static func build(design: StationDesign) -> StationLayout:
 
 	layout.origin = -low
 	layout.image = Image.create(high.x - low.x, high.y - low.y, false, Image.FORMAT_RGBA8)
+	layout.interior_image = Image.create(high.x - low.x, high.y - low.y, false, Image.FORMAT_RGBA8)
+	layout._walkable.resize((high.x - low.x) * (high.y - low.y))
 	for i in range(placed.size()):
 		var entry: Dictionary = placed[i]
 		var picture: Image = entry["picture"]
@@ -82,6 +98,27 @@ static func build(design: StationDesign) -> StationLayout:
 				picture.rotate_90(COUNTERCLOCKWISE)
 		layout.image.blend_rect(picture, Rect2i(Vector2i.ZERO, entry["turned_size"]), entry["at"] - low)
 		var room: StationRoom = design.rooms[i]
+		var inside: Image = room.interior_texture.get_image()
+		inside.convert(Image.FORMAT_RGBA8)
+		match entry["turns"]:
+			1:
+				inside.rotate_90(CLOCKWISE)
+			2:
+				inside.rotate_180()
+			3:
+				inside.rotate_90(COUNTERCLOCKWISE)
+		layout.interior_image.blend_rect(inside, Rect2i(Vector2i.ZERO, entry["turned_size"]), entry["at"] - low)
+		var offset: Vector2i = entry["at"] - low
+		for rect: Rect2i in room.walkable:
+			for y in range(rect.position.y, rect.end.y):
+				for x in range(rect.position.x, rect.end.x):
+					var cell: Vector2i = offset + _turned_point(Vector2(x, y), entry["size"], entry["turns"])
+					layout._walkable[cell.y * (high.x - low.x) + cell.x] = 1
+		for s in range(room.spot_points.size()):
+			layout.spots.append({
+				"point": offset + _turned_point(room.spot_points[s], entry["size"], entry["turns"]),
+				"kind": room.spot_kinds[s],
+			})
 		for port in range(room.port_points.size()):
 			if not used_ports.has(Vector2i(i, port)):
 				layout.free_ports.append({

@@ -9,6 +9,7 @@ var _failures: int = 0
 func _initialize() -> void:
 	_test_ports_are_on_the_art()
 	_test_rooms_fit()
+	_test_walking()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -88,3 +89,56 @@ func _test_rooms_fit() -> void:
 		total += 1 if alpha[i * 4 + 3] > 0 else 0
 	_check("the whole station is one piece", reached, total, 0.0)
 	print("station picture %d x %d art px, origin %s, solid %d px" % [w, h, layout.origin, total])
+
+
+# Walks the station at the pilot's size, from the hub, to check every hatch and room connects.
+func _test_walking() -> void:
+	var design: StationDesign = load("res://data/station_1.tres")
+	var layout: StationLayout = StationLayout.build(design)
+	var size: Vector2i = layout.image.get_size()
+	# The pilot's reach, in art pixels: 12 world units at 2 units each.
+	var reach: float = 6.0
+	var fits := func(cell: Vector2i) -> bool:
+		for i in range(8):
+			var point: Vector2 = Vector2(cell) + Vector2(0.5, 0.5) + Vector2.UP.rotated(i * TAU / 8.0) * reach
+			if not layout.is_walkable(point):
+				return false
+		return layout.is_walkable(Vector2(cell) + Vector2(0.5, 0.5))
+	var seen := PackedByteArray()
+	seen.resize(size.x * size.y)
+	var stack: Array[Vector2i] = [layout.origin]
+	_check("the hub's middle can be stood on", 1.0 if fits.call(layout.origin) else 0.0, 1.0, 0.0)
+	seen[layout.origin.y * size.x + layout.origin.x] = 1
+	var reached: int = 0
+	while not stack.is_empty():
+		var cell: Vector2i = stack.pop_back()
+		reached += 1
+		for way: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var next: Vector2i = cell + way
+			if next.x < 0 or next.y < 0 or next.x >= size.x or next.y >= size.y:
+				continue
+			if seen[next.y * size.x + next.x] == 0 and fits.call(next):
+				seen[next.y * size.x + next.x] = 1
+				stack.append(next)
+	print("the pilot can stand in %d art pixels" % reached)
+	# Each free port's inner end can be reached, 20 art pixels back from its edge.
+	for port: Dictionary in layout.free_ports:
+		var inner: Vector2i = port["point"] - port["face"] * 20
+		_check("a free port can be walked to", seen[inner.y * size.x + inner.x], 1.0, 0.0)
+	# Each thing to use can be reached from within arm's reach of it.
+	_check("the station has a gig board", layout.spots.size(), 1.0, 0.0)
+	for spot: Dictionary in layout.spots:
+		var near: int = 0
+		for dy in range(-16, 17):
+			for dx in range(-16, 17):
+				var cell: Vector2i = spot["point"] + Vector2i(dx, dy)
+				if seen[cell.y * size.x + cell.x] == 1:
+					near += 1
+		_check(spot["kind"] + " can be walked up to", 1.0 if near > 0 else 0.0, 1.0, 0.0)
+	# Anywhere the pilot fits, the pilot can get to.
+	var cut_off: int = 0
+	for y in range(size.y):
+		for x in range(size.x):
+			if layout.is_walkable(Vector2(x, y) + Vector2(0.5, 0.5)) and seen[y * size.x + x] == 0 and fits.call(Vector2i(x, y)):
+				cut_off += 1
+	_check("no floor is cut off from the rest", cut_off, 0.0, 0.0)
