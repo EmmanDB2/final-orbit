@@ -13,6 +13,8 @@ signal zoom_button_pressed(button_name: String)
 signal zoom_scaled(factor: float)
 signal point_changed(screen_position: Vector2)
 signal point_released
+## Emitted when open space is tapped, not dragged or held.
+signal space_tapped(screen_position: Vector2)
 ## Emitted when the panels move, with the part of the view they leave clear.
 signal clear_area_changed(area: Rect2)
 
@@ -31,6 +33,8 @@ const RESTART_DROP: float = 84.0
 const STRIP: float = 6.0
 ## How far a finger moves before a touch on open space counts as a drag.
 const DRAG_START: float = 6.0
+## How long a finger can stay down and still count as a tap, in milliseconds.
+const TAP_LONGEST: int = 400
 
 ## Seconds with no input before the side panels hide.
 @export var auto_hide_seconds: float = 6.0
@@ -58,6 +62,8 @@ var _right_tab: SideTab
 var _zoom_buttons: Array[UiButton] = []
 var _restart_button: UiButton
 var _undock_button: UiButton
+var _tap_possible: bool = false
+var _tap_started: int = 0
 var _legs_button: UiButton
 
 var _ship: Node2D
@@ -99,6 +105,7 @@ func connect_flight(ship: Node2D, view: Node, turn_guide: Node) -> void:
 	zoom_button_pressed.connect(view._on_zoom_button_pressed)
 	zoom_scaled.connect(view._on_zoom_scaled)
 	view.view_rolled.connect(_dial.on_view_rolled)
+	space_tapped.connect(view._on_space_tapped)
 	point_changed.connect(turn_guide._on_point_changed)
 	point_released.connect(turn_guide._on_point_released)
 	_on_assist_changed(ship.assist_enabled)
@@ -427,7 +434,10 @@ func _on_finger_down(index: int, position: Vector2) -> void:
 	_space_fingers[index] = position
 	if _space_fingers.size() == 1:
 		_point_start = position
+		_tap_possible = true
+		_tap_started = Time.get_ticks_msec()
 	elif _space_fingers.size() == 2:
+		_tap_possible = false
 		_stop_pointing()
 		_pinch_gap = _current_gap()
 
@@ -442,6 +452,7 @@ func _on_finger_moved(index: int, position: Vector2) -> void:
 	if _space_fingers.size() == 1:
 		if _pointing or position.distance_to(_point_start) >= DRAG_START:
 			_pointing = true
+			_tap_possible = false
 			point_changed.emit(position)
 	elif _space_fingers.size() == 2:
 		var gap: float = _current_gap()
@@ -459,6 +470,9 @@ func _on_finger_up(index: int) -> void:
 		_space_fingers.erase(index)
 		if _space_fingers.is_empty():
 			_stop_pointing()
+			if _tap_possible and Time.get_ticks_msec() - _tap_started <= TAP_LONGEST:
+				space_tapped.emit(_point_start)
+			_tap_possible = false
 
 
 func _current_gap() -> float:

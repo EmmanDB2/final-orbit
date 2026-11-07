@@ -80,6 +80,12 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 	add_child(_sprite)
 
 
+## How far the station reaches from its middle, in world units.
+func reach() -> float:
+	var size := Vector2(layout.image.get_size() - layout.origin)
+	return maxf(maxf(layout.origin.x, layout.origin.y), maxf(size.x, size.y)) * _design.art_pixel_size
+
+
 # The station at a moment in time: where it is, how it's moving, which way it's turned, and how
 # fast that's changing.
 func _frame_at(time: float) -> Dictionary:
@@ -99,6 +105,12 @@ func _frame_at(time: float) -> Dictionary:
 	}
 
 
+# How the station's frame is moving at a point and time.
+func _moving_near(x: float, y: float, time: float) -> Vector2:
+	var frame: Dictionary = _frame_at(time)
+	return _moving_at(frame, Vector2(x - frame["x"], y - frame["y"]))
+
+
 # How the part of the station at this offset from its middle is moving, turning included.
 func _moving_at(frame: Dictionary, offset: Vector2) -> Vector2:
 	return frame["moving"] + Vector2(-offset.y, offset.x) * frame["rate"]
@@ -111,11 +123,7 @@ func _physics_process(delta: float) -> void:
 	var to_ship := Vector2(_state.x - frame["x"], _state.y - frame["y"])
 	var distance: float = to_ship.length()
 
-	if distance <= nearby_reach:
-		var moving_here: Vector2 = _moving_at(frame, to_ship)
-		_ship.set_nearby_frame(moving_here.x, moving_here.y)
-	else:
-		_ship.clear_nearby_frame()
+	_ship.set_nearby_moving(_moving_near if distance <= nearby_reach else Callable())
 
 	if _ship.docked:
 		_dock_place = _dock_place.move_toward(_dock_goal, pull_speed * delta)

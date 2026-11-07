@@ -28,9 +28,10 @@ func start_markers(gravity_model: GravityModel, state: ShipState) -> void:
 	_state = state
 
 
-## Adds a marker for a satellite, given its number in the gravity model.
-func add_satellite_target(callsign: String, index: int) -> void:
-	_targets.append({"callsign": callsign, "index": index})
+## Adds a marker for a satellite, given its number in the gravity model and how far it reaches from
+## its middle in world units.
+func add_satellite_target(callsign: String, index: int, reach: float) -> void:
+	_targets.append({"callsign": callsign, "index": index, "reach": reach})
 
 
 func _on_clear_area_changed(area: Rect2) -> void:
@@ -64,6 +65,9 @@ func _draw() -> void:
 		if area.has_point(spot):
 			if _pixels_per_unit <= label_zoom:
 				_draw_label(text, spot + Vector2(7.0, -3.0), area)
+			continue
+		# With its middle off screen but part of it in view, the arrow would only sit on top of it.
+		if area.grow(target["reach"] * _pixels_per_unit).has_point(spot):
 			continue
 		var direction: Vector2 = offset.normalized()
 		var tip: Vector2 = _edge_point(middle, direction, area)

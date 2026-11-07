@@ -1,11 +1,11 @@
 # flight_view.gd: decides where the camera looks and how far out it is.
 # From DESIGN.md, "Camera, zoom, and landing" and "UI".
 #
-# Zoom moves smoothly and has no outer limit. The stops are where the buttons and keys
-# land. What stays centered depends only on the zoom, so the view can't jump: the ship up
-# close, the body you're orbiting at the ORBIT zoom, its planet at the SYS zoom, and the
-# star at the whole system zoom. In between, one slides steadily into the next. Out in
-# deep space the ship stands in for the body and planet, since the star's too far to fit.
+# Whatever was tapped last is the focus, and it stays in the middle of the screen at every zoom: the
+# ship to start with, or a station, moon, planet, or the star. Zoom moves smoothly and has no outer
+# limit, and the stops are where the buttons and keys land. A planet can't be zoomed into past the
+# point where it fills the screen, since its middle has nothing to see. Only out at the whole system
+# zooms does the middle slide to the star, so the whole system fits whatever's in focus.
 #
 # Zooming changes what gets drawn, never the pixel size, so the Camera2D's own zoom stays
 # at 1 and its position stays at 0,0. Instead, this signals the current view and each
@@ -14,7 +14,8 @@
 # From the ORBIT zoom in, the view also turns so that down on screen is down: toward the body
 # below, or a nearby station's bottom, which is what keeps the ground and stations flat. Anything
 # on the world's own canvas turns with the Camera2D. The background draws in screen space, so it's
-# told the angle. Farther out than ORBIT, nothing is down, and it settles back to a fixed map.
+# told the angle. Farther out than ORBIT, or with a body in focus, nothing is down, and it settles
+# back to a fixed map.
 extends Camera2D
 
 ## Emitted every physics tick with the world point at the middle of the screen, and
@@ -34,14 +35,21 @@ signal view_rolled(angle: float)
 @export var system_zoom: float = 1.0 / 2400.0
 ## How much of the screen's height the widest planet orbit fills at the whole system zoom.
 @export var whole_system_fill: float = 0.8
-## The ship is fully centered at this zoom and closer.
-@export var ship_focus_zoom: float = 1.0 / 128.0
 ## How quickly zoom closes in on its target. Higher is snappier.
 @export var zoom_speed: float = 10.0
 ## The most the zoom can change per second, as a natural log, so a long button zoom glides.
 @export var zoom_max_rate: float = 6.0
-## How long the view takes to slide to a new body when the dominant body changes, in seconds.
+## How long the view takes to slide to a new focus, in seconds.
 @export var focus_blend_seconds: float = 0.5
+## How close a tap has to land to something small on screen to pick it, in pixels.
+@export var tap_reach: float = 18.0
+## How much of the screen's height a body in focus can fill at the closest.
+@export var body_fill: float = 0.9
+## How wide the ship and a station count as for a tap, as a radius in world units.
+@export var ship_tap_radius: float = 110.0
+@export var station_tap_radius: float = 700.0
+## How long the brackets around a new focus last, in seconds.
+@export var focus_mark_seconds: float = 1.0
 ## The screen height the ORBIT and SYS zooms are set for, in game pixels. On a shorter
 ## screen they zoom out to match, so the same orbits still fit.
 @export var design_height: float = 616.0
@@ -56,9 +64,15 @@ var _far_fit: float = 1.0
 var _whole_system_zoom: float = 1.0 / 160000.0
 var _zoom: float = 1.0 / 800.0
 var _target_zoom: float = 1.0 / 800.0
+var _view_size := Vector2(816.0, 616.0)
 var _body: int = 0
-var _previous_body: int = 0
-var _body_blend: float = 1.0
+# What's in focus: a "kind" of ship, body, or satellite, and for the last two its "index".
+var _focus: Dictionary = {"kind": "ship", "index": 0}
+var _previous_focus: Dictionary = {"kind": "ship", "index": 0}
+var _focus_blend: float = 1.0
+var _focus_mark: float = 0.0
+var _center_x: float = 0.0
+var _center_y: float = 0.0
 var _roll: float = 0.0
 var _roll_started: bool = false
 
@@ -92,9 +106,11 @@ func get_target_zoom() -> float:
 
 func _on_screen_fitted(view_size: Vector2, _inset_top_left: Vector2, _inset_bottom_right: Vector2) -> void:
 	_far_fit = minf(view_size.y / design_height, 1.0)
+	_view_size = view_size
 
 
-## Goes to SYS, ORBIT, or SHIP.
+## Goes to SYS, ORBIT, or SHIP. SHIP also brings the focus back to the ship, since it's the way home
+## from anything else, and a body in focus couldn't be zoomed that close anyway.
 func _on_zoom_button_pressed(button_name: String) -> void:
 	match button_name:
 		"SYS":
@@ -104,13 +120,15 @@ func _on_zoom_button_pressed(button_name: String) -> void:
 		"ORBIT":
 			_target_zoom = orbit_zoom * _far_fit
 		"SHIP":
+			_set_focus({"kind": "ship", "index": 0})
 			_target_zoom = zoom_stops[0]
 
 
 ## Scales the zoom directly, for a pinch. Above 1 zooms in.
 func _on_zoom_scaled(factor: float) -> void:
-	_target_zoom = minf(_target_zoom * factor, zoom_stops[0])
-	_zoom = minf(_zoom * factor, zoom_stops[0])
+	var closest: float = _closest_zoom()
+	_target_zoom = minf(_target_zoom * factor, closest)
+	_zoom = minf(_zoom * factor, closest)
 
 
 func _on_ship_world_position_changed(x: float, y: float) -> void:
@@ -119,6 +137,8 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 	if Input.is_action_just_pressed("zoom_out"):
 		_target_zoom = _next_stop_out()
 
+	var closest: float = _closest_zoom()
+	_target_zoom = minf(_target_zoom, closest)
 	var delta: float = get_physics_process_delta_time()
 	var log_zoom: float = log(_zoom)
 	var eased: float = lerpf(log_zoom, log(_target_zoom), 1.0 - exp(-zoom_speed * delta))
@@ -126,40 +146,30 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 	if absf(_zoom / _target_zoom - 1.0) < 0.002:
 		_zoom = _target_zoom
 
-	var body: int = _gravity_model.get_dominant_body(x, y, _state.time)
-	if body != _body:
-		_previous_body = _body
-		_body = body
-		_body_blend = 0.0
-	_body_blend = minf(_body_blend + delta / focus_blend_seconds, 1.0)
+	_body = _gravity_model.get_dominant_body(x, y, _state.time)
+	_focus_blend = minf(_focus_blend + delta / focus_blend_seconds, 1.0)
+	if _focus_mark > 0.0:
+		_focus_mark = maxf(_focus_mark - delta / focus_mark_seconds, 0.0)
+		queue_redraw()
 
-	var share: float = smoothstep(0.0, 1.0, _body_blend)
 	var ship := PackedFloat64Array([x, y])
-	var orbit_center: PackedFloat64Array = _mix(_body_center(_previous_body, ship), _body_center(_body, ship), share)
-	var planet_center: PackedFloat64Array = _mix(
-			_body_center(_gravity_model.get_local_root(_previous_body), ship),
-			_body_center(_gravity_model.get_local_root(_body), ship), share)
-
-	var orbit: float = orbit_zoom * _far_fit
+	var center: PackedFloat64Array = _mix(_point_of(_previous_focus, ship), _point_of(_focus, ship), smoothstep(0.0, 1.0, _focus_blend))
 	var system: float = system_zoom * _far_fit
 	var whole: float = _whole_system_zoom * _far_fit
-	var center: PackedFloat64Array = ship
-	if _zoom >= ship_focus_zoom:
-		center = ship
-	elif _zoom >= orbit:
-		center = _mix(ship, orbit_center, _share_left(_zoom, orbit, ship_focus_zoom))
-	elif _zoom >= system:
-		center = _mix(orbit_center, planet_center, _share_left(_zoom, system, orbit))
-	elif _zoom >= whole:
-		center = _mix(planet_center, PackedFloat64Array([0.0, 0.0]), _share_left(_zoom, whole, system))
-	else:
+	if _zoom < whole:
 		center = PackedFloat64Array([0.0, 0.0])
+	elif _zoom < system:
+		center = _mix(center, PackedFloat64Array([0.0, 0.0]), _share_left(_zoom, whole, system))
+	_center_x = center[0]
+	_center_y = center[1]
 	_turn_toward_down(x, y, delta)
 	view_changed.emit(center[0], center[1], _zoom)
 
 
 func _turn_toward_down(x: float, y: float, delta: float) -> void:
-	var target: float = _down_at(x, y) if _zoom >= orbit_zoom * _far_fit * 0.9 else 0.0
+	var has_down: bool = _focus["kind"] != "body" and _zoom >= orbit_zoom * _far_fit * 0.9
+	var at: PackedFloat64Array = _point_of(_focus, PackedFloat64Array([x, y]))
+	var target: float = _down_at(at[0], at[1]) if has_down else 0.0
 	if _roll_started:
 		var gap: float = absf(angle_difference(_roll, target))
 		_roll = rotate_toward(_roll, target, minf(gap * 3.0 + 0.15, fastest_roll) * delta)
@@ -181,9 +191,80 @@ func _down_at(x: float, y: float) -> float:
 	return atan2(x - body[0], body[1] - y)
 
 
-# Where a body is, or the ship for the star, which is too far off to center on up close.
-func _body_center(body: int, ship: PackedFloat64Array) -> PackedFloat64Array:
-	return ship if body == 0 else _gravity_model.get_body_position(body, _state.time)
+# Where something that can be in focus is right now.
+func _point_of(focus: Dictionary, ship: PackedFloat64Array) -> PackedFloat64Array:
+	match focus["kind"]:
+		"body":
+			return _gravity_model.get_body_position(focus["index"], _state.time)
+		"satellite":
+			return _gravity_model.get_satellite_position(focus["index"], _state.time)
+	return ship
+
+
+func _set_focus(focus: Dictionary) -> void:
+	if focus == _focus:
+		_focus_mark = 1.0
+		return
+	_previous_focus = _focus
+	_focus = focus
+	_focus_blend = 0.0
+	_focus_mark = 1.0
+
+
+# The closest the view can get with this in focus. A body's middle has nothing to see.
+func _closest_zoom() -> float:
+	if _focus["kind"] != "body":
+		return zoom_stops[0]
+	var fits: float = minf(_view_size.x, _view_size.y) * 0.5 * body_fill / _gravity_model.get_body_radius(_focus["index"])
+	return minf(fits, zoom_stops[0])
+
+
+## Whatever's under a tap becomes the focus. The smallest thing wins where they overlap, so a ship
+## can be picked in front of a planet. A tap on empty space does nothing.
+func _on_space_tapped(screen_position: Vector2) -> void:
+	var from_middle: Vector2 = (screen_position - _view_size / 2.0).rotated(_roll) / _zoom
+	var tapped := Vector2(_center_x + from_middle.x, _center_y + from_middle.y)
+	var best: Dictionary = {}
+	var smallest: float = INF
+	var candidates: Array[Dictionary] = [{"kind": "ship", "index": 0}]
+	for index in range(_gravity_model.get_satellite_count()):
+		candidates.append({"kind": "satellite", "index": index})
+	for index in range(_gravity_model.get_body_count()):
+		candidates.append({"kind": "body", "index": index})
+	for candidate: Dictionary in candidates:
+		var at: PackedFloat64Array = _point_of(candidate, PackedFloat64Array([_state.x, _state.y]))
+		var radius: float = _tap_radius_of(candidate)
+		var reach: float = maxf(radius, tap_reach / _zoom)
+		if Vector2(at[0] - tapped.x, at[1] - tapped.y).length() <= reach and radius < smallest:
+			smallest = radius
+			best = candidate
+	if not best.is_empty():
+		_set_focus(best)
+
+
+func _tap_radius_of(focus: Dictionary) -> float:
+	match focus["kind"]:
+		"body":
+			return _gravity_model.get_body_radius(focus["index"])
+		"satellite":
+			return station_tap_radius
+	return ship_tap_radius
+
+
+# Brackets around a new focus for a moment, to show what the tap picked. It's always in the middle
+# of the view, except out where the whole system is sliding into place.
+func _draw() -> void:
+	if _focus_mark <= 0.0:
+		return
+	var color: Color = UiStyle.palette().telemetry_cyan
+	color.a = minf(_focus_mark * 2.0, 1.0)
+	draw_set_transform(Vector2.ZERO, _roll)
+	var half: float = clampf(_tap_radius_of(_focus) * _zoom, tap_reach, minf(_view_size.x, _view_size.y) * 0.46)
+	var arm: float = half * 0.35
+	for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+		var at: Vector2 = corner * half
+		draw_line(at, at - Vector2(corner.x * arm, 0.0), color, -1.0)
+		draw_line(at, at - Vector2(0.0, corner.y * arm), color, -1.0)
 
 
 func _mix(from: PackedFloat64Array, to: PackedFloat64Array, share: float) -> PackedFloat64Array:

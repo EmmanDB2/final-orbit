@@ -145,8 +145,8 @@ var _sprite_scale: float = 1.0
 ## True while the ship is held at a station's port.
 var docked: bool = false
 var _dock_holder: Callable
-var _has_nearby_frame: bool = false
-var _nearby_frame := Vector2.ZERO
+# Says how a nearby station is moving at a point and time, if there's one close.
+var _nearby_moving: Callable
 var _flame_at: Vector2 = Vector2.ZERO
 var _flame_room: float = 100000.0
 var _air_density: float = 0.0
@@ -398,15 +398,10 @@ func undock() -> void:
 	orbit_changed.emit()
 
 
-## Says how a nearby station is moving where the ship is, so the pilot's speed and direction markers
-## read against it.
-func set_nearby_frame(moving_x: float, moving_y: float) -> void:
-	_has_nearby_frame = true
-	_nearby_frame = Vector2(moving_x, moving_y)
-
-
-func clear_nearby_frame() -> void:
-	_has_nearby_frame = false
+## Gives the ship a way to ask how a nearby station is moving at a point and time, so the pilot's
+## speed and direction markers read against it. An empty one means there's nothing nearby.
+func set_nearby_moving(moving_at: Callable) -> void:
+	_nearby_moving = moving_at
 
 
 # Runs once per rendered frame. Cosmetic only, so it doesn't touch the flight.
@@ -1006,13 +1001,16 @@ func _local_up_heading() -> float:
 
 func _report_telemetry() -> void:
 	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
-	var relative_x: float = state.velocity_x - (_nearby_frame.x if _has_nearby_frame else ground[0])
-	var relative_y: float = state.velocity_y - (_nearby_frame.y if _has_nearby_frame else ground[1])
+	var against: Vector2 = Vector2(ground[0], ground[1])
+	if _nearby_moving.is_valid():
+		against = _nearby_moving.call(state.x, state.y, state.time)
+	var relative_x: float = state.velocity_x - against.x
+	var relative_y: float = state.velocity_y - against.y
 	var apsides: PackedFloat64Array = _gravity_model.get_orbit_apsides(state)
 	flight_data_changed.emit({
 		"altitude": _gravity_model.get_altitude(state.x, state.y, state.time) - _rest_height,
 		"speed": sqrt(relative_x * relative_x + relative_y * relative_y),
-		"against_station": _has_nearby_frame,
+		"against_station": _nearby_moving.is_valid(),
 		"periapsis": apsides[0],
 		"apoapsis": apsides[1],
 		"time": state.time,

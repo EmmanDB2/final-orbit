@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Tap anything to focus the camera on it at every zoom, replacing the center depending only on the zoom. The dossier card loses the tap and needs another gesture \[Open\] |
 | 2026-11-06 | Camera turns so down is down from the Orbit view in, and stays a fixed map farther out, replacing the fixed camera \[Leaning\] |
 | 2026-11-06 | Docking built, with the ship's nose as the hatch, free refueling and repair, and a speed readout against the station. The station now turns with its orbit, replacing holding still \[Leaning\] |
 | 2026-11-06 | Station made solid: the ship bounces off it, and takes damage above its safe speed \[Leaning\] |
@@ -374,8 +375,8 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 | 7 | Surface | Flat ground, terrain, pads, the pilot through the canopy |
 
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
-- Tiers 2 to 7 are built. Star system centers on the star, Planet on the planet you're around, Orbit on whichever body you're orbiting, and Approach, Descent, and Surface on the ship. In between, the center slides steadily with the zoom. Out in deep space, the ship stands in for the planet and orbited body. \[Leaning\]
-- From the Orbit view in, the view turns so that down on screen is really down: toward the body below, or a nearby station's bottom within 2,000 m. The ground and stations stay flat, and the ship turning shows against them. The screen's pixels stay square, and only what they show turns. It takes a moment to swing to a new down, and farther out than Orbit it settles back to a fixed map. This was Manny's call, and replaces the fixed camera. \[Leaning\]
+- Tiers 2 to 7 are built. Whatever was tapped last is the focus and stays in the middle at every zoom: the ship to start with, or a station, moon, planet, or the star. The zoom buttons land on the same stops as before, and SHIP also brings the focus back to the ship. A body can't be zoomed past filling the screen, since its middle has nothing to see. Only out past the Planet tier does the middle slide to the star, so the whole system fits. The smallest thing under a tap wins, and brackets show what was picked. This was Manny's call, and replaces the center depending only on the zoom. \[Leaning\]
+- From the Orbit view in, the view turns so that down on screen is really down at whatever's in focus: toward the body below, or a nearby station's bottom within 2,000 m. The ground and stations stay flat, and the ship turning shows against them. The screen's pixels stay square, and only what they show turns. It takes a moment to swing to a new down, and farther out than Orbit, or with a body in focus, it settles back to a fixed map. This was Manny's call, and replaces the fixed camera. \[Leaning\]
 - The far tiers draw each body's rails and sphere of influence in dark canopy glass from the agency palette, behind the bodies. An orbit line stops at that body's sphere of influence ring, and rails or rings too small to read aren't drawn. \[Leaning\]
 - A ship rests on whatever's lowest: its feet with the legs down, or its engine bell with them up. On the ground the turn keys do nothing, and it settles upright if it's whole, so thrust lifts it straight off. A damaged ship settles on whichever side of its outline it can balance on, nearest upright, so losing a leg leaves it leaning. \[Leaning\]
 - The LEGS button, or L on the Mac, swings the legs down over 2 seconds or back up. They start up, and they won't go up on the ground. Nothing deploys them for you, so forgetting means landing on the engine. \[Leaning\]
@@ -462,13 +463,15 @@ Turning and RCS controls: \[Leaning\]
 Edge markers: \[Leaning\]
 
 - Off-screen targets (gig destinations, stations, bodies) show at the screen edge as small agency-orange arrows with a callsign and distance (for example "HOME 236 km").
-- Only the station has one so far, and it stays inside the part of the view the panels leave clear. Zoomed out far enough that the station is a dot, its callsign and distance show beside the dot. \[Leaning\]
+- Only the station has one so far, it stays inside the part of the view the panels leave clear, and it goes away once part of the station could be in view. Zoomed out far enough that the station is a dot, its callsign and distance show beside the dot. \[Leaning\]
 
 Control reference: the old mobile game Space Agency (rotate and translate button pads, off-screen target markers).
 
 ### Planet info
 
 Tapping a body opens an agency dossier card: typewriter text, stamps, and a pixel portrait that fills in as more is learned. \[Locked for design, Tier 1\]
+
+Tapping a body now focuses the camera, so the dossier card needs another way in once it's built. A long press is the likely one, since a held finger on open space isn't a tap, and only turns the ship once it's dragged. \[Open\]
 
 What the card shows depends on how the player has studied the body: \[Locked for design, Tier 1\]
 

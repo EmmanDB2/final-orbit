@@ -379,3 +379,11 @@ Files: `scripts/flight_view.gd`, `shaders/planet.gdshader`, `shaders/starfield.g
 - Camera2D rotation and the canvas transform
 - rotating screen-space shader samples
 - CanvasLayers ignoring the camera
+
+## 2026-11-06: Tap anything to focus the zoom
+
+Files: `scripts/flight_view.gd`, `scripts/ui/flight_hud.gd`, `docs/DESIGN.md`
+
+- telling a tap from a drag and a hold
+- turning a screen position back into a world position
+- a Dictionary as a small tagged value
