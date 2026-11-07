@@ -3,7 +3,22 @@
 class_name PilotData
 extends Resource
 
+## The sprite sheet, with this many frames across and down, each with the helmet in the middle.
 @export var texture: Texture2D
+@export var hframes: int = 5
+@export var vframes: int = 4
+## Which frames of the sheet to loop for each thing the pilot does, drawn facing down or right. The
+## other two headings are those mirrored.
+@export var walk_down: PackedInt32Array = PackedInt32Array([0, 1, 2, 3, 4])
+@export var walk_side: PackedInt32Array = PackedInt32Array([5, 6, 7, 8, 9])
+@export var coast_down: PackedInt32Array = PackedInt32Array([0, 1, 2, 3, 4])
+@export var coast_side: PackedInt32Array = PackedInt32Array([17, 18, 19])
+@export var jet_down: PackedInt32Array = PackedInt32Array([10, 11, 12, 13, 14])
+@export var jet_side: PackedInt32Array = PackedInt32Array([15, 16])
+## How fast those loop, in frames per second.
+@export var walk_fps: float = 8.0
+@export var coast_fps: float = 3.0
+@export var jet_fps: float = 12.0
 ## How hard the jetpack pushes, in world units per second squared.
 @export var jet_acceleration: float = 12.0
 ## How many seconds of full push the jetpack holds. It fills up aboard the ship or a station.

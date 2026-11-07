@@ -55,6 +55,7 @@ var _lost: bool = false
 var _pixels_per_unit: float = 1.0
 var _show_dot: bool = false
 var _last_interact_frame: int = -1
+var _animation_time: float = 0.0
 
 
 ## Starts the pilot aboard the ship.
@@ -67,6 +68,8 @@ func start_pilot(gravity_model: GravityModel, ship: Node2D, station: StationView
 	# Before the ship's tick, so the pilot and ship both reach the same moment before the view's drawn.
 	process_physics_priority = -3
 	_sprite.texture = data.texture
+	_sprite.hframes = data.hframes
+	_sprite.vframes = data.vframes
 	add_child(_sprite)
 	visible = false
 
@@ -371,6 +374,34 @@ func _station_center() -> Vector2:
 	return Vector2(frame["x"], frame["y"])
 
 
+# Picks the frame for what the pilot's doing. The sheet draws four headings, from two views and their
+# mirror images. Up in a station that's all it uses, so the pixels stay square with the floor. Out in
+# space they turn the rest of the way from whichever's nearest.
+func _process(delta: float) -> void:
+	if mode == ABOARD:
+		return
+	_animation_time += delta
+	var on_screen: float = wrapf(facing - _roll, -PI, PI)
+	var quarter: int = roundi(on_screen / (PI / 2.0))
+	var sideways: bool = absi(quarter) == 1
+	var frames: PackedInt32Array
+	var fps: float
+	if mode == INSIDE:
+		frames = data.walk_side if sideways else data.walk_down
+		fps = data.walk_fps if _walking.length() > 5.0 else 0.0
+	elif _firing != Vector2.ZERO:
+		frames = data.jet_side if sideways else data.jet_down
+		fps = data.jet_fps
+	else:
+		frames = data.coast_side if sideways else data.coast_down
+		fps = data.coast_fps
+	_sprite.frame = frames[int(_animation_time * fps) % frames.size()]
+	_sprite.flip_h = quarter == -1
+	_sprite.flip_v = quarter == 0
+	var leftover: float = 0.0 if mode == INSIDE else on_screen - quarter * PI / 2.0
+	rotation = leftover + _roll
+
+
 func _on_view_rolled(angle: float) -> void:
 	_roll = angle
 
@@ -380,7 +411,6 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 		return
 	_pixels_per_unit = pixels_per_unit
 	position = Vector2((state.x - center_x) * pixels_per_unit, (state.y - center_y) * pixels_per_unit)
-	rotation = facing
 	_sprite.scale = Vector2.ONE * minf(pixels_per_unit, 1.0)
 	var show_dot: bool = pixels_per_unit < dot_max_zoom
 	_sprite.visible = not show_dot
@@ -389,17 +419,7 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 
 
 func _draw() -> void:
-	var palette: AgencyPalette = UiStyle.palette()
 	if _show_dot:
+		var palette: AgencyPalette = UiStyle.palette()
 		draw_rect(Rect2(-2.0, -2.0, 4.0, 4.0), palette.hull_darkest)
 		draw_rect(Rect2(-1.0, -1.0, 2.0, 2.0), palette.telemetry_cyan)
-		return
-	# Puffs from the pack, away from the way it's pushing.
-	if _firing != Vector2.ZERO:
-		var away: Vector2 = -_firing.normalized().rotated(-facing)
-		var side: Vector2 = away.orthogonal()
-		var scale_now: float = minf(_pixels_per_unit, 1.0)
-		for i in range(3):
-			var spread: float = randf_range(-5.0, 5.0)
-			var at: Vector2 = (away * (24.0 + i * 7.0 + randf_range(0.0, 3.0)) + side * spread) * scale_now
-			draw_rect(Rect2(at.round(), Vector2(2.0, 2.0)), palette.hull_lightest)

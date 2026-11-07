@@ -403,3 +403,29 @@ Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `data/pilot.tres`, `scripts/
 - a small state machine for who the player is
 - keeping two objects on the same physics clock
 - sliding along walls by moving one axis at a time
+
+## 2026-11-06: App icon
+
+Files: `art/final_orbit_icon.png`, `art/icon/`, `tools/make_icons.gd`, `project.godot`, `export_presets.cfg`
+
+- Android adaptive icon layers and their safe zone
+
+## 2026-11-06: Different colors for orbits and gravity
+
+Files: `scripts/body_guides.gd`, `docs/DESIGN.md`
+
+- exported colors as data on a node
+
+## 2026-11-06: Rotate buttons in the D-pad corners
+
+Files: `scripts/ui/flight_hud.gd`, `scripts/ui/rcs_button.gd`, `docs/DESIGN.md`
+
+- removing a mode by giving each action its own button
+
+## 2026-11-06: Animated astronaut
+
+Files: `art/pilot/`, `tools/slice_pilot.gd`, `scripts/pilot.gd`, `scripts/pilot_data.gd`, `data/pilot.tres`, `docs/DESIGN.md`
+
+- sprite sheets with hframes and vframes
+- mirroring a sprite to save drawing frames
+- picking a frame from a state and a timer

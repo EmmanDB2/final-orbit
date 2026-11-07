@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | App icon set. Orbit lines are blue and gravity rings gold. Rotate moves to the D-pad's corners, replacing the switch. The pilot uses Manny's animated sprite sheet \[Leaning\] |
 | 2026-11-06 | EVA and station boarding built ahead of gigs, on Manny's call: jetpack, walking inside with the roof off, airlocks, boarding from a docked ship, and a gig board terminal to walk up to. Moves those parts of Tier 2 and Tier 3 up, behind feature flags \[Leaning\] |
 | 2026-11-06 | UI reworked from Manny's mockups: thin outlined instruments with no plates, one layout for both screens, a comms line along the bottom with a log, a FLIGHT menu, the TRANS / ROT switch everywhere, ASSIST on the button, and a card on holding a finger on anything, with SET TARGET and FOCUS. Tap still focuses. The home system is named KEPLA-2 \[Leaning\] |
 | 2026-11-06 | Tap anything to focus the camera on it at every zoom, replacing the center depending only on the zoom. The dossier card loses the tap and needs another gesture \[Open\] |
@@ -166,6 +167,7 @@ You are a pilot inside the ship, not the ship itself. Mission control is the voi
 - EVA: the pilot leaves the ship on a jetpack to patch breaches, grab salvage, or reattach floating parts. Same sprite scale inside and outside. \[Locked for design\]
 - Built so far, moved ahead of gigs by Manny: the EVA button puts the pilot out beside the cockpit, unless the ship's landed or lost. The ship takes no orders then, though ASS and STAB keep holding it. The arrows and dragging go by the screen, so up is up on screen, and the view follows the pilot. The jetpack pushes at 12 m/s² for 60 seconds, fills up aboard the ship or a station, and obeys orbital mechanics like anything else. Running out of reach of anything, or hitting the ground, needs a restart. Patching, salvage, and reattaching are still to come. \[Leaning\]
 - While the pilot's out, the top bar and gauge are theirs: delta-v and the gauge read the jetpack. A cyan marker points the way back to the ship, and SHIP on the zoom buttons brings the view back to the pilot. \[Leaning\]
+- The EVA sprite comes from Manny's sheet, at about 48 x 50 px: a slow float, walking, and jetting with flames, drawn facing down and right, and mirrored for up and left. Inside a station the pilot only faces those four ways, so the pixels stay square with the floor. In space they turn the rest of the way too. The sheet's helmets have no gold visor, and the drawing's a little bigger than the 35 x 40 above. \[Leaning\]
 - The suit has its own limits: oxygen, temperature, jetpack fuel. Only the jetpack is built so far. \[Leaning\]
 - The pilot can carry a name, suit livery, and career record. \[Open\]
 
@@ -383,7 +385,7 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
 - Tiers 2 to 7 are built. Whatever was tapped last is the focus and stays in the middle at every zoom: the home planet at the SYS zoom to start with, or a ship, station, moon, or the star. The zoom buttons land on the same stops as before, and SHIP also brings the focus back to the ship. A body can't be zoomed past filling the screen, since its middle has nothing to see. Only out past the Planet tier does the middle slide to the star, so the whole system fits. The smallest thing under a tap wins, and brackets show what was picked. This was Manny's call, and replaces the center depending only on the zoom. \[Leaning\]
 - From the Orbit view in, the view turns so that down on screen is really down at whatever's in focus: toward the body below, or a nearby station's bottom within 2,000 m. The ground and stations stay flat, and the ship turning shows against them. The screen's pixels stay square, and only what they show turns. It takes a moment to swing to a new down, and farther out than Orbit, or with a body in focus, it settles back to a fixed map. This was Manny's call, and replaces the fixed camera. \[Leaning\]
-- The far tiers draw each body's rails and sphere of influence in dark canopy glass from the agency palette, behind the bodies. An orbit line stops at that body's sphere of influence ring, and rails or rings too small to read aren't drawn. \[Leaning\]
+- The far tiers draw each body's orbit line in agency blue and the edge of its gravity, its sphere of influence, in dark gold, both dim and behind the bodies. Manny asked for them to be told apart. An orbit line stops at that body's ring, and rails or rings too small to read aren't drawn. \[Leaning\]
 - A ship rests on whatever's lowest: its feet with the legs down, or its engine bell with them up. On the ground the turn keys do nothing, and it settles upright if it's whole, so thrust lifts it straight off. A damaged ship settles on whichever side of its outline it can balance on, nearest upright, so losing a leg leaves it leaning. \[Leaning\]
 - The LEGS button, or L on the Mac, swings the legs down over 2 seconds or back up. They start up, and they won't go up on the ground. Nothing deploys them for you, so forgetting means landing on the engine. \[Leaning\]
 - With both legs fully down and working, a landing is clean up to 80 units/s instead of 50. Harder than that, the feet go first because they're lowest. Their pixels are real, and the struts holding them out have no pixels of their own. \[Leaning\]
@@ -428,7 +430,7 @@ Side panels: \[Locked\]
 - Left edge: a notched throttle lever and a thin fuel gauge, cyan, then amber and red as it runs low. Hull and heat gauges are still to come.
 - Bottom-left: zoom buttons. SYS shows the local system, and pressing it again shows the whole star system. ORBIT shows what you're orbiting, and SHIP goes to the closest view of the ship. Whichever one the zoom is on is lit.
 - Along the bottom, from the zoom buttons to BURN: the comms line, reading COMMS: and how the flight stands, like ORBIT STABLE, DOCKED, or IMPACT TRAJECTORY. Each thing that happens takes it over for a few seconds, in order, and the comms log button at the top lists them with their times. All pilot messages go here now, so the center stays clear. \[Leaning\]
-- Right side, from the top: the heading dial, the TRANS / ROT switch, the four arrows, then LEGS, STAB, and ASSIST, with BURN at the bottom. NODE joins them when it's built.
+- Right side, from the top: the heading dial, the arrows and rotate buttons, then EVA, LEGS, STAB, and ASSIST, with BURN at the bottom. NODE joins them when it's built.
 - EVA sits above LEGS. Out of the ship, the only controls are the arrows and the action button, which appears under the top bar with whatever can be done here: BOARD SHIP, BOARD STATION, EXIT STATION, or USE TERMINAL. On the Mac, V is EVA and F is the action. \[Leaning\]
 - BURN is orange, and hatched over while its safety cover is down.
 - The throttle lever sets thrust power, and BURN activates it.
@@ -458,7 +460,7 @@ Turning and RCS controls: \[Leaning\]
 - While turning, a dashed heading ring appears around the ship and fades when released.
 - Drag to point works even when the side panels are auto-hidden, and leaves them hidden.
 - Two fingers on open space pinch to zoom. \[Leaning\]
-- RCS pad (right side): four arrows, on every screen. The TRANS / ROT switch above them says what they do: translate (forward, back, left, right), or rotate left and right, with up and down gone. It replaces the separate rotate buttons. \[Leaning\]
+- RCS pad (right side), on every screen: four arrows in a cross that translate (forward, back, left, right), with rotate left and rotate right in the cross's top corners. Manny's call, replacing the TRANS / ROT switch. \[Leaning\]
 - Translation moves the ship without turning it and is required for docking and precise landings.
 - The button for ASS reads ASSIST on Manny's rework, and RAW when it's off. LEGS lights up amber while the legs move and cyan when they're down, and STAB is cyan when on. \[Leaning\]
 - Heading dial at the top of the right side, on every screen: nose direction, prograde (cyan) and retrograde (orange) markers, and spin as an amber arc along the rim, which is gone when the ship is still. The markers hide when landed or barely moving, since there's no direction of travel to show.
@@ -553,6 +555,8 @@ Godot 4, with GDScript for gameplay and the physics core in C++ through GDExtens
 Godot 4.7.2 with the Compatibility renderer, since the game is 2D and needs no compute shaders. Changing renderer is a one-line project setting. \[Leaning\]
 
 Android builds use Godot's prebuilt template rather than a Gradle build, arm64 only, as a debug build for now. Package name: `com.emmanuelwalters.finalorbit`. \[Leaning\]
+
+The app icon is Manny's mission patch, `art/final_orbit_icon.png`, on a plain dark layer for launchers that use layered icons. `tools/make_icons.gd` makes the layers. \[Leaning\]
 
 Engine options:
 
