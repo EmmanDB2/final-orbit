@@ -349,6 +349,8 @@ func _place_panels() -> void:
 	_left_tab.visible = _hidden
 	_right_tab.visible = _hidden
 	_right_panel.mark_shows = _hide_amount > 0.0
+	# Slid off the safe area, it could still show in the space around a camera cutout.
+	_lever.visible = _mode == Pilot.ABOARD and _hide_amount < 1.0
 	var clear_left: float = _left_panel.position.x + LEFT_WIDTH
 	clear_area_changed.emit(Rect2(clear_left, BAR_HEIGHT, _right_panel.position.x - clear_left,
 			view.y - EDGE - ROW_HEIGHT - BAR_HEIGHT - 4.0))
