@@ -6,8 +6,10 @@
 # their planet. An orbit or ring too small to read on screen is left out.
 extends Node2D
 
-## Canopy glass dark from the agency palette, so these sit behind the telemetry line.
-@export var guide_color: Color = Color("2A4A55")
+## Orbit lines are agency blue, and the edge of a body's gravity is dark gold, so the two can be told
+## apart at a glance. Both are dim, so they sit behind the telemetry line.
+@export var guide_color: Color = Color("2F5D8C")
+@export var ring_color: Color = Color("9C6B1E")
 ## The guides show at this zoom and farther out.
 @export var closest_zoom: float = 0.01
 ## Points along each orbit.
@@ -86,7 +88,7 @@ func _draw() -> void:
 		if center.length() >= smallest_orbit:
 			_draw_outside_ring(_screen_orbits[i], center, radius)
 		if radius >= smallest_ring and center.length() >= smallest_orbit:
-			draw_arc(center, radius, 0.0, TAU, ring_points, guide_color, -1.0)
+			draw_arc(center, radius, 0.0, TAU, ring_points, ring_color, -1.0)
 
 
 # A satellite's rails, around its parent as it is now. It has no ring to stop at.
