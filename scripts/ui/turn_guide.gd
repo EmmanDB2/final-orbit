@@ -10,13 +10,14 @@ extends Node2D
 @export var dashes: int = 24
 
 var ship: Node2D
+var _thumb_on_screen: Vector2 = Vector2.ZERO
 var _thumb: Vector2 = Vector2.ZERO
 var _active: bool = false
 var _fade: float = 0.0
 
 
 func _on_point_changed(screen_position: Vector2) -> void:
-	_thumb = screen_position - get_viewport_rect().size / 2.0
+	_thumb_on_screen = screen_position
 	_active = true
 	_fade = 1.0
 
@@ -28,6 +29,8 @@ func _on_point_released() -> void:
 
 func _process(delta: float) -> void:
 	if _active:
+		# Where the thumb is in the world's canvas, which turns with the view.
+		_thumb = get_canvas_transform().affine_inverse() * _thumb_on_screen
 		var direction: Vector2 = _thumb - ship.position
 		if direction.length() > 4.0:
 			ship.point_at(atan2(direction.x, -direction.y))

@@ -26,6 +26,7 @@ var _screen_orbits: Array[PackedVector2Array] = []
 var _center_x: float = 0.0
 var _center_y: float = 0.0
 var _pixels_per_unit: float = 0.0
+var _roll: float = 0.0
 
 
 ## Starts drawing the guides for every body with rails in the gravity model.
@@ -36,6 +37,10 @@ func start_guides(gravity_model: GravityModel, state: ShipState) -> void:
 		_rails.append(gravity_model.get_body_orbit_path(index, orbit_samples))
 	for index in range(gravity_model.get_satellite_count()):
 		_rails.append(gravity_model.get_satellite_orbit_path(index, orbit_samples))
+
+
+func _on_view_rolled(angle: float) -> void:
+	_roll = angle
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
@@ -72,7 +77,7 @@ func _draw() -> void:
 		var parent_on_screen := Vector2(
 				(parent_now[0] - _center_x) * _pixels_per_unit,
 				(parent_now[1] - _center_y) * _pixels_per_unit)
-		draw_set_transform((middle + parent_on_screen).round())
+		draw_set_transform((middle + parent_on_screen.rotated(-_roll)).round(), -_roll)
 
 		var center := Vector2(
 				(body_now[0] - parent_now[0]) * _pixels_per_unit,
@@ -91,7 +96,7 @@ func _draw_satellite_rail(index: int, points: PackedVector2Array, middle: Vector
 			(parent_now[0] - _center_x) * _pixels_per_unit,
 			(parent_now[1] - _center_y) * _pixels_per_unit)
 	if points[0].length() >= smallest_orbit:
-		draw_set_transform((middle + parent_on_screen).round())
+		draw_set_transform((middle + parent_on_screen.rotated(-_roll)).round(), -_roll)
 		draw_polyline(points, guide_color, -1.0)
 
 

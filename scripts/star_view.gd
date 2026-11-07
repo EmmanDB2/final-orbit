@@ -11,6 +11,7 @@ extends ColorRect
 @export var glow_pixels: float = 14.0
 
 var _radius: float = 0.0
+var _roll: float = 0.0
 
 @onready var _material: ShaderMaterial = material
 
@@ -19,6 +20,10 @@ var _radius: float = 0.0
 func show_star(star: StarData) -> void:
 	_radius = star.radius
 	_material.set_shader_parameter("star_color", star.color)
+
+
+func _on_view_rolled(angle: float) -> void:
+	_roll = angle
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
@@ -31,6 +36,6 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	if not visible:
 		return
 
-	_material.set_shader_parameter("center_px", size / 2.0 + Vector2(from_middle_x, from_middle_y))
+	_material.set_shader_parameter("center_px", size / 2.0 + Vector2(from_middle_x, from_middle_y).rotated(-_roll))
 	_material.set_shader_parameter("radius_px", radius_px)
 	_material.set_shader_parameter("glow_px", glow_px)

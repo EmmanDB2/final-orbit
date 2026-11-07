@@ -22,6 +22,10 @@ uniform float layer_brightness[3];
 uniform float big_star_chance = 0.15;
 // Whole-pixel scroll per layer, set by starfield.gd.
 uniform vec2 layer_scroll[3];
+// How far the view is turned, and the middle of the screen it turns around.
+uniform float view_cos = 1.0;
+uniform float view_sin = 0.0;
+uniform vec2 view_middle = vec2(0.0);
 
 // Set by starfield.gd while the star tint is on.
 uniform bool tint_enabled = false;
@@ -47,7 +51,8 @@ float unit(uint value) {
 }
 
 
-vec4 star_at(int layer, ivec2 world_pixel) {
+vec4 star_at(int layer, vec2 place) {
+	ivec2 world_pixel = ivec2(floor(place));
 	ivec2 cell = (world_pixel / CELL_PIXELS) % TILE_CELLS;
 	uint h = hash(uint(star_seed) ^ hash(uint(layer) ^ hash(uint(cell.x) ^ hash(uint(cell.y)))));
 	if (unit(h) >= layer_density[layer]) {
@@ -58,11 +63,11 @@ vec4 star_at(int layer, ivec2 world_pixel) {
 	h = hash(h);
 	int usable = CELL_PIXELS - 2;
 	ivec2 star = ivec2(1 + int(h & 65535u) % usable, 1 + int(h >> 16u) % usable);
-	ivec2 distance_to_star = abs(world_pixel % CELL_PIXELS - star);
+	vec2 from_star = mod(place, float(CELL_PIXELS)) - vec2(star) - vec2(0.5);
 	h = hash(h);
 	bool is_big = layer == 2 && unit(h) < big_star_chance;
-	int size = distance_to_star.x + distance_to_star.y;
-	if (size > (is_big ? 1 : 0)) {
+	// Round, so a star stays the same size however the view is turned, and always covers a pixel.
+	if (length(from_star) > (is_big ? 1.3 : 0.7072)) {
 		return vec4(0.0);
 	}
 
@@ -79,8 +84,11 @@ void vertex() {
 void fragment() {
 	vec3 background = star_color * light_level * max_tint;
 	COLOR = tint_enabled ? vec4(background, 1.0) : vec4(0.0);
+	vec2 from_middle = floor(pixel) + vec2(0.5) - view_middle;
+	vec2 turned = view_middle + vec2(view_cos * from_middle.x - view_sin * from_middle.y, view_sin * from_middle.x + view_cos * from_middle.y);
+	vec4 star;
 	for (int layer = 0; layer < 3; layer++) {
-		vec4 star = star_at(layer, ivec2(floor(pixel + layer_scroll[layer])));
+		star = star_at(layer, turned + layer_scroll[layer] + vec2(float(CELL_PIXELS * TILE_CELLS)));
 		if (star.a > 0.0) {
 			float visible = 1.0 - layer_washout[layer] * light_level;
 			COLOR = vec4(mix(background, star.rgb, visible), 1.0);

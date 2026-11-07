@@ -43,6 +43,7 @@ var _show_dot: bool = false
 var _ship: Node2D
 var _contact_range: float = 0.0
 var _pixels_per_unit: float = 1.0
+var _roll: float = 0.0
 # Where the free ports are in the station's own frame, in world units: "at" and "face".
 var _ports: Array[Dictionary] = []
 # The port nearest the hatch, while it's close enough to show.
@@ -264,13 +265,18 @@ func _any_solid(points: PackedVector2Array, shift: Vector2, angle: float) -> boo
 	return false
 
 
+func _on_view_rolled(angle: float) -> void:
+	_roll = angle
+
+
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
 	if _gravity_model == null:
 		return
 	_pixels_per_unit = pixels_per_unit
 	var frame: Dictionary = _frame_at(_state.time)
-	# Whole pixels only, so it doesn't shimmer as it crawls across the grid.
-	position = Vector2((frame["x"] - center_x) * pixels_per_unit, (frame["y"] - center_y) * pixels_per_unit).round()
+	# Whole pixels on screen, however the view is turned, so it doesn't shimmer as it crawls.
+	var from_middle := Vector2((frame["x"] - center_x) * pixels_per_unit, (frame["y"] - center_y) * pixels_per_unit)
+	position = from_middle.rotated(-_roll).round().rotated(_roll)
 	rotation = frame["angle"]
 	var show_dot: bool = pixels_per_unit <= dot_max_zoom
 	_sprite.visible = not show_dot

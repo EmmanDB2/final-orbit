@@ -37,6 +37,7 @@ var _strip_texture: ImageTexture
 var _ridge_image: Image
 var _ridge_texture: ImageTexture
 var _state: ShipState
+var _roll: float = 0.0
 
 @onready var _material: ShaderMaterial = material
 
@@ -129,6 +130,12 @@ func _feed_rim(column: int, step: int, pixels_per_unit: float) -> void:
 	_material.set_shader_parameter("ridge_base_px", strip[STRIP_SIZE] * pixels_per_unit)
 
 
+func _on_view_rolled(angle: float) -> void:
+	_roll = angle
+	_material.set_shader_parameter("view_cos", cos(angle))
+	_material.set_shader_parameter("view_sin", sin(angle))
+
+
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
 	var position_now: PackedFloat64Array = _gravity_model.get_body_position(_index, _state.time)
 	var from_middle_x: float = (position_now[0] - center_x) * pixels_per_unit
@@ -143,9 +150,7 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 		return
 
 	var screen_center: Vector2 = size / 2.0
-	_material.set_shader_parameter("center_px", Vector2(
-			screen_center.x + from_middle_x,
-			screen_center.y + from_middle_y))
+	_material.set_shader_parameter("center_px", screen_center + Vector2(from_middle_x, from_middle_y).rotated(-_roll))
 	_material.set_shader_parameter("radius_px", radius_px)
 	var block: float = _block_size(radius_px, 1.0 / pixels_per_unit)
 	_material.set_shader_parameter("block_px", block)

@@ -49,6 +49,9 @@ uniform float ridge_base_px = 0.0;
 uniform float ridge_haze = 0.62;
 // How high the air reaches on screen, in pixels. Zero means airless.
 uniform float air_px = 0.0;
+// How far the view is turned. Screen pixels stay square, and only what they sample turns.
+uniform float view_cos = 1.0;
+uniform float view_sin = 0.0;
 
 // Set by body_view.gd from the body's data.
 uniform vec4 surface_colors[6] : source_color;
@@ -313,12 +316,18 @@ void vertex() {
 }
 
 
+// Turns an offset on screen into the same offset in the world.
+vec2 to_world_way(vec2 on_screen) {
+	return vec2(view_cos * on_screen.x - view_sin * on_screen.y, view_sin * on_screen.x + view_cos * on_screen.y);
+}
+
+
 void fragment() {
 	// Far out, everything below works on the planet's own pixels, counted out from its middle,
 	// so the disc is a clean shape however big they are.
 	vec2 middle = round(center_px);
 	vec2 block_at = floor((floor(pixel) + vec2(0.5) - middle) / block_px);
-	vec2 offset = (block_at + vec2(0.5)) * block_px;
+	vec2 offset = to_world_way((block_at + vec2(0.5)) * block_px);
 	vec2 whole = block_at + vec2(4096.0);
 
 	// Close up, it works on the grid fixed to the ground instead. Near the pole that grid would
@@ -333,7 +342,7 @@ void fragment() {
 	float depth_units = 0.0;
 	vec2 grid_ground = vec2(0.0);
 	if (on_surface_grid) {
-		vec2 from_view = floor(pixel) + vec2(0.5) - screen_middle;
+		vec2 from_view = to_world_way(floor(pixel) + vec2(0.5) - screen_middle);
 		vec2 from_body = view_from_body + from_view;
 		float distance_now = length(from_body);
 		if (distance_now > radius_px * 0.6) {

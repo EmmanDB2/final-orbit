@@ -371,3 +371,11 @@ Files: `scripts/station/station_view.gd`, `scripts/station/station_design.gd`, `
 - moving between world and rotating frames
 - velocity of a point on something turning
 - handing a Callable to another system
+
+## 2026-11-06: The camera turns so down is down
+
+Files: `scripts/flight_view.gd`, `shaders/planet.gdshader`, `shaders/starfield.gdshader`, `scripts/body_view.gd`, `scripts/star_view.gd`, `scripts/starfield.gd`, `scripts/body_guides.gd`, `scripts/station/station_view.gd`, `scripts/ui/turn_guide.gd`, `scripts/ui/heading_dial.gd`, `scripts/ui/target_markers.gd`, `scenes/main.tscn`, `docs/DESIGN.md`
+
+- Camera2D rotation and the canvas transform
+- rotating screen-space shader samples
+- CanvasLayers ignoring the camera

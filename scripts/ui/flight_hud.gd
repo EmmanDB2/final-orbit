@@ -98,6 +98,7 @@ func connect_flight(ship: Node2D, view: Node, turn_guide: Node) -> void:
 	_lever.throttle_changed.connect(ship._on_throttle_changed)
 	zoom_button_pressed.connect(view._on_zoom_button_pressed)
 	zoom_scaled.connect(view._on_zoom_scaled)
+	view.view_rolled.connect(_dial.on_view_rolled)
 	point_changed.connect(turn_guide._on_point_changed)
 	point_released.connect(turn_guide._on_point_released)
 	_on_assist_changed(ship.assist_enabled)

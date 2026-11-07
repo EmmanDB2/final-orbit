@@ -10,11 +10,18 @@
 # Zooming changes what gets drawn, never the pixel size, so the Camera2D's own zoom stays
 # at 1 and its position stays at 0,0. Instead, this signals the current view and each
 # system places itself on screen from that.
+#
+# From the ORBIT zoom in, the view also turns so that down on screen is down: toward the body
+# below, or a nearby station's bottom, which is what keeps the ground and stations flat. Anything
+# on the world's own canvas turns with the Camera2D. The background draws in screen space, so it's
+# told the angle. Farther out than ORBIT, nothing is down, and it settles back to a fixed map.
 extends Camera2D
 
 ## Emitted every physics tick with the world point at the middle of the screen, and
 ## the zoom in screen pixels per world unit.
 signal view_changed(center_x: float, center_y: float, pixels_per_unit: float)
+## Emitted just before view_changed, with how far the view is turned, clockwise, in radians.
+signal view_rolled(angle: float)
 
 ## Where keys land, closest to farthest, in screen pixels per world unit.
 @export var zoom_stops: PackedFloat64Array = PackedFloat64Array([1.0, 1.0 / 8.0, 1.0 / 128.0, 1.0 / 800.0, 1.0 / 2400.0])
@@ -38,6 +45,10 @@ signal view_changed(center_x: float, center_y: float, pixels_per_unit: float)
 ## The screen height the ORBIT and SYS zooms are set for, in game pixels. On a shorter
 ## screen they zoom out to match, so the same orbits still fit.
 @export var design_height: float = 616.0
+## The fastest the view turns to a new down, in radians per second.
+@export var fastest_roll: float = 1.6
+## This close to a station, in world units, down is the station's own down.
+@export var station_down_reach: float = 2000.0
 
 var _gravity_model: GravityModel
 var _state: ShipState
@@ -48,12 +59,15 @@ var _target_zoom: float = 1.0 / 800.0
 var _body: int = 0
 var _previous_body: int = 0
 var _body_blend: float = 1.0
+var _roll: float = 0.0
+var _roll_started: bool = false
 
 
 ## Starts following a flight.
 func start_view(gravity_model: GravityModel, state: ShipState) -> void:
 	_gravity_model = gravity_model
 	_state = state
+	ignore_rotation = false
 	_zoom = orbit_zoom
 	_target_zoom = orbit_zoom
 	var widest: float = 0.0
@@ -140,7 +154,31 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 		center = _mix(planet_center, PackedFloat64Array([0.0, 0.0]), _share_left(_zoom, whole, system))
 	else:
 		center = PackedFloat64Array([0.0, 0.0])
+	_turn_toward_down(x, y, delta)
 	view_changed.emit(center[0], center[1], _zoom)
+
+
+func _turn_toward_down(x: float, y: float, delta: float) -> void:
+	var target: float = _down_at(x, y) if _zoom >= orbit_zoom * _far_fit * 0.9 else 0.0
+	if _roll_started:
+		var gap: float = absf(angle_difference(_roll, target))
+		_roll = rotate_toward(_roll, target, minf(gap * 3.0 + 0.15, fastest_roll) * delta)
+	else:
+		_roll = target
+		_roll_started = true
+	rotation = _roll
+	view_rolled.emit(_roll)
+
+
+# The turn of the view that puts down at the bottom of the screen, at a point.
+func _down_at(x: float, y: float) -> float:
+	for index in range(_gravity_model.get_satellite_count()):
+		var at: PackedFloat64Array = _gravity_model.get_satellite_position(index, _state.time)
+		if Vector2(at[0] - x, at[1] - y).length_squared() <= station_down_reach * station_down_reach:
+			var parent: PackedFloat64Array = _gravity_model.get_body_position(_gravity_model.get_satellite_parent(index), _state.time)
+			return atan2(at[0] - parent[0], parent[1] - at[1])
+	var body: PackedFloat64Array = _gravity_model.get_body_position(_gravity_model.get_dominant_body(x, y, _state.time), _state.time)
+	return atan2(x - body[0], body[1] - y)
 
 
 # Where a body is, or the ship for the star, which is too far off to center on up close.

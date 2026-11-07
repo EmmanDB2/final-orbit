@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-06 | Camera turns so down is down from the Orbit view in, and stays a fixed map farther out, replacing the fixed camera \[Leaning\] |
 | 2026-11-06 | Docking built, with the ship's nose as the hatch, free refueling and repair, and a speed readout against the station. The station now turns with its orbit, replacing holding still \[Leaning\] |
 | 2026-11-06 | Station made solid: the ship bounces off it, and takes damage above its safe speed \[Leaning\] |
 | 2026-11-06 | First edge marker, for the station, with its label beside the dot when zoomed out \[Leaning\] |
@@ -374,6 +375,7 @@ One continuous top-down camera with seven zoom tiers. Landing is just zooming in
 
 - In 2D a planet is a circle, so zooming in turns its rim into the horizon you land on. \[Locked\]
 - Tiers 2 to 7 are built. Star system centers on the star, Planet on the planet you're around, Orbit on whichever body you're orbiting, and Approach, Descent, and Surface on the ship. In between, the center slides steadily with the zoom. Out in deep space, the ship stands in for the planet and orbited body. \[Leaning\]
+- From the Orbit view in, the view turns so that down on screen is really down: toward the body below, or a nearby station's bottom within 2,000 m. The ground and stations stay flat, and the ship turning shows against them. The screen's pixels stay square, and only what they show turns. It takes a moment to swing to a new down, and farther out than Orbit it settles back to a fixed map. This was Manny's call, and replaces the fixed camera. \[Leaning\]
 - The far tiers draw each body's rails and sphere of influence in dark canopy glass from the agency palette, behind the bodies. An orbit line stops at that body's sphere of influence ring, and rails or rings too small to read aren't drawn. \[Leaning\]
 - A ship rests on whatever's lowest: its feet with the legs down, or its engine bell with them up. On the ground the turn keys do nothing, and it settles upright if it's whole, so thrust lifts it straight off. A damaged ship settles on whichever side of its outline it can balance on, nearest upright, so losing a leg leaves it leaning. \[Leaning\]
 - The LEGS button, or L on the Mac, swings the legs down over 2 seconds or back up. They start up, and they won't go up on the ground. Nothing deploys them for you, so forgetting means landing on the engine. \[Leaning\]

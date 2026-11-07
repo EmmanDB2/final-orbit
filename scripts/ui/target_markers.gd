@@ -19,6 +19,7 @@ var _clear_area := Rect2()
 var _center_x: float = 0.0
 var _center_y: float = 0.0
 var _pixels_per_unit: float = 1.0
+var _roll: float = 0.0
 
 
 ## Starts following a flight.
@@ -37,6 +38,10 @@ func _on_clear_area_changed(area: Rect2) -> void:
 	queue_redraw()
 
 
+func _on_view_rolled(angle: float) -> void:
+	_roll = angle
+
+
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
 	_center_x = center_x
 	_center_y = center_y
@@ -52,7 +57,7 @@ func _draw() -> void:
 	var area: Rect2 = _clear_area.grow(-edge_margin)
 	for target: Dictionary in _targets:
 		var at: PackedFloat64Array = _gravity_model.get_satellite_position(target["index"], _state.time)
-		var offset := Vector2((at[0] - _center_x) * _pixels_per_unit, (at[1] - _center_y) * _pixels_per_unit)
+		var offset: Vector2 = Vector2((at[0] - _center_x) * _pixels_per_unit, (at[1] - _center_y) * _pixels_per_unit).rotated(-_roll)
 		var away := Vector2(at[0] - _state.x, at[1] - _state.y)
 		var text: String = "%s %s" % [target["callsign"], UiStyle.distance_text(away.length())]
 		var spot: Vector2 = middle + offset
