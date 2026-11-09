@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-09 | Trying a low-poly 3D pilot, rendered live at the pilot's pixel size and snapped to the palette with an outline, against the sprite sheets. If it wins, it replaces the [Locked] top-down sprite line, and one model gives every view \[Open\] |
 | 2026-11-09 | Walking on worlds built: EVA from a landed ship puts the pilot on foot beside it, seen from the side. They walk, jump, and ride the ground as the world turns. The jetpack fires on a second press in the air, too weak to fly against either world's gravity. A soft EVA landing puts them on foot, and BOARD SHIP works anywhere along a landed ship's width \[Leaning\] |
 | 2026-11-09 | Side-view pilot sheet cut from Manny's Gemini sheet: 29 frames, about 36 px tall, in the suit's palette colors only \[Leaning\] |
 | 2026-11-09 | Places on worlds decided: outposts are walked into from the side with the front wall cut away, not menus; menus are what terminals show; built in stages starting with the pilot walking on worlds, which needs a side-view sprite sheet \[Leaning\] |
@@ -176,6 +177,7 @@ You are a pilot inside the ship, not the ship itself. Mission control is the voi
 - The jetpack on the ground only fires on a second press of up in the air, steered by left and right, so a jump costs no gas. At 12 m/s² it can't lift against the moon's 60 or the planet's 200, only stretch a jump. More than 400 units up, the pilot's on EVA again. \[Leaning\]
 - Coming down on EVA at 80 units/s or less, the pilot lands on their feet and walks. Faster is lost. \[Leaning\]
 - Standing anywhere along a landed ship's width, under it or beside it, offers BOARD SHIP. Away from the ship, the way home marker points to it, and the comms line reads ON FOOT. If the ship isn't landed on the same world, the pilot's stranded and RESTART shows. \[Leaning\]
+- Being tried: a low-poly 3D astronaut in place of the sprite sheets, built in code from simple shapes on a joint hierarchy, rendered live into a small canvas at 1 px per 5 cm, with every pixel snapped to the agency palette and a 1 px outline. One model would give the side view on worlds, the view from above in stations, and any angle in space, and code would animate it all the time: the stride from speed, feet planted on slopes, reaching, and tumbling. The risks are pixels flickering as it moves and less detail than the drawings. Claude Fable 5.2 builds the model from `art/pilot/source/model_prompt.md`, and it's compared beside the sprite before deciding. \[Open\]
 - The suit has its own limits: oxygen, temperature, jetpack fuel. Only the jetpack is built so far. \[Leaning\]
 - The pilot can carry a name, suit livery, and career record. \[Open\]
 
