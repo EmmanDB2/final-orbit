@@ -1,9 +1,12 @@
-# pilot.gd: the pilot, aboard the ship, out on EVA with a jetpack, or inside a station. Whichever it
-# is, this decides what moving and the action button do. Out of the ship, the arrows and dragging go
-# by the screen: up is up on screen. The jetpack pushes against orbital mechanics like anything else,
-# and can run out. Inside, the pilot walks around the station's floors, which go around with it.
-# From DESIGN.md, "Player" (EVA, and the same sprite scale inside and outside) and "Camera, zoom, and
-# landing" (interiors). Behind FeatureFlags.EVA and FeatureFlags.INTERIORS.
+# pilot.gd: the pilot, aboard the ship, out on EVA with a jetpack, inside a station, or on foot on a
+# world. Whichever it is, this decides what moving and the action button do. Out of the ship, the
+# arrows and dragging go by the screen: up is up on screen. The jetpack pushes against orbital
+# mechanics like anything else, and can run out. Inside, the pilot walks around the station's floors,
+# which go around with it. On a world they're seen from the side: they walk along the ground as it
+# turns, jump, and fall back under its gravity, which is too strong for the jetpack to do more than
+# stretch a jump, on a second press in the air. From DESIGN.md, "Player" (EVA, walking on worlds, and the same sprite scale inside
+# and outside), "Places on worlds", and "Camera, zoom, and landing" (interiors). Behind
+# FeatureFlags.EVA, FeatureFlags.INTERIORS, and FeatureFlags.WALKING_ON_WORLDS.
 class_name Pilot
 extends Node2D
 
@@ -23,6 +26,7 @@ signal message_raised(text: String)
 const ABOARD: String = "aboard"
 const EVA: String = "eva"
 const INSIDE: String = "inside"
+const SURFACE: String = "surface"
 
 @export var data: PilotData
 ## How often the readouts update, in physics ticks.
@@ -56,6 +60,20 @@ var _pixels_per_unit: float = 1.0
 var _show_dot: bool = false
 var _last_interact_frame: int = -1
 var _animation_time: float = 0.0
+# On a world: which body, and how the pilot's moving against its ground, along it (clockwise is
+# positive) and up off it. The position itself stays in the 64-bit state.
+var _world: int = -1
+var _along: float = 0.0
+var _rising: float = 0.0
+var _grounded: bool = false
+var _facing_right: bool = true
+var _jump_held: bool = false
+var _jetting: bool = false
+var _up_heading: float = 0.0
+var _stride: float = 0.0
+# A frame held for a moment, like the crouch on landing, and for how much longer.
+var _pose: int = 0
+var _pose_left: float = 0.0
 
 
 ## Starts the pilot aboard the ship.
@@ -64,7 +82,8 @@ func start_pilot(gravity_model: GravityModel, ship: Node2D, station: StationView
 	_ship = ship
 	_station = station
 	gas = data.jet_seconds
-	state.ground_clearance = data.body_radius
+	# The boots are what meet the ground.
+	state.ground_clearance = data.stand_height
 	# Before the ship's tick, so the pilot and ship both reach the same moment before the view's drawn.
 	process_physics_priority = -3
 	_sprite.texture = data.texture
@@ -84,6 +103,8 @@ func _physics_process(delta: float) -> void:
 			_tick_eva(delta)
 		INSIDE:
 			_tick_inside(delta)
+		SURFACE:
+			_tick_surface(delta)
 	if mode == INSIDE and Engine.get_physics_frames() % telemetry_interval_ticks == 0:
 		_report()
 
@@ -94,8 +115,12 @@ func _tick_aboard(delta: float) -> void:
 	var docked_port: int = _station.docked_port
 	_set_action("BOARD STATION" if FeatureFlags.INTERIORS and _ship.docked and docked_port >= 0 else "")
 	if _can_leave and Input.is_action_just_pressed("eva"):
-		_leave_ship()
-		_tick_eva(delta)
+		if ship_state.is_on_surface():
+			_step_out_onto_ground()
+			_tick_surface(delta)
+		else:
+			_leave_ship()
+			_tick_eva(delta)
 	elif _action != "" and _interact_pressed():
 		_enter_station(docked_port)
 		_tick_inside(delta)
@@ -140,6 +165,9 @@ func _tick_eva(delta: float) -> void:
 		_firing = move
 		facing = rotate_toward(facing, atan2(move.x, -move.y), data.turn_speed * delta)
 	_gravity_model.propagate(state, delta)
+	if state.is_on_surface() and FeatureFlags.WALKING_ON_WORLDS and state.get_touchdown_speed() <= data.safe_landing_speed:
+		_land_on_ground()
+		return
 	if state.is_on_surface():
 		_lost = true
 		visible = false
@@ -272,6 +300,177 @@ func _leave_station(port: int, frame: Dictionary) -> void:
 	_set_mode(EVA)
 
 
+# Out of a landed ship, the pilot stands on the ground beside it, on the hatch's side.
+func _step_out_onto_ground() -> void:
+	var ship_state: ShipState = _ship.state
+	_world = _gravity_model.get_dominant_body(ship_state.x, ship_state.y, ship_state.time)
+	var center: PackedFloat64Array = _gravity_model.get_body_position(_world, ship_state.time)
+	var angle: float = atan2(ship_state.y - center[1], ship_state.x - center[0])
+	var right := Vector2(-sin(angle), cos(angle))
+	var side: float = 1.0 if _ship.eva_exit_offset().dot(right) >= 0.0 else -1.0
+	var widest: float = 0.0
+	for point: Vector2 in _ship.world_outline_samples(4.0):
+		widest = maxf(widest, point.dot(right) * side)
+	var feet: float = _ground_radius(center, angle, ship_state.time)
+	angle += side * (widest + data.body_radius) / feet
+	state.time = ship_state.time
+	_along = 0.0
+	_rising = 0.0
+	_grounded = true
+	_facing_right = side > 0.0
+	_place_on_ground(center, angle, _ground_radius(center, angle, ship_state.time))
+	_ship.set_pilot_aboard(false)
+	_set_mode(SURFACE)
+
+
+# Come down softly on EVA, the pilot lands on their feet and walks.
+func _land_on_ground() -> void:
+	_world = _gravity_model.get_dominant_body(state.x, state.y, state.time)
+	var center: PackedFloat64Array = _gravity_model.get_body_position(_world, state.time)
+	var angle: float = atan2(state.y - center[1], state.x - center[0])
+	_along = 0.0
+	_rising = 0.0
+	_grounded = true
+	_place_on_ground(center, angle, _ground_radius(center, angle, state.time))
+	_set_mode(SURFACE)
+	_show_pose(data.jump_side[5], 0.25)
+
+
+func _tick_surface(delta: float) -> void:
+	# The ship hasn't moved yet this tick, so this is the moment the two can be compared.
+	_look_around_on_ground()
+	if _action != "" and _interact_pressed():
+		_board_ship()
+		return
+	if Engine.get_physics_frames() % telemetry_interval_ticks == 0:
+		_report()
+
+	# All in 64-bit: a 32-bit Vector2 this far from the middle of a world would wander off the ground.
+	var center: PackedFloat64Array = _gravity_model.get_body_position(_world, state.time)
+	var out_x: float = state.x - center[0]
+	var out_y: float = state.y - center[1]
+	var angle: float = atan2(out_y, out_x)
+	var up := Vector2(cos(angle), sin(angle))
+	var right := Vector2(-up.y, up.x)
+	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+	var body_moving: PackedFloat64Array = _gravity_model.get_body_velocity(_world, state.time)
+	# How fast the ground turns, from how fast it's moving here.
+	var spin: float = (out_x * (ground[1] - body_moving[1]) - out_y * (ground[0] - body_moving[0])) / (out_x * out_x + out_y * out_y)
+	var pull: PackedFloat64Array = _gravity_model.get_acceleration(state.x, state.y, state.time)
+	var gravity: float = sqrt(pull[0] * pull[0] + pull[1] * pull[1])
+
+	var move: Vector2 = _wanted_move()
+	var sideways: float = clampf(move.dot(right), -1.0, 1.0)
+	var jump: bool = move.dot(up) > 0.5
+	var fresh_press: bool = jump and not _jump_held
+	_firing = Vector2.ZERO
+	if _grounded:
+		var grip: float = minf(data.walk_acceleration, gravity * data.ground_grip)
+		_along = move_toward(_along, sideways * data.ground_walk_speed, grip * delta)
+		if fresh_press:
+			_rising = data.jump_speed
+			_grounded = false
+			_show_pose(data.jump_side[1], 0.12)
+	else:
+		# Off the ground, only the jetpack changes anything. It takes a second press, so a jump costs no
+		# gas, and fires up for as long as that's held, steered by left and right.
+		_jetting = (_jetting or fresh_press) and jump
+		if _jetting and gas > 0.0:
+			var push := Vector2(sideways, 1.0).limit_length(1.0)
+			_along += push.x * data.jet_acceleration * delta
+			_rising += push.y * data.jet_acceleration * delta
+			gas = maxf(gas - push.length() * delta, 0.0)
+			_firing = right * push.x + up * push.y
+		_rising -= gravity * delta
+	_jump_held = jump
+	if absf(sideways) > 0.1:
+		_facing_right = sideways > 0.0
+
+	# On the ship's clock, as inside a station: a tick out would put the pilot far off the ground.
+	var later: float = _ship.state.time + delta
+	var center_later: PackedFloat64Array = _gravity_model.get_body_position(_world, later)
+	var feet: float = sqrt(out_x * out_x + out_y * out_y) - data.stand_height
+	# The ground carries the pilot around with it, and walking adds to that.
+	var riding: float = angle + spin * delta
+	var angle_later: float = riding + _along * delta / feet
+	var floor_there: float = _ground_radius(center_later, angle_later, later)
+	# Ground higher than a step, or in the air higher than the boots, is a wall.
+	if floor_there > feet + (data.step_height if _grounded else 0.0):
+		_along = 0.0
+		angle_later = riding
+		floor_there = _ground_radius(center_later, angle_later, later)
+	if _grounded and feet - floor_there > data.step_height:
+		_grounded = false
+		_rising = 0.0
+	if _grounded:
+		feet = floor_there
+	else:
+		feet += _rising * delta
+		if feet <= floor_there:
+			feet = floor_there
+			_grounded = true
+			_jetting = false
+			_rising = 0.0
+			_show_pose(data.jump_side[5], 0.15)
+	state.time = later
+	_place_on_ground(center_later, angle_later, feet)
+	_set_stranded(not _ship.can_be_boarded() or not _ship.state.is_on_surface() or _gravity_model.get_dominant_body(_ship.state.x, _ship.state.y, _ship.state.time) != _world)
+	if feet - floor_there > data.ground_reach:
+		_set_mode(EVA)
+
+
+# How far the ground is from the middle of the world, at this angle around it.
+func _ground_radius(center: PackedFloat64Array, angle: float, time: float) -> float:
+	var base: float = _gravity_model.get_body_radius(_world)
+	return base + _gravity_model.get_ground_height(center[0] + cos(angle) * base, center[1] + sin(angle) * base, time)
+
+
+# Stands the pilot with their boots this far from the world's middle, moving with its ground.
+func _place_on_ground(center: PackedFloat64Array, angle: float, feet: float) -> void:
+	var up := Vector2(cos(angle), sin(angle))
+	var right := Vector2(-up.y, up.x)
+	var reach: float = feet + data.stand_height
+	state.x = center[0] + cos(angle) * reach
+	state.y = center[1] + sin(angle) * reach
+	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+	state.velocity_x = ground[0] + right.x * _along + up.x * _rising
+	state.velocity_y = ground[1] + right.y * _along + up.y * _rising
+	_up_heading = atan2(up.x, -up.y)
+	facing = _up_heading
+
+
+# Standing by the ship, the pilot can climb back in.
+func _look_around_on_ground() -> void:
+	if _grounded and _ship.can_be_boarded() and _beside_ship():
+		_set_action("BOARD SHIP")
+	else:
+		_set_action("")
+
+
+# Under the ship or beside it, anywhere along its width, and no higher than its top.
+func _beside_ship() -> bool:
+	var ship_state: ShipState = _ship.state
+	var from_ship := Vector2(state.x - ship_state.x, state.y - ship_state.y)
+	if from_ship.length() > 600.0:
+		return false
+	var up: Vector2 = Vector2.UP.rotated(_up_heading)
+	var right := Vector2(-up.y, up.x)
+	var left_edge: float = INF
+	var right_edge: float = -INF
+	var top: float = -INF
+	for point: Vector2 in _ship.world_outline_samples(8.0):
+		left_edge = minf(left_edge, point.dot(right))
+		right_edge = maxf(right_edge, point.dot(right))
+		top = maxf(top, point.dot(up))
+	var across: float = from_ship.dot(right)
+	return across >= left_edge - data.use_reach and across <= right_edge + data.use_reach and from_ship.dot(up) <= top
+
+
+func _show_pose(frame: int, seconds: float) -> void:
+	_pose = frame
+	_pose_left = seconds
+
+
 # One press does one thing, even when doing it opens up something else to do.
 func _interact_pressed() -> bool:
 	if not Input.is_action_just_pressed("interact") or _last_interact_frame == Engine.get_physics_frames():
@@ -309,7 +508,16 @@ func guide_radius() -> float:
 func _set_mode(new_mode: String) -> void:
 	mode = new_mode
 	_has_drag = false
+	_jump_held = false
+	_jetting = false
+	_pose_left = 0.0
 	visible = mode != ABOARD
+	# From the side on a world, from above everywhere else.
+	var side: bool = mode == SURFACE
+	_sprite.frame = 0
+	_sprite.texture = data.side_texture if side else data.texture
+	_sprite.hframes = data.side_hframes if side else data.hframes
+	_sprite.vframes = data.side_vframes if side else data.vframes
 	_set_action("")
 	mode_changed.emit(mode)
 
@@ -337,7 +545,13 @@ func _report() -> void:
 	var near_station: bool = mode == INSIDE
 	var ship_state: ShipState = _ship.state
 	var near: bool = true
-	if mode == INSIDE:
+	var status: String = "ON EVA"
+	if mode == SURFACE:
+		var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+		against = Vector2(ground[0], ground[1])
+		near = false
+		status = "ON FOOT"
+	elif mode == INSIDE:
 		against = _station.moving_at(_station.frame_at(state.time), Vector2(state.x, state.y) - _station_center())
 	elif _station.is_nearby(state.x, state.y, state.time):
 		against = _station.moving_at(_station.frame_at(state.time), Vector2(state.x, state.y) - _station_center())
@@ -351,11 +565,11 @@ func _report() -> void:
 	var relative: Vector2 = Vector2(state.velocity_x, state.velocity_y) - against
 	var apsides: PackedFloat64Array = _gravity_model.get_orbit_apsides(state)
 	flight_data_changed.emit({
-		"altitude": _gravity_model.get_altitude(state.x, state.y, state.time),
+		"altitude": _gravity_model.get_altitude(state.x, state.y, state.time) - (data.stand_height if mode == SURFACE else 0.0),
 		"speed": relative.length(),
 		"against_station": near,
 		"docked": false,
-		"landed": false,
+		"landed": mode == SURFACE and _grounded,
 		"periapsis": apsides[0],
 		"apoapsis": apsides[1],
 		"time": state.time,
@@ -365,7 +579,7 @@ func _report() -> void:
 		"spin": 0.0,
 		"fuel_share": gas / data.jet_seconds,
 		"delta_v": gas * data.jet_acceleration,
-		"status": "INSIDE THE STATION" if mode == INSIDE else ("NEAR THE STATION" if near_station else "ON EVA"),
+		"status": "INSIDE THE STATION" if mode == INSIDE else ("NEAR THE STATION" if near_station else status),
 	})
 
 
@@ -379,6 +593,9 @@ func _station_center() -> Vector2:
 # space they turn the rest of the way from whichever's nearest.
 func _process(delta: float) -> void:
 	if mode == ABOARD:
+		return
+	if mode == SURFACE:
+		_animate_on_ground(delta)
 		return
 	_animation_time += delta
 	var on_screen: float = wrapf(facing - _roll, -PI, PI)
@@ -400,6 +617,30 @@ func _process(delta: float) -> void:
 	_sprite.flip_v = quarter == 0
 	var leftover: float = 0.0 if mode == INSIDE else on_screen - quarter * PI / 2.0
 	rotation = leftover + _roll
+
+
+# From the side, standing up straight on the ground, facing the way they last walked.
+func _animate_on_ground(delta: float) -> void:
+	var frames: PackedInt32Array = data.idle_side
+	var fps: float = data.idle_fps
+	if _firing != Vector2.ZERO:
+		frames = data.hover_side
+		fps = data.jet_fps
+	elif not _grounded:
+		var rise_share: float = _rising / data.jump_speed
+		frames = PackedInt32Array([data.jump_side[2] if rise_share > 0.3 else (data.jump_side[3] if rise_share > -0.3 else data.jump_side[4])])
+	elif absf(_along) > 4.0:
+		frames = data.stride_side
+		fps = data.stride_fps * absf(_along) / data.ground_walk_speed
+	_stride += delta * fps
+	if _pose_left > 0.0:
+		_pose_left -= delta
+		_sprite.frame = _pose
+	else:
+		_sprite.frame = frames[int(_stride) % frames.size()]
+	_sprite.flip_h = not _facing_right
+	_sprite.flip_v = false
+	rotation = _up_heading
 
 
 func _on_view_rolled(angle: float) -> void:

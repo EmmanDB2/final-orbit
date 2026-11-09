@@ -377,9 +377,9 @@ func status() -> Dictionary:
 	}
 
 
-## Whether the pilot can step out from here. A landed ship keeps them in for now.
+## Whether the pilot can step out from here: into space, or onto the ground when it's landed.
 func can_be_left() -> bool:
-	return not _lost and not state.is_on_surface()
+	return not _lost and (FeatureFlags.WALKING_ON_WORLDS or not state.is_on_surface())
 
 
 ## Whether there's still somewhere to get back in.

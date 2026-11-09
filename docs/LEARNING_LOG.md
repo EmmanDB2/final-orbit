@@ -437,3 +437,11 @@ Files: `tools/slice_pilot_side.gd`, `art/pilot/pilot_side.png`, `art/pilot/sourc
 - finding a pixel grid's phase from where the edges line up
 - matching colors in a perceptual color space (Oklab)
 - aligning animation frames on an anchor point
+
+## 2026-11-09: Walking on worlds
+
+Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `data/pilot.tres`, `scripts/feature_flags.gd`, `scripts/ship.gd`, `scripts/ui/flight_hud.gd`, `scripts/world_catalog.gd`, `docs/DESIGN.md`
+
+- polar coordinates on a spinning body
+- 64-bit floats versus 32-bit Vector2
+- projectile motion (v²/2g, 2v/g) and edge-triggered input

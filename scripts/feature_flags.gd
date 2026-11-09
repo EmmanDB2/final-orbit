@@ -8,3 +8,5 @@ const STAR_TINT: bool = true
 const EVA: bool = true
 ## Moved up from Tier 3. The pilot can board a station and walk around inside it.
 const INTERIORS: bool = true
+## Moved up from Tier 2 with EVA. The pilot can step out of a landed ship and walk on the ground.
+const WALKING_ON_WORLDS: bool = true

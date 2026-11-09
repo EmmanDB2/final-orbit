@@ -578,7 +578,7 @@ func _on_pilot_mode_changed(mode: String) -> void:
 	_show_panels()
 	_turn_guide.ship = _ship if aboard else _pilot
 	_markers.measure_from(_view.point_getter({"kind": "ship", "index": 0} if aboard else {"kind": "pilot", "index": 0}))
-	if mode == Pilot.EVA:
+	if mode == Pilot.EVA or mode == Pilot.SURFACE:
 		_markers.set_way_home("SHIP", 110.0, _view.point_getter({"kind": "ship", "index": 0}))
 	else:
 		_markers.clear_way_home()

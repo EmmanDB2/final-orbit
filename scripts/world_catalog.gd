@@ -162,7 +162,8 @@ func _pilot_info() -> Dictionary:
 		["ΔV", "%s m/s" % _grouped(int(_pilot.gas * _pilot.data.jet_acceleration)), true],
 		["SHIP", _meters(away), true],
 	]
-	return {"name": "Pilot", "chip": "ON EVA" if _pilot.mode == Pilot.EVA else "INSIDE", "rows": rows, "note": "", "can_target": false}
+	var chip: String = {Pilot.EVA: "ON EVA", Pilot.SURFACE: "ON FOOT"}.get(_pilot.mode, "INSIDE")
+	return {"name": "Pilot", "chip": chip, "rows": rows, "note": "", "can_target": false}
 
 
 # Thousands split with commas.
