@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-09 | Places on worlds decided: outposts are walked into from the side with the front wall cut away, not menus; menus are what terminals show; built in stages starting with the pilot walking on worlds, which needs a side-view sprite sheet \[Leaning\] |
 | 2026-11-06 | App icon set. Orbit lines are blue and gravity rings gold. Rotate moves to the D-pad's corners, replacing the switch. The pilot uses Manny's animated sprite sheet \[Leaning\] |
 | 2026-11-06 | EVA and station boarding built ahead of gigs, on Manny's call: jetpack, walking inside with the roof off, airlocks, boarding from a docked ship, and a gig board terminal to walk up to. Moves those parts of Tier 2 and Tier 3 up, behind feature flags \[Leaning\] |
 | 2026-11-06 | UI reworked from Manny's mockups: thin outlined instruments with no plates, one layout for both screens, a comms line along the bottom with a log, a FLIGHT menu, the TRANS / ROT switch everywhere, ASSIST on the button, and a card on holding a finger on anything, with SET TARGET and FOCUS. Tap still focuses. The home system is named KEPLA-2 \[Leaning\] |
@@ -168,6 +169,7 @@ You are a pilot inside the ship, not the ship itself. Mission control is the voi
 - Built so far, moved ahead of gigs by Manny: the EVA button puts the pilot out beside the cockpit, unless the ship's landed or lost. The ship takes no orders then, though ASS and STAB keep holding it. The arrows and dragging go by the screen, so up is up on screen, and the view follows the pilot. The jetpack pushes at 12 m/s² for 60 seconds, fills up aboard the ship or a station, and obeys orbital mechanics like anything else. Running out of reach of anything, or hitting the ground, needs a restart. Patching, salvage, and reattaching are still to come. \[Leaning\]
 - While the pilot's out, the top bar and gauge are theirs: delta-v and the gauge read the jetpack. A cyan marker points the way back to the ship, and SHIP on the zoom buttons brings the view back to the pilot. \[Leaning\]
 - The EVA sprite comes from Manny's sheet, at about 48 x 50 px: a slow float, walking, and jetting with flames, drawn facing down and right, and mirrored for up and left. Inside a station the pilot only faces those four ways, so the pixels stay square with the floor. In space they turn the rest of the way too. The sheet's helmets have no gold visor, and the drawing's a little bigger than the 35 x 40 above. \[Leaning\]
+- Walking on worlds needs a second sheet drawn from the side, facing right and mirrored for left: idle, walking, jumping in low gravity, climbing, using a terminal, and a jetpack hover. Same suit, gold visor, about 40 px tall. Manny's making it with Gemini, from reference images in `art/pilot/source/`. \[Leaning\]
 - The suit has its own limits: oxygen, temperature, jetpack fuel. Only the jetpack is built so far. \[Leaning\]
 - The pilot can carry a name, suit livery, and career record. \[Open\]
 
@@ -348,6 +350,14 @@ Terrain and biomes per body: \[Leaning\]
 - Within 2,000 m of a station, the speed readout turns to REL and it and the dial's markers read against the station, including its turning. \[Leaning\]
 - Boarding: BOARD STATION takes the pilot in from a docked ship, or from outside within 90 m of a free port's hatch. Inside, at a free port's inner door it's EXIT STATION, and at the port the ship's docked to it's BOARD SHIP. Nothing's checked for speed at a station's hatch, since the jetpack's slow. \[Leaning\]
 - A station's terminals are spots set per room in the data. The first is the gig board, in the hub's console room on the upper right, which only says no gigs are posted until gigs exist. USE TERMINAL shows when the pilot's next to it. This is what gigs will be picked from. \[Leaning\]
+
+Places on worlds: \[Leaning\]
+
+- Planets stay continuous terrain, with no separate levels or loading screens. Places worth landing at are points on a body's surface: outposts with services and gigs, landing pads for cargo, survey points for data gigs, and later wrecks and anomalies. Each shows as a marker once charted, has a card, can be targeted, and has its ground flattened so it's fair to land on.
+- Outposts are walked into, not menus. A planet's surface is the edge of a disc in the same flat world as everything else, so a building on it is cut the same way: seen from the side, floors stacked, with gravity pulling down. Walking in fades its front wall off, the way a station's roof comes off. Manny's call, over opening a menu on landing.
+- Menus are what a terminal shows, at a station or an outpost alike: the gig board, cargo manifest, repairs, and refueling open as a stylized screen when the pilot uses one.
+- Built in stages: first the pilot walks on worlds, from the side; then a landing pad on the moon, where cargo is unloaded from the cockpit; then walk-in outposts with terminals inside.
+- Rooms in surface buildings are sized for the pilot, so a room is about 60 px tall next to a 40 px pilot, and the 211 px lander reads as about 10 m tall. Walking around buildings makes the pilot's scale the one players see, which leans the open scale question toward the pilot. \[Leaning\]
 
 ## Hazards
 
