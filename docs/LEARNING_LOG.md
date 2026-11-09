@@ -429,3 +429,11 @@ Files: `art/pilot/`, `tools/slice_pilot.gd`, `scripts/pilot.gd`, `scripts/pilot_
 - sprite sheets with hframes and vframes
 - mirroring a sprite to save drawing frames
 - picking a frame from a state and a timer
+
+## 2026-11-09: Side-view pilot sheet cut
+
+Files: `tools/slice_pilot_side.gd`, `art/pilot/pilot_side.png`, `art/pilot/source/pilot_side_sheet.png`
+
+- finding a pixel grid's phase from where the edges line up
+- matching colors in a perceptual color space (Oklab)
+- aligning animation frames on an anchor point

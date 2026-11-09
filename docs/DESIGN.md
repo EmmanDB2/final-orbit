@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-09 | Side-view pilot sheet cut from Manny's Gemini sheet: 29 frames, about 36 px tall, in the suit's palette colors only \[Leaning\] |
 | 2026-11-09 | Places on worlds decided: outposts are walked into from the side with the front wall cut away, not menus; menus are what terminals show; built in stages starting with the pilot walking on worlds, which needs a side-view sprite sheet \[Leaning\] |
 | 2026-11-06 | App icon set. Orbit lines are blue and gravity rings gold. Rotate moves to the D-pad's corners, replacing the switch. The pilot uses Manny's animated sprite sheet \[Leaning\] |
 | 2026-11-06 | EVA and station boarding built ahead of gigs, on Manny's call: jetpack, walking inside with the roof off, airlocks, boarding from a docked ship, and a gig board terminal to walk up to. Moves those parts of Tier 2 and Tier 3 up, behind feature flags \[Leaning\] |
@@ -169,7 +170,7 @@ You are a pilot inside the ship, not the ship itself. Mission control is the voi
 - Built so far, moved ahead of gigs by Manny: the EVA button puts the pilot out beside the cockpit, unless the ship's landed or lost. The ship takes no orders then, though ASS and STAB keep holding it. The arrows and dragging go by the screen, so up is up on screen, and the view follows the pilot. The jetpack pushes at 12 m/s² for 60 seconds, fills up aboard the ship or a station, and obeys orbital mechanics like anything else. Running out of reach of anything, or hitting the ground, needs a restart. Patching, salvage, and reattaching are still to come. \[Leaning\]
 - While the pilot's out, the top bar and gauge are theirs: delta-v and the gauge read the jetpack. A cyan marker points the way back to the ship, and SHIP on the zoom buttons brings the view back to the pilot. \[Leaning\]
 - The EVA sprite comes from Manny's sheet, at about 48 x 50 px: a slow float, walking, and jetting with flames, drawn facing down and right, and mirrored for up and left. Inside a station the pilot only faces those four ways, so the pixels stay square with the floor. In space they turn the rest of the way too. The sheet's helmets have no gold visor, and the drawing's a little bigger than the 35 x 40 above. \[Leaning\]
-- Walking on worlds needs a second sheet drawn from the side, facing right and mirrored for left: idle, walking, jumping in low gravity, climbing, using a terminal, and a jetpack hover. Same suit, gold visor, about 40 px tall. Manny's making it with Gemini, from reference images in `art/pilot/source/`. \[Leaning\]
+- Walking on worlds uses a second sheet drawn from the side, facing right and mirrored for left: idle, walking, jumping in low gravity, climbing, using a terminal, and a jetpack hover. Same suit, gold visor. Manny made it with Gemini from reference images in `art/pilot/source/`, and `tools/slice_pilot_side.gd` cuts it to 64 x 64 frames, about 36 px tall, in the suit's own palette colors, with feet on one line. Climbing and using a terminal are cut but not used yet. \[Leaning\]
 - The suit has its own limits: oxygen, temperature, jetpack fuel. Only the jetpack is built so far. \[Leaning\]
 - The pilot can carry a name, suit livery, and career record. \[Open\]
 
