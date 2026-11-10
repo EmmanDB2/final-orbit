@@ -461,3 +461,11 @@ Files: `scripts/pilot/astronaut_view.gd`, `scripts/pilot/astronaut_pixels.gdshad
 - rendering 3D into a 2D texture with a SubViewport and an orthographic camera
 - a post-process shader: snapping colors to a palette and finding edges from depth
 - procedural animation: posing joints from sine waves and game state
+
+## 2026-11-09: EVA steers like the ship, with RCS puffs
+
+Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_view.gd`, `scripts/ui/flight_hud.gd`, `docs/DESIGN.md`
+
+- angular velocity and braking to stop on a heading
+- pushing in a body's own frame, then rotating into the world
+- torque from a pair of thrusters on opposite corners

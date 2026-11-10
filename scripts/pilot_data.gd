@@ -43,6 +43,11 @@ extends Resource
 @export var walk_acceleration: float = 700.0
 ## How fast the pilot turns to face where they're going, in radians per second.
 @export var turn_speed: float = 6.0
+## On EVA the jetpack turns the pilot like the ship's RCS: this fast a change in spin, in radians per
+## second squared, up to this much spin. Turning uses this share of the gas that pushing does.
+@export var spin_acceleration: float = 3.0
+@export var most_spin: float = 3.0
+@export var spin_gas_share: float = 0.25
 ## How far the pilot's body reaches from their middle, for touching things, in world units.
 @export var body_radius: float = 12.0
 ## How close and how slow the pilot has to be to board a ship.

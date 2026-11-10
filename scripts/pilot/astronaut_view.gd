@@ -1,14 +1,15 @@
 # astronaut_view.gd: draws the 3D pilot as pixel art. The model renders live into a small canvas
 # at 1 px per 5 cm, already turned to its angle on screen so its pixels stay square with the
 # screen, and a shader snaps it to the agency palette and outlines it. This also poses the joints
-# every frame from what the pilot's doing, and draws the jetpack's flames. Seen from the side on
-# worlds and in space, and from above inside stations.
+# every frame from what the pilot's doing, and draws the cold gas puffing from the jetpack's
+# thrusters, like the ship's RCS. Seen from the side on worlds, from the back on EVA, with the head
+# the way they face like a ship's nose, and from above inside stations.
 # From DESIGN.md, "Player" (the 3D pilot being tried against the sprite sheets).
 class_name AstronautView
 extends Node2D
 
 ## How the pilot is seen.
-enum Look { SIDE, ABOVE }
+enum Look { SIDE, BACK, ABOVE }
 
 ## How big the canvas is, in pixels, with the body's middle at its center.
 const CANVAS: int = 64
@@ -25,6 +26,16 @@ const LINE_STEP: float = 0.09
 ## Surfaces farther from the camera than this, in meters past the body's middle, are the far side
 ## and drawn a shade darker.
 const FAR_SIDE: float = -0.05
+## The jetpack's thrusters, at the corners of the pack's back face, measured from the model's root,
+## in meters. Real EVA packs have their thrusters at the corners like this.
+const THRUSTER_TOP: float = 1.50
+const THRUSTER_BOTTOM: float = 0.64
+const THRUSTER_SIDE: float = 0.28
+const THRUSTER_BACK: float = 0.59
+## The size of a puff of gas, in pixels: how far it reaches and its half width at each end.
+const PUFF_LENGTH: float = 8.0
+const PUFF_START_WIDTH: float = 0.5
+const PUFF_END_WIDTH: float = 2.5
 
 ## How the pilot is seen, and which way their head points on screen, clockwise from up.
 var look: Look = Look.SIDE
@@ -40,8 +51,10 @@ var rise_share: float = 0.0
 ## How far below the point this node marks the boot soles are, in pixels, when they stand
 ## on something. Zero puts the body's middle on the point.
 var feet_below: float = 0.0
-## Which way the jetpack is pushing on screen, or zero.
-var thrust := Vector2.ZERO
+## Which way the jetpack is pushing, in the pilot's own frame: x toward their right hand and y
+## toward their feet. Zero when it isn't. And which way it's turning them, clockwise positive.
+var push := Vector2.ZERO
+var turning: float = 0.0
 ## The view's turn, so the canvas can stay square with the screen.
 var screen_roll: float = 0.0
 
@@ -171,8 +184,20 @@ func _process(delta: float) -> void:
 # Turns the model to its angle on screen. Changing direction from the side turns through the
 # front, so the visor sweeps past.
 func _turn(delta: float) -> void:
-	var wanted_yaw: float = -PI / 2.0 if facing_right else -PI * 1.5
+	# Kept between a full turn back and none: 0 and -TAU are the back, -PI the front, and the sides
+	# between. Right to left goes through the front, and to or from the back the short way.
+	var wanted_yaw: float = _yaw
+	if look == Look.BACK:
+		wanted_yaw = 0.0 if _yaw > -PI else -TAU
+	elif look == Look.SIDE:
+		if facing_right and _yaw < -PI * 1.5 - 0.01:
+			_yaw += TAU
+		elif not facing_right and _yaw > -PI * 0.5 + 0.01:
+			_yaw -= TAU
+		wanted_yaw = -PI * 0.5 if facing_right else -PI * 1.5
 	_yaw = move_toward(_yaw, wanted_yaw, 9.0 * delta)
+	if _yaw <= -TAU + 0.0001:
+		_yaw += TAU
 	var roll := Basis(Vector3.BACK, -body_angle)
 	if look == Look.ABOVE:
 		# The top of the helmet toward the camera, and the front up the screen before turning.
@@ -270,18 +295,60 @@ func _turn_joint(joint_name: StringName, angles: Vector3) -> void:
 
 
 # Flames from the nozzles, the way the jetpack pushes the other way, flickering.
+# Each push or turn fires the thrusters that blow the other way: pushing toward the head fires the
+# bottom corners downward, pushing right fires the left corners leftward, and a turn fires a
+# diagonal pair in opposite directions.
 func _draw() -> void:
-	if thrust == Vector2.ZERO or palette == null:
+	if palette == null or (push == Vector2.ZERO and turning == 0.0):
 		return
-	for nozzle: StringName in [&"jet_nozzle_l", &"jet_nozzle_r"]:
-		var mark: Marker3D = _model.marker(nozzle)
-		var at: Vector2 = _on_canvas(mark.global_position)
-		var out: Vector2 = (_on_canvas(mark.global_position - mark.global_basis.y * 0.3) - at).normalized()
-		var length: float = 4.0 + 2.0 * sin(_flicker * 31.0 + float(nozzle.length()))
-		for step in range(int(length)):
-			var color: Color = palette.thrust_white if step < 2 else (palette.thrust_yellow if step < length - 1.5 else palette.thrust_red)
-			var spot: Vector2 = (at + out * (step + 1.0)).floor()
-			draw_rect(Rect2(spot, Vector2.ONE), color)
+	var top: float = THRUSTER_TOP
+	var bottom: float = THRUSTER_BOTTOM
+	var side: float = THRUSTER_SIDE
+	var firing: Array = []
+	if push.y < -0.1:
+		firing.append_array([[Vector2(-side, bottom), Vector3.DOWN], [Vector2(side, bottom), Vector3.DOWN]])
+	if push.y > 0.1:
+		firing.append_array([[Vector2(-side, top), Vector3.UP], [Vector2(side, top), Vector3.UP]])
+	if push.x > 0.1:
+		firing.append_array([[Vector2(-side, top), Vector3.LEFT], [Vector2(-side, bottom), Vector3.LEFT]])
+	if push.x < -0.1:
+		firing.append_array([[Vector2(side, top), Vector3.RIGHT], [Vector2(side, bottom), Vector3.RIGHT]])
+	if turning > 0.0:
+		firing.append_array([[Vector2(-side, top), Vector3.LEFT], [Vector2(side, bottom), Vector3.RIGHT]])
+	elif turning < 0.0:
+		firing.append_array([[Vector2(side, top), Vector3.RIGHT], [Vector2(-side, bottom), Vector3.LEFT]])
+	var root: Node3D = _model.joint(&"backpack")
+	var pack_rest := Vector3(0.0, 1.10, 0.41)
+	for thruster: Array in firing:
+		var corner: Vector2 = thruster[0]
+		var local := Vector3(corner.x, corner.y, THRUSTER_BACK) - pack_rest
+		var at: Vector3 = root.global_transform * local
+		var out: Vector3 = root.global_basis * (thruster[1] as Vector3)
+		var from: Vector2 = _on_canvas(at)
+		var way: Vector2 = _on_canvas(at + out * 0.3) - from
+		# Pointing straight at the camera or away, a puff is a dot that hides behind the pack.
+		if way.length() < 1.5:
+			continue
+		_draw_puff(from, way.normalized())
+
+
+# A small cone of gas that widens as it leaves the thruster and breaks up at the far end, in the
+# ship's RCS colors.
+func _draw_puff(from: Vector2, direction: Vector2) -> void:
+	var colors: Array[Color] = [palette.hull_lightest, palette.hull_lightest, palette.hull_lighter, palette.hull_light]
+	var across_way: Vector2 = direction.orthogonal()
+	var frame: int = int(_flicker * 30.0)
+	var along: float = 1.0
+	while along < PUFF_LENGTH:
+		var share: float = along / PUFF_LENGTH
+		var half_width: float = lerpf(PUFF_START_WIDTH, PUFF_END_WIDTH, share)
+		var color: Color = colors[int(share * colors.size())]
+		var across: float = -half_width
+		while across <= half_width:
+			if RcsPuffs.speckle(along, across, frame) < 1.0 - share * share:
+				draw_rect(Rect2((from + direction * along + across_way * across).floor(), Vector2.ONE), color)
+			across += 1.0
+		along += 1.0
 
 
 # Where a point in the model's world lands on this node, in pixels.

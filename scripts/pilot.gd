@@ -1,7 +1,9 @@
 # pilot.gd: the pilot, aboard the ship, out on EVA with a jetpack, inside a station, or on foot on a
-# world. Whichever it is, this decides what moving and the action button do. Out of the ship, the
-# arrows and dragging go by the screen: up is up on screen. The jetpack pushes against orbital
-# mechanics like anything else, and can run out. Inside, the pilot walks around the station's floors,
+# world. Whichever it is, this decides what moving and the action button do. On EVA the jetpack
+# steers like the ship's RCS: the rotate buttons turn the pilot, letting go stops the turn, a drag
+# turns them to face that way, and the arrows push relative to them, up toward the helmet. Walking,
+# inside or on the ground, goes by the screen: up is up on screen. The jetpack pushes against
+# orbital mechanics like anything else, and can run out. Inside, the pilot walks around the station's floors,
 # which go around with it. On a world they're seen from the side: they walk along the ground as it
 # turns, jump, and fall back under its gravity, which is too strong for the jetpack to do more than
 # stretch a jump, on a second press in the air. From DESIGN.md, "Player" (EVA, walking on worlds, and the same sprite scale inside
@@ -50,6 +52,11 @@ var _roll: float = 0.0
 var _has_drag: bool = false
 var _drag_heading: float = 0.0
 var _firing := Vector2.ZERO
+# The same push in the pilot's own frame, x to their right and y toward their feet, and which way the
+# jetpack's turning them, for drawing the gas. On EVA, how fast they're spinning, clockwise.
+var _push_local := Vector2.ZERO
+var _turning: float = 0.0
+var _spin: float = 0.0
 # Inside: where the pilot is and how they're moving, which way they face, in the station's frame.
 var _local := Vector2.ZERO
 var _walking := Vector2.ZERO
@@ -162,14 +169,16 @@ func _tick_eva(delta: float) -> void:
 			return
 	if Engine.get_physics_frames() % telemetry_interval_ticks == 0:
 		_report()
-	var move: Vector2 = _wanted_move()
+	_steer(delta)
+	var push: Vector2 = _body_push()
 	_firing = Vector2.ZERO
-	if move != Vector2.ZERO and gas > 0.0:
-		state.velocity_x += move.x * data.jet_acceleration * delta
-		state.velocity_y += move.y * data.jet_acceleration * delta
-		gas = maxf(gas - move.length() * delta, 0.0)
-		_firing = move
-		facing = rotate_toward(facing, atan2(move.x, -move.y), data.turn_speed * delta)
+	_push_local = Vector2.ZERO
+	if push != Vector2.ZERO and gas > 0.0:
+		_push_local = push
+		_firing = push.rotated(facing)
+		state.velocity_x += _firing.x * data.jet_acceleration * delta
+		state.velocity_y += _firing.y * data.jet_acceleration * delta
+		gas = maxf(gas - push.length() * delta, 0.0)
 	_gravity_model.propagate(state, delta)
 	if state.is_on_surface() and FeatureFlags.WALKING_ON_WORLDS and state.get_touchdown_speed() <= data.safe_landing_speed:
 		_land_on_ground()
@@ -182,6 +191,34 @@ func _tick_eva(delta: float) -> void:
 		_set_action("")
 		return
 	_bump_station()
+
+
+# The rotate buttons spin the pilot, and letting go stops the spin, as the ship does with ASSIST on.
+# A drag turns them to face that way, braking in time to stop there. Turning costs gas too.
+func _steer(delta: float) -> void:
+	var before: float = _spin
+	var turn: float = Input.get_axis("turn_left", "turn_right")
+	if gas <= 0.0:
+		pass
+	elif turn != 0.0:
+		_spin = clampf(_spin + turn * data.spin_acceleration * delta, -data.most_spin, data.most_spin)
+	elif _has_drag:
+		var error: float = angle_difference(facing, _drag_heading)
+		var braking_limit: float = sqrt(2.0 * data.spin_acceleration * absf(error))
+		_spin = move_toward(_spin, signf(error) * minf(braking_limit, absf(error) * 4.0), data.spin_acceleration * delta)
+	else:
+		_spin = move_toward(_spin, 0.0, data.spin_acceleration * delta)
+	_turning = signf(_spin - before)
+	gas = maxf(gas - absf(_spin - before) / data.spin_acceleration * data.spin_gas_share, 0.0)
+	facing = wrapf(facing + _spin * delta, -PI, PI)
+
+
+# The arrows push relative to the pilot, like the ship's: up toward the helmet, right to their right.
+# Returned in their own frame, with y toward their feet, up to full push.
+func _body_push() -> Vector2:
+	var forward: float = Input.get_axis("translate_back", "translate_forward") + (1.0 if Input.is_action_pressed("thrust") else 0.0)
+	var right: float = Input.get_axis("translate_left", "translate_right")
+	return Vector2(right, -forward).limit_length(1.0)
 
 
 func _bump_station() -> void:
@@ -381,12 +418,14 @@ func _tick_surface(delta: float) -> void:
 		# Off the ground, only the jetpack changes anything. It takes a second press, so a jump costs no
 		# gas, and fires up for as long as that's held, steered by left and right.
 		_jetting = (_jetting or fresh_press) and jump
+		_push_local = Vector2.ZERO
 		if _jetting and gas > 0.0:
 			var push := Vector2(sideways, 1.0).limit_length(1.0)
 			_along += push.x * data.jet_acceleration * delta
 			_rising += push.y * data.jet_acceleration * delta
 			gas = maxf(gas - push.length() * delta, 0.0)
 			_firing = right * push.x + up * push.y
+			_push_local = Vector2(0.0, -1.0)
 		_rising -= gravity * delta
 	_jump_held = jump
 	if absf(sideways) > 0.1:
@@ -517,6 +556,9 @@ func _set_mode(new_mode: String) -> void:
 	_jump_held = false
 	_jetting = false
 	_pose_left = 0.0
+	_spin = 0.0
+	_turning = 0.0
+	_push_local = Vector2.ZERO
 	visible = mode != ABOARD
 	# From the side on a world, from above everywhere else.
 	var side: bool = mode == SURFACE
@@ -632,11 +674,12 @@ func _process(delta: float) -> void:
 func _show_figure(delta: float) -> void:
 	rotation = _roll
 	_figure.screen_roll = _roll
-	_figure.thrust = _firing
+	_figure.push = _push_local
+	_figure.turning = _turning if mode == EVA else 0.0
 	match mode:
 		SURFACE:
 			_figure.look = AstronautView.Look.SIDE
-			_figure.body_angle = wrapf(_up_heading - _roll, -PI, PI)
+			_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(_up_heading - _roll, -PI, PI), 10.0 * delta)
 			_figure.facing_right = _facing_right
 			_figure.feet_below = data.stand_height
 			_figure.speed_share = absf(_along) / data.ground_walk_speed
@@ -653,14 +696,11 @@ func _show_figure(delta: float) -> void:
 			else:
 				_figure.motion = &"idle"
 		EVA:
-			# Upright on screen, leaning into a push to the side and facing it.
-			_figure.look = AstronautView.Look.SIDE
+			# From the back, head the way they face, like the ship's nose.
+			_figure.look = AstronautView.Look.BACK
 			_figure.feet_below = 0.0
-			var push: Vector2 = _firing.rotated(-_roll)
-			if absf(push.x) > 0.1:
-				_figure.facing_right = push.x > 0.0
-			_figure.body_angle = rotate_toward(_figure.body_angle, clampf(push.x, -1.0, 1.0) * 0.6, 1.5 * delta)
-			_figure.motion = &"jet" if _firing != Vector2.ZERO else &"float"
+			_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(facing - _roll, -PI, PI), 10.0 * delta)
+			_figure.motion = &"jet" if _firing != Vector2.ZERO or _turning != 0.0 else &"float"
 		INSIDE:
 			# From above, facing the way they walk.
 			_figure.look = AstronautView.Look.ABOVE

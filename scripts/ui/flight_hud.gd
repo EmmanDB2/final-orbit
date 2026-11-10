@@ -567,12 +567,16 @@ func _show_flight_data(data: Dictionary) -> void:
 	_comms._on_flight_data(data)
 
 
-# Out of the ship, the only controls are the arrows and the fuel gauge, which reads the jetpack.
+# Out of the ship, the controls are the arrows, the rotate buttons on EVA, and the fuel gauge, which
+# reads the jetpack.
 func _on_pilot_mode_changed(mode: String) -> void:
 	_mode = mode
 	var aboard: bool = mode == Pilot.ABOARD
-	for control: Control in [_lever, _burn, _legs_button, _stab_button, _assist_button, _rotate_left, _rotate_right]:
+	for control: Control in [_lever, _burn, _legs_button, _stab_button, _assist_button]:
 		control.visible = aboard
+	# On EVA the jetpack turns the pilot the way the ship turns, so the rotate buttons stay.
+	for control: Control in [_rotate_left, _rotate_right]:
+		control.visible = aboard or mode == Pilot.EVA
 	_eva_button.visible = aboard and _can_leave
 	_right_panel.burn_mark = Rect2(0.0, _burn.position.y, 2.0, BURN_HEIGHT) if aboard else Rect2()
 	_show_panels()
