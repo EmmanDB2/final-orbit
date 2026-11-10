@@ -51,6 +51,7 @@ void PatchedConicsModel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_body_spin", "index", "rate"), &PatchedConicsModel::set_body_spin);
 	ClassDB::bind_method(D_METHOD("set_body_atmosphere", "index", "surface_density", "scale_height"), &PatchedConicsModel::set_body_atmosphere);
 	ClassDB::bind_method(D_METHOD("set_body_terrain", "index", "seed", "mountains", "hills", "rough", "rocks", "crater_depth", "crater_share", "cliff_step", "sea_level", "largest_feature", "ridge_height"), &PatchedConicsModel::set_body_terrain, DEFVAL(0.0));
+	ClassDB::bind_method(D_METHOD("add_flat_ground", "index", "first_column", "last_column", "blend_columns"), &PatchedConicsModel::add_flat_ground);
 }
 
 void PatchedConicsModel::set_central_body(double p_mu, double p_radius, double p_entry_altitude) {
@@ -114,6 +115,11 @@ void PatchedConicsModel::set_body_terrain(int p_index, int64_t p_seed, double p_
 	terrain.sea_level = p_sea_level;
 	terrain.largest_feature = p_largest_feature;
 	terrain.ridge_height = p_ridge_height;
+}
+
+double PatchedConicsModel::add_flat_ground(int p_index, int64_t p_first_column, int64_t p_last_column, int64_t p_blend_columns) {
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(bodies.size()), 0.0);
+	return bodies[p_index].terrain.add_flat_zone(p_first_column, p_last_column, p_blend_columns);
 }
 
 double PatchedConicsModel::along_rim(const Body &p_body, double p_x, double p_y, double p_time) const {

@@ -14,6 +14,7 @@ var _ship: Node2D
 var _pilot: Node2D
 var _bodies: Dictionary = {}
 var _stations: Dictionary = {}
+var _sites: Array[SiteView] = []
 var _home_gravity: float = 1.0
 var _visited: Dictionary = {}
 
@@ -34,6 +35,11 @@ func add_body(index: int, data: BodyData) -> void:
 	_bodies[index] = data
 
 
+## A place built on a world, in the order the view numbers them.
+func add_site(site: SiteView) -> void:
+	_sites.append(site)
+
+
 func add_station(index: int, design: StationDesign, reach: float, free_ports: int) -> void:
 	_stations[index] = {"design": design, "reach": reach, "free_ports": free_ports}
 
@@ -51,6 +57,8 @@ func callsign_of(thing: Dictionary) -> String:
 			return _stations[thing["index"]]["design"].callsign
 		"pilot":
 			return "PILOT"
+		"site":
+			return _sites[thing["index"]].data.callsign
 	return "SHIP"
 
 
@@ -63,6 +71,8 @@ func reach_of(thing: Dictionary) -> float:
 			return _stations[thing["index"]]["reach"]
 		"pilot":
 			return 24.0
+		"site":
+			return _sites[thing["index"]].reach()
 	return 110.0
 
 
@@ -76,6 +86,8 @@ func info_of(thing: Dictionary) -> Dictionary:
 			return _station_info(thing["index"])
 		"pilot":
 			return _pilot_info()
+		"site":
+			return _site_info(thing["index"])
 	return _ship_info()
 
 
@@ -140,6 +152,20 @@ func _station_info(index: int) -> Dictionary:
 		["DISTANCE", _meters(away), true],
 	]
 	return {"name": design.display_name, "chip": design.chip, "rows": rows, "note": "", "can_target": true}
+
+
+func _site_info(index: int) -> Dictionary:
+	var site: SiteView = _sites[index]
+	var at: PackedFloat64Array = site.middle(_state.time)
+	var away: float = Vector2(at[0] - _state.x, at[1] - _state.y).length()
+	var rows: Array = [
+		["ON", _bodies[site.world].display_name, true],
+		["BUILDINGS", str(site.data.buildings.size()), true],
+		["PAD", _meters(site.data.pad_width) if site.data.pad_width > 0.0 else "NONE", true],
+		["SERVICES", ", ".join(site.data.services), true],
+		["DISTANCE", _meters(away), true],
+	]
+	return {"name": site.data.display_name, "chip": site.data.chip, "rows": rows, "note": "", "can_target": true}
 
 
 func _ship_info() -> Dictionary:

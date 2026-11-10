@@ -178,6 +178,46 @@ double TerrainProfile::crater_change(int64_t p_column) const {
 }
 
 double TerrainProfile::height_at(int64_t p_column, int64_t p_detail_columns) const {
+	double height = natural_height_at(p_column, p_detail_columns);
+	if (flat_zones.empty()) {
+		return height;
+	}
+	const int64_t count = column_count();
+	for (const FlatZone &zone : flat_zones) {
+		// How far the column is from the zone, the short way round the rim, in columns.
+		const int64_t span = zone.last - zone.first;
+		const int64_t past_first = ((p_column - zone.first) % count + count) % count;
+		int64_t outside = 0;
+		if (past_first > span) {
+			outside = std::min(past_first - span, count - past_first);
+		}
+		if (outside == 0) {
+			height = zone.height;
+		} else if (outside < zone.blend) {
+			const double share = static_cast<double>(outside) / static_cast<double>(zone.blend);
+			const double eased = share * share * (3.0 - 2.0 * share);
+			height = zone.height + (height - zone.height) * eased;
+		}
+	}
+	const double row = WORLD_PIXEL * static_cast<double>(p_detail_columns);
+	return std::floor(height / row) * row;
+}
+
+double TerrainProfile::add_flat_zone(int64_t p_first, int64_t p_last, int64_t p_blend) {
+	FlatZone zone;
+	zone.first = p_first;
+	zone.last = std::max(p_last, p_first);
+	zone.blend = std::max<int64_t>(p_blend, 1);
+	double total = 0.0;
+	for (int64_t column = zone.first; column <= zone.last; column++) {
+		total += natural_height_at(column, 1);
+	}
+	zone.height = std::floor(total / static_cast<double>(zone.last - zone.first + 1) / WORLD_PIXEL) * WORLD_PIXEL;
+	flat_zones.push_back(zone);
+	return zone.height;
+}
+
+double TerrainProfile::natural_height_at(int64_t p_column, int64_t p_detail_columns) const {
 	if (is_flat()) {
 		return 0.0;
 	}

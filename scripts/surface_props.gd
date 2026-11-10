@@ -21,6 +21,8 @@ var _gravity_model: GravityModel
 var _state: ShipState
 var _bodies: Dictionary = {}
 var _remembered: Dictionary = {}
+# Stretches of rim kept clear for places built there, as [body, first column, last column].
+var _cleared: Array = []
 var _center_x: float = 0.0
 var _center_y: float = 0.0
 var _pixels_per_unit: float = 1.0
@@ -31,6 +33,12 @@ func start_props(gravity_model: GravityModel, state: ShipState, bodies: Dictiona
 	_gravity_model = gravity_model
 	_state = state
 	_bodies = bodies
+
+
+## Keeps a stretch of a body's rim clear of props, for a place built on it.
+func clear_columns(body: int, first: int, last: int) -> void:
+	_cleared.append([body, first, last])
+	_remembered.clear()
 
 
 func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) -> void:
@@ -65,6 +73,9 @@ func _make_prop(body_index: int, cell: int) -> Dictionary:
 	if rng.randf() > data.prop_density:
 		return {}
 	var column: int = cell * CELL_COLUMNS + rng.randi_range(0, CELL_COLUMNS - 1)
+	for span: Array in _cleared:
+		if span[0] == body_index and column >= span[1] and column <= span[2]:
+			return {}
 	var strip: PackedFloat32Array = _gravity_model.get_ground_strip(body_index, column - 4, 1, 9)
 	var band: float = strip[8 + 1]
 	# Nothing grows in the sea.
@@ -192,7 +203,7 @@ func _draw() -> void:
 	if (distance - radius - highest) * _pixels_per_unit > reach_px:
 		return
 
-	modulate = _daylight(from_x / distance, from_y / distance, at)
+	modulate = daylight(from_x, from_y, at)
 	var column: float = _gravity_model.get_ground_column(_center_x, _center_y, _state.time)
 	var span: int = ceili(reach_px / _pixels_per_unit / WORLD_PIXEL / CELL_COLUMNS) + 1
 	var cell: int = floori(column / CELL_COLUMNS)
@@ -214,9 +225,11 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
-# The same flat steps of daylight the ground gets where it's in view.
-func _daylight(out_x: float, out_y: float, at: PackedFloat64Array) -> Color:
+## The same flat steps of daylight the ground gets, for something this far out from a body's middle,
+## with the body here. Places built on the ground use it too.
+static func daylight(out_x: float, out_y: float, at: PackedFloat64Array) -> Color:
+	var out := Vector2(out_x, out_y).normalized()
 	var to_star := Vector2(-at[0], -at[1]).normalized()
-	var sun: float = (out_x * to_star.x + out_y * to_star.y) * 0.876
+	var sun: float = (out.x * to_star.x + out.y * to_star.y) * 0.876
 	var steps: float = clampf(floorf(clampf(sun * 1.25 + 0.2, 0.0, 1.0) * 2.0), 0.0, 2.0) / 2.0
 	return NIGHT_SHARE.lerp(Color.WHITE, steps)

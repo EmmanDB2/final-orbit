@@ -65,6 +65,7 @@ func _initialize() -> void:
 	_test_spin()
 	_test_air()
 	_test_terrain()
+	_test_flat_ground()
 
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -990,3 +991,34 @@ func _test_satellites() -> void:
 	_check("around a moon it stays with the moon", Vector2(small[0] - moon_at[0], small[1] - moon_at[1]).length(), MOON_RADIUS * 2.0, 1e-6)
 	var lap: PackedFloat64Array = model.get_satellite_orbit_path(station, 65)
 	_check("its lap closes", Vector2(lap[0] - lap[128], lap[1] - lap[129]).length(), 0.0, 1e-3)
+
+
+# A place built on the ground gets a level patch at the ground's average height there, which blends
+# back into the terrain past its edges and leaves the rest alone.
+func _test_flat_ground() -> void:
+	var world := PatchedConicsModel.new()
+	world.set_central_body(MU, RADIUS)
+	world.set_body_terrain(0, 7, 2600.0, 420.0, 46.0, 7.0, 0.0, 0.0, 220.0, 0.0, RADIUS * 0.6)
+	var plain := PatchedConicsModel.new()
+	plain.set_central_body(MU, RADIUS)
+	plain.set_body_terrain(0, 7, 2600.0, 420.0, 46.0, 7.0, 0.0, 0.0, 220.0, 0.0, RADIUS * 0.6)
+	var middle: int = 5000
+	var level: float = world.add_flat_ground(0, middle - 100, middle + 100, 50)
+	var total: float = 0.0
+	for column in range(middle - 100, middle + 101):
+		total += plain.get_ground_strip(0, column, 1, 1)[0]
+	_check("the level is the ground's average there, in whole pixels", level, floorf(total / 201.0 / 2.0) * 2.0, 0.0)
+	var widest_gap: float = 0.0
+	for column in range(middle - 100, middle + 101, 7):
+		widest_gap = maxf(widest_gap, absf(world.get_ground_strip(0, column, 1, 1)[0] - level))
+	_check("the ground is level across the patch", widest_gap, 0.0, 0.0)
+	var blending: float = world.get_ground_strip(0, middle + 125, 1, 1)[0]
+	var natural: float = plain.get_ground_strip(0, middle + 125, 1, 1)[0]
+	var between: bool = blending >= minf(level, natural) - 2.0 and blending <= maxf(level, natural) + 2.0
+	_check("partway out, it's between the level and the terrain", 1.0 if between else 0.0, 1.0, 0.0)
+	_check("past the blend, the terrain is as it was", world.get_ground_strip(0, middle + 200, 1, 1)[0], plain.get_ground_strip(0, middle + 200, 1, 1)[0], 0.0)
+	_check("and on the other side", world.get_ground_strip(0, middle - 200, 1, 1)[0], plain.get_ground_strip(0, middle - 200, 1, 1)[0], 0.0)
+	# The physics reads the same level ground under a point on it.
+	var angle: float = (middle + 0.5) * 2.0 / RADIUS
+	_check("a point over the patch is over level ground", world.get_ground_height(sin(angle) * RADIUS, -cos(angle) * RADIUS, 0.0), level, 0.0)
+

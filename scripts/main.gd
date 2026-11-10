@@ -13,6 +13,8 @@ extends Node2D
 @export var station: StationDesign
 ## How high above the surface the ship starts, in a circular orbit.
 @export var start_altitude: float = 30000.0
+## Places built on worlds.
+@export var sites: Array[SiteData] = [preload("res://data/launch_base.tres")]
 
 
 func _ready() -> void:
@@ -20,6 +22,13 @@ func _ready() -> void:
 	gravity_model.set_central_body(star.get_mu(), star.radius, star.landing_line_altitude)
 	var planet_index: int = _add_body(gravity_model, 0, planet)
 	var moon_index: int = _add_body(gravity_model, planet_index, moon)
+	var body_indices: Dictionary = {planet: planet_index, moon: moon_index}
+	# Level ground for each site before anything reads the terrain.
+	var site_heights: Array[float] = []
+	for site: SiteData in sites:
+		var half_columns: int = ceili(site.half_width / SiteView.WORLD_PIXEL)
+		var blend_columns: int = ceili(site.blend / SiteView.WORLD_PIXEL)
+		site_heights.append(gravity_model.add_flat_ground(body_indices[site.world], site.column - half_columns, site.column + half_columns, blend_columns))
 	var station_index: int = gravity_model.add_satellite(planet_index, planet.radius + station.orbit_altitude,
 			station.orbit_eccentricity, station.orbit_argument_of_periapsis, station.orbit_start_angle)
 
@@ -52,6 +61,8 @@ func _ready() -> void:
 	$Debris.start_debris(gravity_model, state, $Ship, $Sparks)
 	var bodies: Dictionary = {planet_index: planet, moon_index: moon}
 	$SurfaceProps.start_props(gravity_model, state, bodies)
+	for i in range(sites.size()):
+		_start_site(gravity_model, state, sites[i], body_indices[sites[i].world], site_heights[i], catalog)
 	$GroundEffects.start_effects(gravity_model, state, $Ship, $Sparks, bodies)
 	$TurnGuide.ship = $Ship
 	$Pilot.start_pilot(gravity_model, $Ship, $Station)
@@ -59,6 +70,20 @@ func _ready() -> void:
 	catalog.set_pilot($Pilot)
 	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide, catalog, $Hud/SafeArea/TargetMarkers, $Hud/SafeArea/CommsLine, $Pilot)
 	$Ship.start_flight(gravity_model, state, PI / 2.0)
+
+
+# A site draws behind the station, ship, and pilot, and in front of the ground.
+func _start_site(gravity_model: GravityModel, state: ShipState, site: SiteData, world: int, level_height: float, catalog: WorldCatalog) -> void:
+	var view := SiteView.new()
+	add_child(view)
+	move_child(view, $Station.get_index())
+	view.start_site(gravity_model, state, site, world, level_height)
+	$Camera2D.view_changed.connect(view._on_view_changed)
+	$Camera2D.view_rolled.connect(view._on_view_rolled)
+	$Camera2D.add_site(view)
+	catalog.add_site(view)
+	var half_columns: int = ceili((site.half_width + site.blend) / SiteView.WORLD_PIXEL)
+	$SurfaceProps.clear_columns(world, site.column - half_columns, site.column + half_columns)
 
 
 func _add_body(gravity_model: PatchedConicsModel, parent: int, body: BodyData) -> int:

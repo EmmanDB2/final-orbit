@@ -493,3 +493,11 @@ Files: `tools/slice_launch_base.gd`, `art/launch_base/`, `docs/DESIGN.md`
 - downsampling by voting (the mode) instead of averaging, to keep crisp colors
 - connected components, to keep the building and drop specks
 - scaling art by a known size (a door) when there's no pixel grid
+
+## 2026-11-10: Launch base placed on the home planet
+
+Files: `native/src/terrain_profile.h`, `native/src/terrain_profile.cpp`, `native/src/patched_conics_model.h`, `native/src/patched_conics_model.cpp`, `scripts/site/site_data.gd`, `scripts/site/site_building.gd`, `scripts/site/site_view.gd`, `data/launch_base.tres`, `scripts/main.gd`, `scripts/flight_view.gd`, `scripts/world_catalog.gd`, `scripts/surface_props.gd`, `tests/test_gravity_model.gd`, `docs/DESIGN.md`
+
+- blending two values with smoothstep
+- placing things on a spinning body with polar coordinates
+- custom Resource classes nested inside a .tres file

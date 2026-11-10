@@ -47,6 +47,9 @@ public:
 	// then craters and cliffs. The sea level and largest feature come from its surface map, so
 	// the sea stays flat where the map shows sea.
 	void set_body_terrain(int p_index, int64_t p_seed, double p_mountains, double p_hills, double p_rough, double p_rocks, double p_crater_depth, double p_crater_share, double p_cliff_step, double p_sea_level, double p_largest_feature, double p_ridge_height = 0.0);
+	// Levels a body's ground from one column to another, for a place built there, blending back to
+	// the terrain over some columns each side. Returns the level's height above the base radius.
+	double add_flat_ground(int p_index, int64_t p_first_column, int64_t p_last_column, int64_t p_blend_columns);
 
 	godot::PackedFloat64Array get_acceleration(double p_x, double p_y, double p_time) const override;
 	void propagate(const godot::Ref<ShipState> &p_state, double p_dt) const override;

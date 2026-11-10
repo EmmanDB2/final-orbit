@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="SiteData" format=3]
+
+[ext_resource type="Script" path="res://scripts/site/site_data.gd" id="1_site"]
+[ext_resource type="Script" path="res://scripts/site/site_building.gd" id="2_building"]
+[ext_resource type="Resource" path="res://data/home_planet.tres" id="3_planet"]
+[ext_resource type="Texture2D" path="res://art/launch_base/assembly.png" id="4_assembly"]
+[ext_resource type="Texture2D" path="res://art/launch_base/assembly_interior.png" id="5_assembly_in"]
+[ext_resource type="Texture2D" path="res://art/launch_base/tower.png" id="6_tower"]
+[ext_resource type="Texture2D" path="res://art/launch_base/mission_control.png" id="7_mission"]
+[ext_resource type="Texture2D" path="res://art/launch_base/mission_control_interior.png" id="8_mission_in"]
+
+[sub_resource type="Resource" id="Resource_assembly"]
+script = ExtResource("2_building")
+display_name = "Vehicle Assembly"
+texture = ExtResource("4_assembly")
+interior_texture = ExtResource("5_assembly_in")
+offset = -476.0
+
+[sub_resource type="Resource" id="Resource_tower"]
+script = ExtResource("2_building")
+display_name = "Launch Tower"
+texture = ExtResource("6_tower")
+offset = -39.0
+sink = 40.0
+
+[sub_resource type="Resource" id="Resource_mission"]
+script = ExtResource("2_building")
+display_name = "Mission Control"
+texture = ExtResource("7_mission")
+interior_texture = ExtResource("8_mission_in")
+offset = 477.0
+
+[resource]
+script = ExtResource("1_site")
+display_name = "Kepla Launch Base"
+callsign = "BASE"
+chip = "LAUNCH BASE"
+world = ExtResource("3_planet")
+column = 17940
+half_width = 690.0
+blend = 160.0
+buildings = Array[ExtResource("2_building")]([SubResource("Resource_assembly"), SubResource("Resource_tower"), SubResource("Resource_mission")])
+pad_offset = 18.0
+pad_width = 200.0
+services = PackedStringArray("PAD", "MISSION COMPUTER", "ASSEMBLY")

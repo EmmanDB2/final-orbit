@@ -76,6 +76,8 @@ var _focus_blend: float = 1.0
 var _focus_mark: float = 0.0
 var _lit_stop: String = "?"
 var _pilot: Node2D
+# Places built on worlds, which can be tapped and focused like anything else.
+var _sites: Array[SiteView] = []
 # What the SHIP button brings the view back to: the ship, or the pilot while they're out of it.
 var _avatar: Dictionary = {"kind": "ship", "index": 0}
 var _center_x: float = 0.0
@@ -223,6 +225,8 @@ func _point_of(focus: Dictionary, ship: PackedFloat64Array) -> PackedFloat64Arra
 			return _gravity_model.get_satellite_position(focus["index"], _state.time)
 		"pilot":
 			return PackedFloat64Array([_pilot.state.x, _pilot.state.y])
+		"site":
+			return _sites[focus["index"]].middle(_state.time)
 	return ship
 
 
@@ -242,6 +246,11 @@ func _closest_zoom() -> float:
 		return zoom_stops[0]
 	var fits: float = minf(_view_size.x, _view_size.y) * 0.5 * body_fill / _gravity_model.get_body_radius(_focus["index"])
 	return minf(fits, zoom_stops[0])
+
+
+## Tells the view about a place built on a world.
+func add_site(site: SiteView) -> void:
+	_sites.append(site)
 
 
 ## Tells the view about the pilot.
@@ -301,6 +310,8 @@ func thing_at(screen_position: Vector2) -> Dictionary:
 		candidates.append({"kind": "satellite", "index": index})
 	for index in range(_gravity_model.get_body_count()):
 		candidates.append({"kind": "body", "index": index})
+	for index in range(_sites.size()):
+		candidates.append({"kind": "site", "index": index})
 	for candidate: Dictionary in candidates:
 		var at: PackedFloat64Array = _point_of(candidate, PackedFloat64Array([_state.x, _state.y]))
 		var radius: float = _tap_radius_of(candidate)
@@ -319,6 +330,8 @@ func _tap_radius_of(focus: Dictionary) -> float:
 			return station_tap_radius
 		"pilot":
 			return pilot_tap_radius
+		"site":
+			return _sites[focus["index"]].reach()
 	return ship_tap_radius
 
 

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 namespace final_orbit {
 
@@ -44,8 +45,22 @@ public:
 	double ridge_at(double p_column, double p_loop_columns) const;
 	// Which of the surface map's six colors the rim is at a column, from 0 to just under 6.
 	double band_at(int64_t p_column) const;
+	// Levels the ground from column p_first to p_last, for a place built on it, at the average
+	// height of the ground there, and blends back to the terrain over p_blend columns each side.
+	// Returns the level's height above the base radius.
+	double add_flat_zone(int64_t p_first, int64_t p_last, int64_t p_blend);
 
 private:
+	struct FlatZone {
+		int64_t first = 0;
+		int64_t last = 0;
+		int64_t blend = 0;
+		double height = 0.0;
+	};
+	std::vector<FlatZone> flat_zones;
+
+	// The seeded height, before any level patches.
+	double natural_height_at(int64_t p_column, int64_t p_detail_columns) const;
 	double noise_1d(int64_t p_column, int p_bits, uint32_t p_salt) const;
 	double land_share(int64_t p_column) const;
 	double crater_change(int64_t p_column) const;
