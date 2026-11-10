@@ -485,3 +485,11 @@ Files: `scripts/units.gd`, `scripts/ui/top_bar.gd`, `scripts/world_catalog.gd`, 
 - unit conversion kept in one place (a static helper class)
 - how quantities scale with length: distance, speed, and mass from mu (length cubed)
 - formatting numbers for display (decimals, thousands separators)
+
+## 2026-11-10: Launch base art cut into sprites
+
+Files: `tools/slice_launch_base.gd`, `art/launch_base/`, `docs/DESIGN.md`
+
+- downsampling by voting (the mode) instead of averaging, to keep crisp colors
+- connected components, to keep the building and drop specks
+- scaling art by a known size (a door) when there's no pixel grid
