@@ -52,6 +52,8 @@ void AeroBody::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_rcs", "turn_acceleration", "can_turn_clockwise", "can_turn_back"), &AeroBody::set_rcs);
 	ClassDB::bind_method(D_METHOD("measure", "density", "velocity_x", "velocity_y", "heading", "spin"), &AeroBody::measure);
 	ClassDB::bind_method(D_METHOD("step", "dt", "density", "velocity_x", "velocity_y", "heading", "spin", "control", "control_value"), &AeroBody::step);
+	ClassDB::bind_method(D_METHOD("snapshot"), &AeroBody::snapshot);
+	ClassDB::bind_method(D_METHOD("drag_held", "off_airflow"), &AeroBody::drag_held);
 
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pressure_coefficient"), "set_pressure_coefficient", "get_pressure_coefficient");
 
@@ -414,6 +416,74 @@ void AeroBody::advance(Motion &r_motion, double p_dt, double p_density, int p_co
 		r_report.hot_x = hot_x / hot_length;
 		r_report.hot_y = hot_y / hot_length;
 	}
+}
+
+Ref<AeroBody> AeroBody::snapshot() const {
+	Ref<AeroBody> copy;
+	copy.instantiate();
+	copy->segments = segments;
+	copy->polygons = polygons;
+	copy->pressure_coefficient = pressure_coefficient;
+	copy->mass = mass;
+	copy->spin_resistance = spin_resistance;
+	copy->center_x = center_x;
+	copy->center_y = center_y;
+	copy->turn_acceleration = turn_acceleration;
+	copy->can_turn_clockwise = can_turn_clockwise;
+	copy->can_turn_back = can_turn_back;
+	return copy;
+}
+
+double AeroBody::drag_held(double p_off_airflow) const {
+	// Nose first, the ship moves up its own art. Held off that, it moves that much round from it.
+	const double own_x = std::sin(-p_off_airflow);
+	const double own_y = -std::cos(-p_off_airflow);
+	const Loads loads = loads_at(own_x, own_y, 0.0, 1.0);
+	return -(loads.force_x * own_x + loads.force_y * own_y);
+}
+
+void AeroBody::advance_held(Motion &r_motion, double p_dt, double p_density, double p_off_airflow) const {
+	if (p_dt <= 0.0 || !std::isfinite(p_dt) || p_density <= 0.0 || segments.empty()) {
+		return;
+	}
+	const int base_steps = std::max(1, static_cast<int>(std::ceil(p_dt / BASE_STEP - 1e-9)));
+	const double speed = std::sqrt(r_motion.velocity_x * r_motion.velocity_x + r_motion.velocity_y * r_motion.velocity_y);
+	const int splits = std::max(1, static_cast<int>(std::ceil(p_dt / base_steps / steady_step(speed, 0.0, p_density) - 1e-9)));
+	const int substeps = static_cast<int>(std::min<int64_t>(static_cast<int64_t>(base_steps) * splits, MAX_SUBSTEPS));
+	const double h = p_dt / substeps;
+	// Held at one angle to the air, the push on the ship is always the same way round from the way
+	// it's going, and only grows with the square of its speed.
+	const double own_x = std::sin(-p_off_airflow);
+	const double own_y = -std::cos(-p_off_airflow);
+	const Loads loads = loads_at(own_x, own_y, 0.0, p_density);
+	const double along = loads.force_x * own_x + loads.force_y * own_y;
+	const double across = -loads.force_x * own_y + loads.force_y * own_x;
+	for (int i = 0; i < substeps; i++) {
+		const double now_squared = r_motion.velocity_x * r_motion.velocity_x + r_motion.velocity_y * r_motion.velocity_y;
+		const double now = std::sqrt(now_squared);
+		if (now <= 0.0) {
+			break;
+		}
+		const double way_x = r_motion.velocity_x / now;
+		const double way_y = r_motion.velocity_y / now;
+		// Never past a dead stop in one step.
+		const double slowing = std::max(along * now_squared / mass * h, -now);
+		const double sideways = across * now_squared / mass * h;
+		double next_x = r_motion.velocity_x + way_x * slowing - way_y * sideways;
+		double next_y = r_motion.velocity_y + way_y * slowing + way_x * sideways;
+		const double next_squared = next_x * next_x + next_y * next_y;
+		if (next_squared > now_squared && next_squared > 0.0) {
+			const double keep = std::sqrt(now_squared / next_squared);
+			next_x *= keep;
+			next_y *= keep;
+		}
+		if (std::isfinite(next_x) && std::isfinite(next_y)) {
+			r_motion.velocity_x = next_x;
+			r_motion.velocity_y = next_y;
+		}
+	}
+	r_motion.heading = std::atan2(r_motion.velocity_x, -r_motion.velocity_y) + p_off_airflow;
+	r_motion.spin = 0.0;
 }
 
 PackedFloat64Array AeroBody::pack(const Motion &p_motion, double p_start_x, double p_start_y, const Report &p_report) const {

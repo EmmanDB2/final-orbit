@@ -42,6 +42,11 @@
 # ASS, and drag to point lose until it slows down. The pushing and the RCS's rules are worked out
 # in the physics core's AeroBody, which the landing prediction shares.
 #
+# A few times a second, while it's on its way down, the ship asks for a forecast of how it comes
+# down with no more burns, from "Landing prediction" in DESIGN.md. That's flown ahead on another
+# thread, and comes back as landing_predicted with where it lands and whether that's SAFE, HARD, a
+# CRASH, or a BURN-UP.
+#
 # Two flight modes, from "Flight modes" in DESIGN.md. RAW is just your inputs. ASS
 # (Attitude Stabilization System) also fires the RCS against the spin when you let
 # go of the turn keys. ASS never touches velocity, since that would break orbits.
@@ -92,6 +97,10 @@ signal stranded_changed(stranded: bool)
 ## Emitted several times a second with what the instruments show: altitude, speed,
 ## periapsis, apoapsis, time, heading, prograde, and spin.
 signal flight_data_changed(data: Dictionary)
+## Emitted with each new forecast of how the ship comes down with no more burns: what
+## GravityModel.predict_descent gives, plus a "verdict" of SAFE, HARD, CRASH, or BURN-UP if it
+## lands. Empty when it isn't on its way down any more.
+signal landing_predicted(prediction: Dictionary)
 
 ## What this ship is built from. Thrust and turning come from its engines and its mass.
 @export var design: ShipDesign
@@ -127,6 +136,14 @@ signal flight_data_changed(data: Dictionary)
 ## long the RCS has to hold again before they'd be told a second time, in seconds.
 @export var overpower_warning_seconds: float = 0.2
 @export var overpower_calm_seconds: float = 4.0
+## How long to leave between forecasts of the landing, in real seconds, and how far ahead and in
+## how many points each one is flown.
+@export var prediction_seconds: float = 0.25
+@export var prediction_horizon: float = 21600.0
+@export var prediction_samples: int = 256
+## Top speed for a hard landing rather than a crash, in world units per second. The comms line
+## decides it, and main.gd hands it over.
+@export var hard_touchdown_speed: float = 250.0
 
 ## Direction of the nose in radians. 0 points up the screen; positive turns clockwise.
 var heading: float = 0.0
@@ -218,6 +235,14 @@ var _hot_side: Vector2 = Vector2.UP
 var _overpowered_seconds: float = 0.0
 var _calm_seconds: float = 0.0
 var _overpower_warned: bool = false
+# The ship's center of mass as it is now, on the art.
+var _center_now: Vector2 = Vector2.ZERO
+var _prediction := LandingPrediction.new()
+var _prediction_started: int = -100000
+# The latest forecast of the landing, or empty.
+var _landing: Dictionary = {}
+# Which bodies have air, as they're asked about.
+var _has_air: Dictionary = {}
 var _translate_forward: float = 0.0
 var _translate_right: float = 0.0
 
@@ -347,9 +372,14 @@ func _physics_process(delta: float) -> void:
 		engine_changed.emit(engine_now)
 
 	world_position_changed.emit(state.x, state.y)
+	_forecast_landing()
 
 	if Engine.get_physics_frames() % telemetry_interval_ticks == 0:
 		_report_telemetry()
+
+
+func _exit_tree() -> void:
+	_prediction.finish()
 
 
 # Held at the port: the station says where the ship is, and nothing else moves it.
@@ -374,6 +404,7 @@ func _hold_docked(delta: float) -> void:
 		_engine_reported = 0.0
 		engine_changed.emit(0.0)
 	world_position_changed.emit(state.x, state.y)
+	_forecast_landing()
 	if Engine.get_physics_frames() % telemetry_interval_ticks == 0:
 		_report_telemetry()
 	if pilot_aboard and Input.is_action_just_pressed("undock"):
@@ -706,6 +737,127 @@ func _safe_impact_speed() -> float:
 	return design.legs_safe_impact_speed
 
 
+# How far to each side of its middle the ship stands on the ground: its feet with the legs down, or
+# its engine bell.
+func _stance() -> float:
+	return 62.0 if legs_down else 18.0
+
+
+# Whether ground that rises this much across the ship's stance is too steep to stand on: its center
+# of mass would be outside its feet.
+func _too_steep(rise: float) -> bool:
+	var stance: float = _stance()
+	var center_height: float = maxf(body.reach(_center_now, Vector2.DOWN), 1.0)
+	return absf(rise) / (stance * 2.0) > stance / center_height
+
+
+# Keeps a forecast of the landing coming while the ship's on its way down: takes one that's
+# finished, and starts the next. It's worked out on another thread, so this never waits.
+func _forecast_landing() -> void:
+	var answer: Dictionary = _prediction.take()
+	var coming_down: bool = _is_coming_down()
+	if not coming_down:
+		if not _landing.is_empty():
+			_landing = {}
+			landing_predicted.emit(_landing)
+		return
+	if not answer.is_empty():
+		answer["verdict"] = _verdict_of(answer) if answer["lands"] else ""
+		_landing = answer
+		landing_predicted.emit(answer)
+	if _prediction.is_busy() or Time.get_ticks_msec() - _prediction_started < prediction_seconds * 1000.0:
+		return
+	_prediction_started = Time.get_ticks_msec()
+	_prediction.start(_gravity_model, _state_copy(), _aero_copy(), _flight_now(), prediction_horizon, prediction_samples)
+
+
+# Whether the ship's coast takes it into air or onto the ground.
+func _is_coming_down() -> bool:
+	if docked or _lost or state.is_on_surface():
+		return false
+	if _air_density > 0.0:
+		return true
+	var dominant: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
+	var apsides: PackedFloat64Array = _gravity_model.get_orbit_apsides(state)
+	var reaches: float = _gravity_model.get_highest_ground(dominant) + state.ground_clearance
+	if _body_has_air(dominant):
+		reaches = maxf(reaches, _gravity_model.get_entry_altitude(dominant))
+	if apsides[0] >= reaches:
+		return false
+	# On a path that never comes back, it only comes down if it hasn't passed its low point yet.
+	if apsides[1] < 0.0:
+		var at: PackedFloat64Array = _gravity_model.get_body_position(dominant, state.time)
+		var moving: PackedFloat64Array = _gravity_model.get_body_velocity(dominant, state.time)
+		return (state.x - at[0]) * (state.velocity_x - moving[0]) + (state.y - at[1]) * (state.velocity_y - moving[1]) < 0.0
+	return true
+
+
+func _body_has_air(index: int) -> bool:
+	if not _has_air.has(index):
+		var at: PackedFloat64Array = _gravity_model.get_body_position(index, state.time)
+		_has_air[index] = _gravity_model.get_air_density(at[0], at[1] - _gravity_model.get_body_radius(index) - 1.0, state.time) > 0.0
+	return _has_air[index]
+
+
+# The ship's state and outline as they are now, for a forecast to fly without anything changing
+# under it.
+func _state_copy() -> ShipState:
+	var copy := ShipState.new()
+	copy.x = state.x
+	copy.y = state.y
+	copy.velocity_x = state.velocity_x
+	copy.velocity_y = state.velocity_y
+	copy.time = state.time
+	copy.ground_clearance = state.ground_clearance
+	return copy
+
+
+func _aero_copy() -> AeroBody:
+	if _aero_stale:
+		_aero_stale = false
+		_aero.set_outline(body.outline_polygons_now(), design.air_segment_length)
+	return _aero.snapshot()
+
+
+# How the ship's set up to fly from here with hands off: STAB and ASS as they're switched now, no
+# turn keys, and no drag to point.
+func _flight_now() -> Dictionary:
+	var control: int = AeroBody.CONTROL_NONE
+	var hold: int = _stab_direction
+	if rcs_fuel > 0.0:
+		if stab_enabled:
+			control = AeroBody.CONTROL_STEER
+			if _stab_needs_pick:
+				hold = _closest_direction(_stab_directions())
+		elif assist_enabled:
+			control = AeroBody.CONTROL_DAMP
+	return {
+		"heading": heading,
+		"spin": angular_velocity,
+		"control": control,
+		"hold": hold,
+		"rcs_fuel": rcs_fuel,
+		"rcs_fuel_rate": design.rcs_fuel_rate,
+		"heat_limit": design.heat_limit,
+		"hull_heat_seconds": design.hull_heat_seconds,
+		"hull_temperature": hull_temperature,
+		"star_heat": _star_heat,
+		"stance_columns": maxi(roundi(_stance() / WORLD_PIXEL), 1),
+	}
+
+
+# What touching down the way a forecast says would mean, for the ship as it is.
+func _verdict_of(prediction: Dictionary) -> String:
+	if prediction["peak_hull"] > 1.0:
+		return "BURN-UP"
+	var speed: float = prediction["speed"]
+	if speed <= _safe_impact_speed() and not _too_steep(prediction["rise"]):
+		return "SAFE"
+	if speed <= hard_touchdown_speed:
+		return "HARD"
+	return "CRASH"
+
+
 # The legs carry the ship's weight on the ground, so they can't go up there.
 func _toggle_legs() -> void:
 	if _lost:
@@ -774,7 +926,7 @@ func _touch_terrain() -> void:
 	if state.is_on_surface():
 		_rest_on_ground()
 
-	var stance: int = mini(roundi((62.0 if legs_down else 18.0) / WORLD_PIXEL), GROUND_CHECK_COLUMNS)
+	var stance: int = mini(roundi(_stance() / WORLD_PIXEL), GROUND_CHECK_COLUMNS)
 	var left: float = strip[(GROUND_CHECK_COLUMNS - stance) * 2]
 	var right: float = strip[(GROUND_CHECK_COLUMNS + stance) * 2]
 	_ground_lean = clampf(atan2(left - right, stance * 2.0 * WORLD_PIXEL), -most_ground_lean, most_ground_lean)
@@ -1105,7 +1257,8 @@ func _update_performance() -> void:
 	turn_acceleration = design.rcs_torque / now["spin_resistance"]
 	translate_acceleration = design.rcs_translate_force / _mass_now
 	# The air turns the ship around its center of mass as it is now, which moves as the tanks drain.
-	_aero.set_mass(_mass_now, _spin_resistance_now, now["center_of_mass"])
+	_center_now = now["center_of_mass"]
+	_aero.set_mass(_mass_now, _spin_resistance_now, _center_now)
 	_aero.set_rcs(turn_acceleration, _rcs_left, _rcs_right)
 
 
@@ -1144,26 +1297,30 @@ func _on_throttle_changed(value: float) -> void:
 	throttle = value
 
 
-# The heading of each direction STAB can hold, in the order of _stab_direction.
+# The heading of each direction STAB can hold, in the order of _stab_direction. The physics core
+# works them out, so the landing prediction holds the same ones.
 func _stab_directions() -> PackedFloat64Array:
-	var body: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
-	var body_velocity: PackedFloat64Array = _gravity_model.get_body_velocity(body, state.time)
-	var along: float = atan2(state.velocity_x - body_velocity[0], body_velocity[1] - state.velocity_y)
-	var away: float = _local_up_heading()
-	return PackedFloat64Array([along, along + PI, away + PI, away])
+	return _gravity_model.get_hold_headings(state.x, state.y, state.velocity_x, state.velocity_y, state.time)
 
 
 func _stab_heading() -> float:
 	var directions: PackedFloat64Array = _stab_directions()
 	if _stab_needs_pick:
 		_stab_needs_pick = false
-		var closest: float = INF
-		for i in range(directions.size()):
-			var gap: float = absf(angle_difference(heading, directions[i]))
-			if gap < closest:
-				closest = gap
-				_stab_direction = i
+		_stab_direction = _closest_direction(directions)
 	return directions[_stab_direction]
+
+
+# Whichever of those the nose is nearest.
+func _closest_direction(directions: PackedFloat64Array) -> int:
+	var nearest: int = 0
+	var closest: float = INF
+	for i in range(directions.size()):
+		var gap: float = absf(angle_difference(heading, directions[i]))
+		if gap < closest:
+			closest = gap
+			nearest = i
+	return nearest
 
 
 # The heading that points the nose straight away from the body below.
@@ -1198,6 +1355,8 @@ func _report_telemetry() -> void:
 		"fuel_share": fuel / body.original_fuel_capacity,
 		"rcs_share": rcs_fuel / design.rcs_capacity if design.rcs_capacity > 0.0 else 0.0,
 		"delta_v": delta_v(),
+		# What the forecast says of the landing, if it's coming down: SAFE, HARD, CRASH, or BURN-UP.
+		"landing": _landing.get("verdict", ""),
 	})
 
 

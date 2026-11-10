@@ -5,10 +5,12 @@
 // Bodies are numbered, and body 0 is the center of the system, fixed at the world origin.
 #pragma once
 
+#include "aero_body.h"
 #include "ship_state.h"
 
 #include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_float64_array.hpp>
 
@@ -53,6 +55,11 @@ public:
 	// How a body is moving at a moment in time, as [x, y].
 	virtual godot::PackedFloat64Array get_body_velocity(int p_index, double p_time) const = 0;
 	virtual double get_body_radius(int p_index) const = 0;
+	// How fast a body turns, in radians per second. Positive is clockwise on screen.
+	virtual double get_body_spin(int p_index) const = 0;
+	// How high a body's landing zone starts above its base radius: the top of its air, or a set
+	// height on an airless body.
+	virtual double get_entry_altitude(int p_index) const = 0;
 	// The body whose gravity applies at this point and time.
 	virtual int get_dominant_body(double p_x, double p_y, double p_time) const = 0;
 	// How far a body's gravity dominates. Zero for a body with no limit, such as body 0.
@@ -98,8 +105,64 @@ public:
 	// One lap of a satellite's rails, relative to its parent, flat [x0, y0, x1, y1, ...].
 	virtual godot::PackedFloat64Array get_satellite_orbit_path(int p_index, int p_samples) const = 0;
 
+	// The headings STAB can hold for a ship here, moving like this: along its path around the body
+	// it's orbiting, against it, toward that body, and away from it, in that order.
+	godot::PackedFloat64Array get_hold_headings(double p_x, double p_y, double p_velocity_x, double p_velocity_y, double p_time) const;
+
+	// Flies a ship's coast ahead with no more burns, to say where and how it comes down. Above any
+	// air it coasts exactly. Through air it's flown step by step with the same pushes as the real
+	// flight, turning as the air and its RCS turn it. Two more runs, held at the angles to the air
+	// that slow it least and most, bound where it could come down. Nothing here is changed, so it
+	// can run on another thread, given copies of the state and the ship's AeroBody.
+	//
+	// p_flight says how the ship is now: "heading", "spin", "control" (an AeroBody control, STEER
+	// meaning STAB), "hold" (which of the hold headings), "rcs_fuel", "rcs_fuel_rate",
+	// "heat_limit", "hull_heat_seconds", "hull_temperature", "star_heat", and "stance_columns" (how
+	// far to each side it stands on the ground).
+	//
+	// The answer has "lands" and "air" (whether any of it was through air). With air it has the
+	// "path" flown from the top of the air, flat [x, y, ...] from the body's middle, with each
+	// point's "times". The path is drawn against the turning ground as it is at "ground_time", so
+	// it ends on the ground the ship comes down on, and "spin" is how fast that ground turns.
+	// A landing adds its "end" [x, y] the same way, its "speed" against the ground, the ground's
+	// "rise" across the ship's stance there, the "peak_hull" temperature on the way, and the
+	// landing zone from "zone_from" to "zone_to": angles around the body, clockwise from the top
+	// of the screen, in the same ground frame. On an airless body the end is where it is in space
+	// at touchdown, and "spin" is zero.
+	godot::Dictionary predict_descent(const godot::Ref<ShipState> &p_state, const godot::Ref<AeroBody> &p_aero, const godot::Dictionary &p_flight, double p_horizon, int p_samples) const;
+
 protected:
 	static void _bind_methods();
+
+private:
+	// How one run of a descent is flown, and what came of it.
+	struct DescentRun {
+		// Held at an angle to the air, or free to turn.
+		bool held = false;
+		double held_off_airflow = 0.0;
+		AeroBody::Motion motion;
+		int control = AeroBody::CONTROL_NONE;
+		int hold = 0;
+		double rcs_fuel = 0.0;
+		double rcs_fuel_rate = 0.0;
+		double heat_limit = 1.0;
+		double hull_heat_seconds = 1.0;
+		double hull_temperature = 0.0;
+		double star_heat = 0.0;
+
+		bool met_air = false;
+		bool landed = false;
+		double peak_hull = 0.0;
+		double speed = 0.0;
+		// The moment it met the air, to start the other runs from.
+		godot::Ref<ShipState> entry;
+		// Where it went from the top of the air on, from the body's middle, with the time at each.
+		std::vector<double> xs;
+		std::vector<double> ys;
+		std::vector<double> times;
+	};
+
+	void fly_descent(const godot::Ref<ShipState> &p_state, const AeroBody &p_aero, int p_body, double p_horizon, DescentRun &r_run) const;
 };
 
 } // namespace final_orbit

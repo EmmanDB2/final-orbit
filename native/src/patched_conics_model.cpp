@@ -850,6 +850,16 @@ double PatchedConicsModel::get_body_radius(int p_index) const {
 	return bodies[p_index].radius;
 }
 
+double PatchedConicsModel::get_body_spin(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(bodies.size()), 0.0);
+	return bodies[p_index].spin_rate;
+}
+
+double PatchedConicsModel::get_entry_altitude(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, static_cast<int>(bodies.size()), 0.0);
+	return bodies[p_index].entry_altitude;
+}
+
 int PatchedConicsModel::get_dominant_body(double p_x, double p_y, double p_time) const {
 	return dominant_body(p_x, p_y, p_time);
 }

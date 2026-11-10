@@ -70,6 +70,8 @@ public:
 	godot::PackedFloat64Array get_body_velocity(int p_index, double p_time) const override;
 	godot::PackedFloat64Array get_orbit_apsides(const godot::Ref<ShipState> &p_state) const override;
 	double get_body_radius(int p_index) const override;
+	double get_body_spin(int p_index) const override;
+	double get_entry_altitude(int p_index) const override;
 	int get_dominant_body(double p_x, double p_y, double p_time) const override;
 	double get_sphere_of_influence(int p_index) const override;
 	godot::PackedFloat64Array get_body_orbit_path(int p_index, int p_samples) const override;

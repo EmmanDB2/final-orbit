@@ -74,7 +74,23 @@ func _ready() -> void:
 	warp.start(gravity_model, $Ship, $Pilot)
 	$Hud/SafeArea/FlightHud.connect_warp(warp)
 	warp.message_raised.connect($Hud/SafeArea/CommsLine._on_ship_warning_raised)
+	_start_landing_forecast()
 	$Ship.start_flight(gravity_model, state, PI / 2.0)
+
+
+# The ship forecasts its own landing. The path line draws where that is, a label at the line's end
+# says what it means, and the comms line's idea of a hard landing is what the ship goes by.
+func _start_landing_forecast() -> void:
+	$Ship.hard_touchdown_speed = $Hud/SafeArea/CommsLine.hard_touchdown_speed
+	$Ship.landing_predicted.connect($Trajectory._on_ship_landing_predicted)
+	var label := LandingLabel.new()
+	$Hud/SafeArea.add_child(label)
+	# Under the panels, with the target markers.
+	$Hud/SafeArea.move_child(label, $Hud/SafeArea/TargetMarkers.get_index())
+	label.start_label($Trajectory.landing_point)
+	$Ship.landing_predicted.connect(label._on_ship_landing_predicted)
+	$Camera2D.view_rolled.connect(label._on_view_rolled)
+	$Camera2D.view_changed.connect(label._on_view_changed)
 
 
 # A site draws behind the station, ship, and pilot, and in front of the ground.

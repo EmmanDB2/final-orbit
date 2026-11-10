@@ -50,6 +50,9 @@ func _on_flight_data(data: Dictionary) -> void:
 		status = "DOCKED"
 	elif data["landed"]:
 		status = "LANDED"
+	elif data.get("landing", "") != "":
+		# The forecast of the landing, with no more burns: SAFE, HARD, CRASH, or BURN-UP.
+		status = "%s TRAJECTORY" % data["landing"]
 	elif data["periapsis"] < 0.0:
 		status = "IMPACT TRAJECTORY"
 	elif data["apoapsis"] < 0.0:

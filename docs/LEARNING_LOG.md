@@ -579,3 +579,11 @@ Files: `native/src/aero_body.h`, `native/src/aero_body.cpp`, `native/src/registe
 - force and torque summed over the pieces of an outline (center of pressure against center of mass)
 - substeps and an energy check to keep a simulation steady at long time steps
 - driving a scene's physics tick by hand from a test
+
+## 2026-11-10: Landing prediction
+
+Files: `native/src/gravity_model.h`, `native/src/gravity_model.cpp`, `native/src/aero_body.h`, `native/src/aero_body.cpp`, `native/src/patched_conics_model.h`, `native/src/patched_conics_model.cpp`, `scripts/landing_prediction.gd`, `scripts/landing_path.gd`, `scripts/ui/landing_label.gd`, `scripts/trajectory_preview.gd`, `scripts/ship.gd`, `scripts/ui/comms_line.gd`, `scripts/main.gd`, `tests/test_landing_prediction.gd`, `docs/DESIGN.md`
+
+- worker threads: starting a task, checking whether it's done, and never waiting on it (WorkerThreadPool)
+- handing a thread its own copies, so nothing changes under it
+- a rotating frame of reference: drawing a path against ground that turns

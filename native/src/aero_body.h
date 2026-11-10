@@ -15,6 +15,7 @@
 // flight and the landing prediction can't drift apart.
 #pragma once
 
+#include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/core/binder_common.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -115,8 +116,17 @@ public:
 	// through the air, in the world.
 	godot::PackedFloat64Array step(double p_dt, double p_density, double p_velocity_x, double p_velocity_y, double p_heading, double p_spin, int p_control, double p_control_value) const;
 
+	// A copy that nothing else will change, for the landing prediction to fly on its own thread.
+	godot::Ref<AeroBody> snapshot() const;
+
 	// The same step on plain numbers, for the landing prediction.
 	void advance(Motion &r_motion, double p_dt, double p_density, int p_control, double p_control_value, Report &r_report) const;
+	// A step with the ship held at one angle to the air it's moving through, however the air
+	// pushes: 0 is nose first, and a quarter turn is broadside. Only its velocity changes.
+	void advance_held(Motion &r_motion, double p_dt, double p_density, double p_off_airflow) const;
+	// How hard the air slows the ship held at that angle, for each unit of density and of speed
+	// squared.
+	double drag_held(double p_off_airflow) const;
 
 protected:
 	static void _bind_methods();
