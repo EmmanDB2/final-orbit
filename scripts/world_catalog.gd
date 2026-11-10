@@ -173,6 +173,7 @@ func _ship_info() -> Dictionary:
 	var rows: Array = [
 		["MASS", "%s kg" % _grouped(int(status["mass"])), true],
 		["FUEL", "%d%%" % roundi(status["fuel_share"] * 100.0), true],
+		["RCS", "%d%%" % roundi(status["rcs_share"] * 100.0), true],
 		["ΔV", _speed(status["delta_v"]), true],
 		["HULL", "%d%%" % roundi(status["hull_share"] * 100.0), true],
 		["ENGINE", "%d%%" % roundi(status["engine_share"] * 100.0), true],

@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | The RCS has its own propellant tank, apart from the engine's fuel, on Manny's call: 2,400 kg on the lander, two minutes flat out. Empty, the ship can't turn or translate. Docking and landing at home refill it \[Leaning\] |
 | 2026-11-10 | A landed ship that settles or tips against a building slides along the ground out of it, instead of leaning into it \[Leaning\] |
 | 2026-11-10 | Moon base built from Manny's asset editor sprites and placed on the moon's near side, 190 m from the point facing the planet: hangar, tanks and service tower, a pad set flush into the ground, and a sealed two-floor hab, all walk-in like the launch base. A building can now be marked not solid, for pads \[Leaning\] |
 | 2026-11-10 | Launch base art replaced with the cleaned-up sprites from Manny's asset editor, used at 5 cm a pixel, so the buildings are about a fifth smaller, with doors about the pilot's height. Floors, ladders, doors, terminals, and the layout re-marked to match; the old slicer is gone \[Leaning\] |
@@ -510,7 +511,8 @@ Turning and RCS controls: \[Leaning\]
 - The button for ASS reads ASSIST on Manny's rework, and RAW when it's off. LEGS lights up amber while the legs move and cyan when they're down, and STAB is cyan when on. \[Leaning\]
 - Heading dial at the top of the right side, on every screen: nose direction, prograde (cyan) and retrograde (orange) markers, and spin as an amber arc along the rim, which is gone when the ship is still. The markers hide when landed or barely moving, since there's no direction of travel to show.
 - The right side is 148 game pixels wide, full height. Buttons can be drawn smaller than 44 game pixels as long as what a finger can touch isn't.
-- Translation gives the lander about 30 m/s² when full and uses RCS fuel. It's too weak to lift off from the planet or the moon, and ASS doesn't cancel it. \[Leaning\]
+- Translation gives the lander about 30 m/s² when full. It's too weak to lift off from the planet or the moon, and ASS doesn't cancel it. \[Leaning\]
+- The RCS has its own propellant tank, apart from the engine's fuel, like Apollo's: 2,400 kg on the lander, two minutes of firing flat out. Turning, translating, STAB, ASSIST, and drag to point all use it, and with it empty the ship can't turn or translate, though the engine still burns. It refills with the fuel, at a station's port or landing at home. Manny's call, 2026-11-10. \[Leaning\]
 
 Edge markers: \[Leaning\]
 
@@ -528,7 +530,7 @@ Each card has a name, a chip saying what kind of thing it is, rows of what's kno
 - A planet or moon shows its size, mass, gravity, temperature, atmosphere, moons, and day length. Gravity reads against the home planet's, which is 1.00 g.
 - The star shows its size, mass, temperature, planets, and distance.
 - A station shows what it orbits, its height and period, its rooms, free ports, services, and distance.
-- Your ship shows its mass, fuel, delta-v, hull, engine, and legs.
+- Your ship shows its mass, fuel, RCS propellant, delta-v, hull, engine, and legs.
 - The home system is named KEPLA-2, with KEPLA-2b as the home planet and KEPLA-2b I its moon. \[Leaning\]
 
 What the card shows depends on how the player has studied the body: \[Locked for design, Tier 1\]

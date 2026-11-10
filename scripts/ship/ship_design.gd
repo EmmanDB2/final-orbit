@@ -57,5 +57,8 @@ extends Resource
 @export var burn_power: float = 2.0e8
 ## How often a burning hull loses pixels, in seconds.
 @export var burn_seconds: float = 0.33
-## How much fuel the RCS burns while firing flat out, in kilograms per second.
+## How much propellant the RCS burns while firing flat out, in kilograms per second.
 @export var rcs_fuel_rate: float = 0.0
+## How much propellant the RCS's own tank holds, in kilograms, apart from the engine's fuel. The
+## lander's lasts two minutes firing flat out.
+@export var rcs_capacity: float = 2400.0

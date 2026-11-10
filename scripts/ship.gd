@@ -118,8 +118,10 @@ signal flight_data_changed(data: Dictionary)
 var heading: float = 0.0
 ## The ship's mass, center of mass, and spin resistance, measured from its pixels.
 var body: ShipBody
-## Fuel aboard, in kilograms.
+## Engine fuel aboard, in kilograms.
 var fuel: float = 0.0
+## RCS propellant aboard, in kilograms, in its own tank. Turning and translating use it.
+var rcs_fuel: float = 0.0
 ## Main engine acceleration right now, in world units per second squared.
 var thrust_acceleration: float = 0.0
 ## How quickly the RCS changes the spin right now, in radians per second squared.
@@ -217,6 +219,7 @@ func _ready() -> void:
 		_part_sprites.append(part)
 	_rest_height = body.reach(_pivot, Vector2.DOWN)
 	fuel = body.fuel_capacity
+	rcs_fuel = design.rcs_capacity
 	_update_performance()
 	_puffs.set_nozzles(body)
 	_aim_flame()
@@ -259,7 +262,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		var spin_before: float = angular_velocity
 		var turn_input: float = Input.get_axis("turn_left", "turn_right") if pilot_aboard else 0.0
-		if fuel <= 0.0 or _lost:
+		if rcs_fuel <= 0.0 or _lost:
 			pass
 		elif turn_input != 0.0:
 			angular_velocity += turn_input * turn_acceleration * delta
@@ -279,7 +282,7 @@ func _physics_process(delta: float) -> void:
 		if (spin_change > 0.0 and not _rcs_left) or (spin_change < 0.0 and not _rcs_right):
 			angular_velocity = spin_before
 		var firing: float = absf(angular_velocity - spin_before) / (turn_acceleration * delta)
-		_burn_fuel(design.rcs_fuel_rate * firing * delta)
+		_burn_rcs(design.rcs_fuel_rate * firing * delta)
 		_spin_firing = signf(angular_velocity - spin_before) * firing
 		heading += angular_velocity * delta
 	rotation = heading
@@ -294,7 +297,7 @@ func _physics_process(delta: float) -> void:
 		_burn_fuel(thrust_force / design.exhaust_velocity * delta)
 	var translate_forward: float = _usable_forward(Input.get_axis("translate_back", "translate_forward")) if pilot_aboard else 0.0
 	var translate_right: float = _usable_right(Input.get_axis("translate_left", "translate_right")) if pilot_aboard else 0.0
-	var translating: bool = fuel > 0.0 and not _lost and (translate_forward != 0.0 or translate_right != 0.0)
+	var translating: bool = rcs_fuel > 0.0 and not _lost and (translate_forward != 0.0 or translate_right != 0.0)
 	_translate_forward = translate_forward if translating else 0.0
 	_translate_right = translate_right if translating else 0.0
 	if translating:
@@ -302,7 +305,7 @@ func _physics_process(delta: float) -> void:
 		var across: float = translate_right * translate_acceleration * delta
 		state.velocity_x += sin(heading) * along + cos(heading) * across
 		state.velocity_y += -cos(heading) * along + sin(heading) * across
-		_burn_fuel(design.rcs_fuel_rate * (absf(translate_forward) + absf(translate_right)) * delta)
+		_burn_rcs(design.rcs_fuel_rate * (absf(translate_forward) + absf(translate_right)) * delta)
 
 	var venting: bool = _leak_fuel(delta)
 	var in_air: bool = _push_through_air(delta)
@@ -374,6 +377,7 @@ func status() -> Dictionary:
 		"chip": design.chip,
 		"mass": _mass_now,
 		"fuel_share": fuel / body.original_fuel_capacity,
+		"rcs_share": rcs_fuel / design.rcs_capacity if design.rcs_capacity > 0.0 else 0.0,
 		"delta_v": delta_v(),
 		"hull_share": float(body.pixel_count) / body.original_pixel_count,
 		"engine_share": _engine_share,
@@ -425,6 +429,7 @@ func dock(holder: Callable) -> void:
 	_dock_holder = holder
 	repair()
 	fuel = body.fuel_capacity
+	rcs_fuel = design.rcs_capacity
 	hull_temperature = 0.0
 	heat_share = 0.0
 	_update_performance()
@@ -475,6 +480,12 @@ func _burn_fuel(amount: float) -> void:
 		_update_performance()
 
 
+func _burn_rcs(amount: float) -> void:
+	if amount > 0.0:
+		rcs_fuel = maxf(rcs_fuel - amount, 0.0)
+		_update_performance()
+
+
 # Air pushes back against the ship's motion through it, and it moves with the planet, so
 # this measures against the moving air. Side-on, the ship catches more of it. Returns
 # whether there was any air to push through.
@@ -497,7 +508,7 @@ func _push_through_air(delta: float) -> bool:
 	var along_nose: float = absf(through_x * sin(heading) - through_y * cos(heading)) / speed
 	var across_nose: float = sqrt(maxf(1.0 - along_nose * along_nose, 0.0))
 	var catching: float = body.width * along_nose + body.length * across_nose
-	var mass_now: float = body.mass + fuel
+	var mass_now: float = body.mass + fuel + rcs_fuel
 	var slowing: float = 0.5 * density * speed * speed * design.drag_coefficient * catching / mass_now
 	var change: float = minf(slowing * delta, speed)
 	state.velocity_x -= through_x / speed * change
@@ -516,6 +527,7 @@ func _refill_sound_tanks() -> void:
 		if body.module_share(tank["module"]) >= 1.0:
 			sound += tank["capacity"]
 	fuel = maxf(fuel, sound)
+	rcs_fuel = design.rcs_capacity
 	_update_performance()
 
 
@@ -993,16 +1005,17 @@ func _check_stranded() -> void:
 
 func _update_performance() -> void:
 	var now: Dictionary = body.with_fuel(fuel)
-	_mass_now = now["mass"]
+	# The RCS tank is small and near the middle, so it adds mass but barely any spin resistance.
+	_mass_now = now["mass"] + rcs_fuel
 	_spin_resistance_now = now["spin_resistance"]
-	thrust_acceleration = design.engine_force * _engine_share / now["mass"]
+	thrust_acceleration = design.engine_force * _engine_share / _mass_now
 	turn_acceleration = design.rcs_torque / now["spin_resistance"]
-	translate_acceleration = design.rcs_translate_force / now["mass"]
+	translate_acceleration = design.rcs_translate_force / _mass_now
 
 
 ## How much more speed the fuel aboard can give, from the rocket equation.
 func delta_v() -> float:
-	return design.exhaust_velocity * log((body.mass + fuel) / body.mass)
+	return design.exhaust_velocity * log((body.mass + rcs_fuel + fuel) / (body.mass + rcs_fuel))
 
 
 ## Starts or updates drag to point, turning the nose toward this heading.
@@ -1085,6 +1098,7 @@ func _report_telemetry() -> void:
 		"moving": not state.is_on_surface() and relative_x * relative_x + relative_y * relative_y >= 0.25,
 		"spin": angular_velocity,
 		"fuel_share": fuel / body.original_fuel_capacity,
+		"rcs_share": rcs_fuel / design.rcs_capacity if design.rcs_capacity > 0.0 else 0.0,
 		"delta_v": delta_v(),
 	})
 

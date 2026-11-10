@@ -540,3 +540,10 @@ Files: `scripts/ship.gd`, `docs/DESIGN.md`
 
 - projecting a vector onto a plane (removing its "up" part) to move along the ground
 - resolving overlap a little each tick instead of all at once
+
+## 2026-11-10: RCS propellant tank
+
+Files: `scripts/ship.gd`, `scripts/ship/ship_design.gd`, `scripts/world_catalog.gd`, `docs/DESIGN.md`
+
+- a second resource with its own drain and refill
+- the rocket equation with mass that the engine doesn't burn (dry mass plus RCS propellant)
