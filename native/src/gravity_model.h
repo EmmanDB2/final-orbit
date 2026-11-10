@@ -106,7 +106,9 @@ public:
 	virtual godot::PackedFloat64Array get_satellite_orbit_path(int p_index, int p_samples) const = 0;
 
 	// The headings STAB can hold for a ship here, moving like this: along its path around the body
-	// it's orbiting, against it, toward that body, and away from it, in that order.
+	// it's orbiting, against it, toward that body, and away from it, in that order. Inside the
+	// body's landing zone the path is measured against the turning ground, like the speed readout
+	// and the dial, so against the path is what a landing burn cancels; higher up, against the body.
 	godot::PackedFloat64Array get_hold_headings(double p_x, double p_y, double p_velocity_x, double p_velocity_y, double p_time) const;
 
 	// Flies a ship's coast ahead with no more burns, to say where and how it comes down. Above any

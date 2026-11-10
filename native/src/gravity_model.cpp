@@ -53,6 +53,9 @@ double number_in(const Dictionary &p_dictionary, const char *p_key, double p_def
 	return value;
 }
 
+// Slower than this over the ground, in world units per second, a ship's path has no direction.
+constexpr double STILL_SPEED = 0.5;
+
 } // namespace
 
 int GravityModel::get_local_root(int p_index) const {
@@ -67,7 +70,16 @@ PackedFloat64Array GravityModel::get_hold_headings(double p_x, double p_y, doubl
 	const int body = get_dominant_body(p_x, p_y, p_time);
 	const PackedFloat64Array body_velocity = get_body_velocity(body, p_time);
 	const PackedFloat64Array body_position = get_body_position(body, p_time);
-	const double along = std::atan2(p_velocity_x - body_velocity[0], body_velocity[1] - p_velocity_y);
+	// The ground's own velocity inside the landing zone, and the body's above it.
+	const PackedFloat64Array frame = get_surface_velocity(p_x, p_y, p_time);
+	double relative_x = p_velocity_x - frame[0];
+	double relative_y = p_velocity_y - frame[1];
+	// Nearly still over the ground, there's no path to point along, so it falls back on the body's.
+	if (relative_x * relative_x + relative_y * relative_y < STILL_SPEED * STILL_SPEED) {
+		relative_x = p_velocity_x - body_velocity[0];
+		relative_y = p_velocity_y - body_velocity[1];
+	}
+	const double along = std::atan2(relative_x, -relative_y);
 	const double away = std::atan2(p_x - body_position[0], body_position[1] - p_y);
 	PackedFloat64Array headings;
 	headings.push_back(along);

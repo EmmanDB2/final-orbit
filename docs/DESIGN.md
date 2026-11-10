@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | STAB measures along the path against the turning ground inside a body's landing zone, like the speed readout and dial, so against the path is what a landing burn cancels and the nose stays in the airflow; higher up, against the body as before. The forecast holds the same. Manny's call. The lander's tilt in air is left as piloting for now, and Manny will give it fins as a module from the asset editor \[Leaning\] |
 | 2026-11-10 | Landing prediction built: while the ship's on its way down, a forecast of the landing with no more burns is flown on another thread four times a second, with the same air as the real flight. The path line shows it through the air, drawn against the turning ground, with the landing zone on the ground and a SAFE, HARD, CRASH, or BURN-UP label and speed at its end, and the comms line reads the same. Gravity interface gains `predict_descent`, `get_hold_headings`, `get_body_spin`, and `get_entry_altitude`, since the forecast flies through the interface and holds STAB's headings the way the ship does \[Leaning\] |
 | 2026-11-10 | Aerodynamics built: the air pushes on each piece of the outline that faces it, giving drag, lift, a turning force about the live center of mass, and spin damping, with heat taken from the hottest piece. The RCS loses to the air deep and fast, and the comms line says AIR OVERPOWERING RCS. The old one-box drag stays behind `FeatureFlags.AERODYNAMICS`. **The lander doesn't fall engine-first by itself as hoped:** its shape settles it tilted 46 to 69 degrees off engine-first, and what to do about that is a new open question, along with which frame STAB holds in air \[Leaning\] |
 | 2026-11-10 | Aerodynamics and landing prediction decided, on Manny's call, to be built by Fable from `docs/briefs/aerodynamics_and_landing_prediction.md`: forces on each exposed part of the outline, with stability, lift, and spin damping coming from shape and mass rather than being chosen; the RCS kept at its strength, so the air overpowers it when you come in too fast; and a predicted path through the air that flies hands-off, with a landing zone between least and most drag and a SAFE, HARD, CRASH, or BURN-UP label at the end \[Leaning\] |
@@ -335,6 +336,7 @@ Flight modes: \[Leaning\]
 - ASS never brakes velocity, because cutting velocity would break orbits. \[Locked\]
 - STAB: the RCS holds the nose on one of four directions: along the trajectory line or toward the body you're orbiting, each with the nose first or the thruster first. \[Leaning\]
 - STAB picks automatically, whichever of the four is closest to where the nose is pointing. On the north side of a clockwise orbit, those are right along the path, left against it, down toward the planet, and up away from it. \[Leaning\]
+- Inside a body's landing zone, along and against the path are measured against the turning ground, like the speed readout and the dial, so against the path is what the landing burn cancels, and in air the nose stays in the airflow (within about 1.5 degrees on a descent, where the body's frame was up to 37 off). Higher up they're measured against the body, as before. Nearly still over the ground, under 0.5 units/s, there's no path to point along, so they fall back on the body's. The landing forecast holds the same directions. Manny's call, 2026-11-10. \[Leaning\]
 - The name ASS, for Attitude Stabilization System, is final. \[Locked\]
 - ASS uses the same thrusters as manual turning, at the same strength, so from Tier 1 it should burn the same fuel.
 - The ship starts in ASS, with STAB off. On the Mac, T switches ASS and RAW, and R switches STAB.
@@ -700,8 +702,8 @@ Open questions:
 - [ ] Economy numbers: gig pay, ship prices, repair costs, tow cost
 - [x] C# on Android stable yet, or stay with C++ GDExtension? Still experimental in Godot 4.7 (checked 2026-11-05); stay with C++
 - [ ] Starting conditions: first ship, starting money, home station
-- [ ] The lander doesn't fall engine-first by itself (see Aerodynamics). Leave it as piloting, holding it with STAB while the air allows and turning for the burn once it's slow? Give it fins or air brakes near the nose, as a module with its own art, so the same physics steadies it? Or move its mass lower?
-- [ ] STAB's along-the-path direction is measured against the planet, not against its turning air and ground, so low down it holds the ship up to about 30 degrees off the airflow, and off the dial's markers, which read against the ground inside the landing zone. Should STAB switch to the ground's frame there too?
+- [x] The lander doesn't fall engine-first by itself (see Aerodynamics): left as piloting for now, held with STAB while the air allows and turned for the burn once it's slow. Manny will give it fins near the nose as a module, drawn in the asset editor (partly to test the editor) and built in by Fable, so the same physics steadies it. Its mass stays where it is. Manny's call, 2026-11-10.
+- [x] STAB's along-the-path direction inside the landing zone: switched to the turning ground's frame, like the dial (see Flight modes). Manny's call, 2026-11-10.
 
 Parking lot:
 

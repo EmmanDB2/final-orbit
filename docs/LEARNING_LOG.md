@@ -587,3 +587,11 @@ Files: `native/src/gravity_model.h`, `native/src/gravity_model.cpp`, `native/src
 - worker threads: starting a task, checking whether it's done, and never waiting on it (WorkerThreadPool)
 - handing a thread its own copies, so nothing changes under it
 - a rotating frame of reference: drawing a path against ground that turns
+
+## 2026-11-10: STAB against the turning ground
+
+Files: `native/src/gravity_model.{h,cpp}`, `docs/DESIGN.md`
+
+- frames of reference: velocity measured against the body versus against its turning ground
+- one shared function for the real flight and the forecast, so they can't drift apart
+- guarding a direction that's undefined when the speed is near zero
