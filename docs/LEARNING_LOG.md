@@ -453,3 +453,11 @@ Files: `scripts/pilot/astronaut_model.gd`, `tests/test_astronaut_model.gd`, `doc
 - a tree of Node3D joints, each placed relative to its parent
 - building meshes in code (BoxMesh, SphereMesh, an ArrayMesh from vertex arrays)
 - triangle winding order, and which side of a face shows
+
+## 2026-11-09: 3D pilot drawn as pixel art
+
+Files: `scripts/pilot/astronaut_view.gd`, `scripts/pilot/astronaut_pixels.gdshader`, `scripts/pilot/astronaut_depth.gdshader`, `scripts/pilot.gd`, `scripts/feature_flags.gd`, `scripts/station/station_view.gd`, `docs/DESIGN.md`
+
+- rendering 3D into a 2D texture with a SubViewport and an orthographic camera
+- a post-process shader: snapping colors to a palette and finding edges from depth
+- procedural animation: posing joints from sine waves and game state

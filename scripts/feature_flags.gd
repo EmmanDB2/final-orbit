@@ -10,3 +10,5 @@ const EVA: bool = true
 const INTERIORS: bool = true
 ## Moved up from Tier 2 with EVA. The pilot can step out of a landed ship and walk on the ground.
 const WALKING_ON_WORLDS: bool = true
+## Being tried. The pilot is a 3D model drawn as pixel art, instead of the sprite sheets.
+const PILOT_3D: bool = true

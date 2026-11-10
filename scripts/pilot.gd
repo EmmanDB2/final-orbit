@@ -44,6 +44,8 @@ var _gravity_model: GravityModel
 var _ship: Node2D
 var _station: StationView
 var _sprite := Sprite2D.new()
+# The 3D pilot, when FeatureFlags.PILOT_3D is on, drawn instead of the sprite.
+var _figure: AstronautView
 var _roll: float = 0.0
 var _has_drag: bool = false
 var _drag_heading: float = 0.0
@@ -90,6 +92,10 @@ func start_pilot(gravity_model: GravityModel, ship: Node2D, station: StationView
 	_sprite.hframes = data.hframes
 	_sprite.vframes = data.vframes
 	add_child(_sprite)
+	if FeatureFlags.PILOT_3D:
+		_sprite.visible = false
+		_figure = AstronautView.new()
+		add_child(_figure)
 	visible = false
 
 
@@ -594,6 +600,9 @@ func _station_center() -> Vector2:
 func _process(delta: float) -> void:
 	if mode == ABOARD:
 		return
+	if _figure != null:
+		_show_figure(delta)
+		return
 	if mode == SURFACE:
 		_animate_on_ground(delta)
 		return
@@ -617,6 +626,48 @@ func _process(delta: float) -> void:
 	_sprite.flip_v = quarter == 0
 	var leftover: float = 0.0 if mode == INSIDE else on_screen - quarter * PI / 2.0
 	rotation = leftover + _roll
+
+
+# Tells the 3D pilot what the pilot's doing. It turns itself on screen, so this node stays square.
+func _show_figure(delta: float) -> void:
+	rotation = _roll
+	_figure.screen_roll = _roll
+	_figure.thrust = _firing
+	match mode:
+		SURFACE:
+			_figure.look = AstronautView.Look.SIDE
+			_figure.body_angle = wrapf(_up_heading - _roll, -PI, PI)
+			_figure.facing_right = _facing_right
+			_figure.feet_below = data.stand_height
+			_figure.speed_share = absf(_along) / data.ground_walk_speed
+			_figure.rise_share = _rising / data.jump_speed
+			if _pose_left > 0.0:
+				_pose_left -= delta
+				_figure.motion = &"land" if _pose == data.jump_side[5] else &"push"
+			elif _firing != Vector2.ZERO:
+				_figure.motion = &"jet"
+			elif not _grounded:
+				_figure.motion = &"air"
+			elif absf(_along) > 4.0:
+				_figure.motion = &"walk"
+			else:
+				_figure.motion = &"idle"
+		EVA:
+			# Upright on screen, leaning into a push to the side and facing it.
+			_figure.look = AstronautView.Look.SIDE
+			_figure.feet_below = 0.0
+			var push: Vector2 = _firing.rotated(-_roll)
+			if absf(push.x) > 0.1:
+				_figure.facing_right = push.x > 0.0
+			_figure.body_angle = rotate_toward(_figure.body_angle, clampf(push.x, -1.0, 1.0) * 0.6, 1.5 * delta)
+			_figure.motion = &"jet" if _firing != Vector2.ZERO else &"float"
+		INSIDE:
+			# From above, facing the way they walk.
+			_figure.look = AstronautView.Look.ABOVE
+			_figure.feet_below = 0.0
+			_figure.body_angle = wrapf(facing - _roll, -PI, PI)
+			_figure.speed_share = _walking.length() / data.walk_speed
+			_figure.motion = &"walk" if _walking.length() > 5.0 else &"idle"
 
 
 # From the side, standing up straight on the ground, facing the way they last walked.
@@ -654,7 +705,12 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	position = Vector2((state.x - center_x) * pixels_per_unit, (state.y - center_y) * pixels_per_unit)
 	_sprite.scale = Vector2.ONE * minf(pixels_per_unit, 1.0)
 	var show_dot: bool = pixels_per_unit < dot_max_zoom
-	_sprite.visible = not show_dot
+	_sprite.visible = not show_dot and _figure == null
+	if _figure != null:
+		# Inside, at the station's pixel size, so the two pixels match.
+		var pixel_size: float = _station.art_pixel_size() if mode == INSIDE else 1.0
+		_figure.scale = Vector2.ONE * minf(pixels_per_unit, 1.0) * pixel_size
+		_figure.visible = not show_dot
 	_show_dot = show_dot
 	queue_redraw()
 

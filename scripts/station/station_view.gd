@@ -95,6 +95,11 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 	add_child(_sprite)
 
 
+## How many game pixels wide one pixel of the station's art is drawn.
+func art_pixel_size() -> float:
+	return _design.art_pixel_size
+
+
 ## How far the station reaches from its middle, in world units.
 func reach() -> float:
 	var size := Vector2(layout.image.get_size() - layout.origin)
