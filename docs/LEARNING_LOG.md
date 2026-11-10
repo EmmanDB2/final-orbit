@@ -469,3 +469,11 @@ Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_vie
 - angular velocity and braking to stop on a heading
 - pushing in a body's own frame, then rotating into the world
 - torque from a pair of thrusters on opposite corners
+
+## 2026-11-10: EVA pilot leans into pushes
+
+Files: `scripts/pilot/astronaut_view.gd`, `scripts/pilot.gd`, `docs/DESIGN.md`
+
+- building a rotation from an axis and an angle (Basis)
+- easing a vector toward a target with move_toward
+- choosing points by sorting with a custom comparison

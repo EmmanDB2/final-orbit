@@ -2,14 +2,15 @@
 # at 1 px per 5 cm, already turned to its angle on screen so its pixels stay square with the
 # screen, and a shader snaps it to the agency palette and outlines it. This also poses the joints
 # every frame from what the pilot's doing, and draws the cold gas puffing from the jetpack's
-# thrusters, like the ship's RCS. Seen from the side on worlds, from the back on EVA, with the head
-# the way they face like a ship's nose, and from above inside stations.
+# thrusters, like the ship's RCS. Seen from the side on worlds and from above inside stations. On
+# EVA they float upright, seen from above, and lean into a push until they're nearly flat, seen
+# from the back with the head the way they're going.
 # From DESIGN.md, "Player" (the 3D pilot being tried against the sprite sheets).
 class_name AstronautView
 extends Node2D
 
 ## How the pilot is seen.
-enum Look { SIDE, BACK, ABOVE }
+enum Look { SIDE, EVA, ABOVE }
 
 ## How big the canvas is, in pixels, with the body's middle at its center.
 const CANVAS: int = 64
@@ -26,16 +27,21 @@ const LINE_STEP: float = 0.09
 ## Surfaces farther from the camera than this, in meters past the body's middle, are the far side
 ## and drawn a shade darker.
 const FAR_SIDE: float = -0.05
-## The jetpack's thrusters, at the corners of the pack's back face, measured from the model's root,
-## in meters. Real EVA packs have their thrusters at the corners like this.
-const THRUSTER_TOP: float = 1.50
-const THRUSTER_BOTTOM: float = 0.64
-const THRUSTER_SIDE: float = 0.28
-const THRUSTER_BACK: float = 0.59
+## The jetpack's thrusters are at the corners of the pack's back face, as on real EVA packs: its
+## middle and half its size, measured from the model's root, in meters, and where the backpack's
+## joint sits.
+const PACK_MIDDLE := Vector3(0.0, 1.07, 0.41)
+const PACK_HALF := Vector3(0.28, 0.44, 0.18)
+const PACK_JOINT := Vector3(0.0, 1.10, 0.41)
+## On EVA, how far the pilot leans into a push, in radians from upright, and how fast they lean in
+## and straighten up again, in radians per second.
+const MOST_LEAN: float = 1.35
+const LEAN_SPEED: float = 3.0
+const STRAIGHTEN_SPEED: float = 2.0
 ## The size of a puff of gas, in pixels: how far it reaches and its half width at each end.
-const PUFF_LENGTH: float = 8.0
+const PUFF_LENGTH: float = 12.0
 const PUFF_START_WIDTH: float = 0.5
-const PUFF_END_WIDTH: float = 2.5
+const PUFF_END_WIDTH: float = 3.0
 
 ## How the pilot is seen, and which way their head points on screen, clockwise from up.
 var look: Look = Look.SIDE
@@ -69,7 +75,11 @@ var _depth_viewport := SubViewport.new()
 var _depth_pivot := Node3D.new()
 var _depth_model := AstronautModel.new()
 var _sprite := Sprite2D.new()
+var _material: ShaderMaterial
 var _yaw: float = -PI / 2.0
+# On EVA, the lean: its direction is the way the head tips, in the pilot's own frame with the face
+# toward +y, and its length is the angle.
+var _lean := Vector2.ZERO
 var _phase: float = 0.0
 var _time: float = 0.0
 var _flicker: float = 0.0
@@ -116,9 +126,10 @@ func _ready() -> void:
 	material.shader = load("res://scripts/pilot/astronaut_pixels.gdshader")
 	var colors := PackedVector3Array()
 	var colors_lab := PackedVector3Array()
+	# The suit's colors. Not light blue: lit grays would turn to it.
 	for color_name: StringName in [&"hull_dark", &"hull_mid", &"hull_light", &"hull_lighter", &"hull_lightest",
 			&"gold_darkest", &"gold_dark", &"gold", &"gold_light", &"agency_orange_dark", &"agency_orange",
-			&"agency_orange_light", &"agency_blue_dark", &"agency_blue", &"agency_blue_light"]:
+			&"agency_orange_light", &"agency_blue_dark", &"agency_blue"]:
 		var color: Color = palette.get(color_name)
 		colors.append(Vector3(color.r, color.g, color.b))
 		colors_lab.append(_to_oklab(color))
@@ -130,9 +141,10 @@ func _ready() -> void:
 	material.set_shader_parameter("colors_lab", colors_lab)
 	material.set_shader_parameter("distances", _depth_viewport.get_texture())
 	material.set_shader_parameter("step_to_line", LINE_STEP / (DEPTH_REACH * 2.0))
-	material.set_shader_parameter("far_side", 0.5 + FAR_SIDE / (DEPTH_REACH * 2.0))
+	material.set_shader_parameter("far_side", _far_side())
 	material.set_shader_parameter("outline_color", palette.hull_darkest)
 	_sprite.material = material
+	_material = material
 	# Behind this node's own drawing, so the flames show in front.
 	_sprite.show_behind_parent = true
 	add_child(_sprite)
@@ -174,6 +186,7 @@ func _process(delta: float) -> void:
 	_flicker += delta
 	_turn(delta)
 	_pose(delta)
+	_material.set_shader_parameter("far_side", _far_side())
 	# Square with the screen, with the body's middle where the feet put it.
 	global_rotation = screen_roll
 	var up := Vector2.UP.rotated(body_angle)
@@ -187,9 +200,7 @@ func _turn(delta: float) -> void:
 	# Kept between a full turn back and none: 0 and -TAU are the back, -PI the front, and the sides
 	# between. Right to left goes through the front, and to or from the back the short way.
 	var wanted_yaw: float = _yaw
-	if look == Look.BACK:
-		wanted_yaw = 0.0 if _yaw > -PI else -TAU
-	elif look == Look.SIDE:
+	if look == Look.SIDE:
 		if facing_right and _yaw < -PI * 1.5 - 0.01:
 			_yaw += TAU
 		elif not facing_right and _yaw > -PI * 0.5 + 0.01:
@@ -199,9 +210,21 @@ func _turn(delta: float) -> void:
 	if _yaw <= -TAU + 0.0001:
 		_yaw += TAU
 	var roll := Basis(Vector3.BACK, -body_angle)
+	# Upright seen from above: the top of the helmet toward the camera, the face up the screen
+	# before turning.
+	var upright := Basis(Vector3.RIGHT, PI / 2.0)
 	if look == Look.ABOVE:
-		# The top of the helmet toward the camera, and the front up the screen before turning.
-		_pivot.basis = roll * Basis(Vector3.RIGHT, PI / 2.0)
+		_pivot.basis = roll * upright
+	elif look == Look.EVA:
+		# Into a push, not a turn: the head tips the way the push goes. Let go, and they straighten.
+		var wanted := Vector2.ZERO
+		if push != Vector2.ZERO:
+			wanted = Vector2(push.x, -push.y).normalized() * MOST_LEAN * minf(push.length(), 1.0)
+		_lean = _lean.move_toward(wanted, (LEAN_SPEED if wanted != Vector2.ZERO else STRAIGHTEN_SPEED) * delta)
+		var tilt := Basis.IDENTITY
+		if _lean.length() > 0.001:
+			tilt = Basis(Vector3.BACK.cross(Vector3(_lean.x, _lean.y, 0.0)).normalized(), _lean.length())
+		_pivot.basis = roll * tilt * upright
 	else:
 		_pivot.basis = roll * Basis(Vector3.UP, _yaw)
 	_depth_pivot.basis = _pivot.basis
@@ -294,42 +317,39 @@ func _turn_joint(joint_name: StringName, angles: Vector3) -> void:
 	_depth_model.joint(joint_name).rotation = angles
 
 
-# Flames from the nozzles, the way the jetpack pushes the other way, flickering.
-# Each push or turn fires the thrusters that blow the other way: pushing toward the head fires the
-# bottom corners downward, pushing right fires the left corners leftward, and a turn fires a
-# diagonal pair in opposite directions.
+# Each push fires the thrusters on the side of the pack that trails, blowing the other way, and a
+# turn fires the two corners farthest apart, blowing round the opposite way to the turn. It's
+# worked out on screen, so it holds however the pilot leans.
 func _draw() -> void:
 	if palette == null or (push == Vector2.ZERO and turning == 0.0):
 		return
-	var top: float = THRUSTER_TOP
-	var bottom: float = THRUSTER_BOTTOM
-	var side: float = THRUSTER_SIDE
-	var firing: Array = []
-	if push.y < -0.1:
-		firing.append_array([[Vector2(-side, bottom), Vector3.DOWN], [Vector2(side, bottom), Vector3.DOWN]])
-	if push.y > 0.1:
-		firing.append_array([[Vector2(-side, top), Vector3.UP], [Vector2(side, top), Vector3.UP]])
-	if push.x > 0.1:
-		firing.append_array([[Vector2(-side, top), Vector3.LEFT], [Vector2(-side, bottom), Vector3.LEFT]])
-	if push.x < -0.1:
-		firing.append_array([[Vector2(side, top), Vector3.RIGHT], [Vector2(side, bottom), Vector3.RIGHT]])
-	if turning > 0.0:
-		firing.append_array([[Vector2(-side, top), Vector3.LEFT], [Vector2(side, bottom), Vector3.RIGHT]])
-	elif turning < 0.0:
-		firing.append_array([[Vector2(side, top), Vector3.RIGHT], [Vector2(-side, bottom), Vector3.LEFT]])
-	var root: Node3D = _model.joint(&"backpack")
-	var pack_rest := Vector3(0.0, 1.10, 0.41)
-	for thruster: Array in firing:
-		var corner: Vector2 = thruster[0]
-		var local := Vector3(corner.x, corner.y, THRUSTER_BACK) - pack_rest
-		var at: Vector3 = root.global_transform * local
-		var out: Vector3 = root.global_basis * (thruster[1] as Vector3)
-		var from: Vector2 = _on_canvas(at)
-		var way: Vector2 = _on_canvas(at + out * 0.3) - from
-		# Pointing straight at the camera or away, a puff is a dot that hides behind the pack.
-		if way.length() < 1.5:
-			continue
-		_draw_puff(from, way.normalized())
+	var pack: Node3D = _model.joint(&"backpack")
+	var corners := PackedVector2Array()
+	for x: float in [-1.0, 1.0]:
+		for y: float in [-1.0, 1.0]:
+			var corner: Vector3 = PACK_MIDDLE + Vector3(x, y, 1.0) * PACK_HALF - PACK_JOINT
+			corners.append(_on_canvas(pack.global_transform * corner))
+	var middle: Vector2 = _on_canvas(pack.global_transform * (PACK_MIDDLE - PACK_JOINT))
+	if push != Vector2.ZERO:
+		# The push on screen, and the two corners farthest back from it.
+		var way: Vector2 = push.rotated(body_angle).normalized()
+		var order: Array = range(corners.size())
+		order.sort_custom(func(a: int, b: int) -> bool: return corners[a].dot(way) < corners[b].dot(way))
+		for i: int in order.slice(0, 2):
+			_draw_puff(corners[i], -way)
+	if turning != 0.0:
+		var far: int = 0
+		for i in range(corners.size()):
+			if corners[i].distance_squared_to(middle) > corners[far].distance_squared_to(middle):
+				far = i
+		var across: int = far
+		for i in range(corners.size()):
+			if (corners[i] - middle).dot(corners[far] - middle) < (corners[across] - middle).dot(corners[far] - middle):
+				across = i
+		for i: int in [far, across]:
+			var out: Vector2 = corners[i] - middle
+			# A clockwise turn pushes the corners round clockwise, so the gas goes the other way.
+			_draw_puff(corners[i], Vector2(out.y, -out.x).normalized() * signf(turning))
 
 
 # A small cone of gas that widens as it leaves the thruster and breaks up at the far end, in the
@@ -354,6 +374,12 @@ func _draw_puff(from: Vector2, direction: Vector2) -> void:
 # Where a point in the model's world lands on this node, in pixels.
 func _on_canvas(point: Vector3) -> Vector2:
 	return _camera.unproject_position(point) - Vector2(CANVAS, CANVAS) * 0.5 + _sprite.position
+
+
+# The far arm and leg are darker only from the side. Leaning on EVA or seen from above, what's far
+# is the lower body, which would go dark.
+func _far_side() -> float:
+	return 0.5 + FAR_SIDE / (DEPTH_REACH * 2.0) if look == Look.SIDE else 2.0
 
 
 func _to_oklab(color: Color) -> Vector3:

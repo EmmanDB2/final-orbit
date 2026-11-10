@@ -696,8 +696,9 @@ func _show_figure(delta: float) -> void:
 			else:
 				_figure.motion = &"idle"
 		EVA:
-			# From the back, head the way they face, like the ship's nose.
-			_figure.look = AstronautView.Look.BACK
+			# Upright when drifting, leaning into a push until they're nearly flat, seen from the back
+			# with the head the way they face, like the ship's nose.
+			_figure.look = AstronautView.Look.EVA
 			_figure.feet_below = 0.0
 			_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(facing - _roll, -PI, PI), 10.0 * delta)
 			_figure.motion = &"jet" if _firing != Vector2.ZERO or _turning != 0.0 else &"float"
