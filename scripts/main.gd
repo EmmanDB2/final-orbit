@@ -77,7 +77,7 @@ func _start_site(gravity_model: GravityModel, state: ShipState, site: SiteData, 
 	var view := SiteView.new()
 	add_child(view)
 	move_child(view, $Station.get_index())
-	view.start_site(gravity_model, state, site, world, level_height)
+	view.start_site(gravity_model, state, site, world, level_height, $Ship)
 	$Camera2D.view_changed.connect(view._on_view_changed)
 	$Camera2D.view_rolled.connect(view._on_view_rolled)
 	$Camera2D.add_site(view)

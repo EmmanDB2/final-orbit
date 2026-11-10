@@ -694,8 +694,9 @@ func _hit_ground(speed: float, landed_on: int) -> void:
 
 ## Something solid stopped the ship, at this offset from it in the world. The normal points out of
 ## the solid, the ship moves out along it by this much, and the solid is moving at this velocity.
-## It bounces, and takes damage above the safe speed, as with hitting the ground.
-func hit_solid(contact: Vector2, normal: Vector2, push: float, solid_x: float, solid_y: float) -> void:
+## It bounces, and takes damage above the safe speed, as with hitting the ground, with a warning
+## naming what it hit.
+func hit_solid(contact: Vector2, normal: Vector2, push: float, solid_x: float, solid_y: float, what: String = "STATION") -> void:
 	if state.is_on_surface():
 		return
 	state.x += normal.x * push
@@ -718,7 +719,7 @@ func hit_solid(contact: Vector2, normal: Vector2, push: float, solid_x: float, s
 	var energy: float = 0.5 * _mass_now * (into * into - safe * safe)
 	var inward: Vector2 = (-normal).rotated(-heading)
 	var touching: Vector2 = contact.rotated(-heading) + _pivot
-	warning_raised.emit("STATION COLLISION")
+	warning_raised.emit("%s COLLISION" % what)
 	_take_damage(body.crush(inward, energy, int(state.time * 1000.0)), normal * minf(into * 0.4, 200.0), touching, clampf(into * 0.7, 60.0, 320.0))
 
 

@@ -12,6 +12,11 @@ const MIDDLE_HEIGHT: float = 120.0
 
 ## Below this zoom the buildings would be too small to make out, so the site is a dot.
 @export var dot_max_zoom: float = 1.0 / 48.0
+## How far past the site's reach the ship has to be before it's checked against the buildings, how
+## far apart the points round its outline are, and the farthest a hit pushes it out, in world units.
+@export var ship_reach: float = 260.0
+@export var contact_spacing: float = 4.0
+@export var most_push: float = 64.0
 
 var data: SiteData
 ## Which body it's on, and how high its level ground is above that body's base radius.
@@ -20,6 +25,9 @@ var ground_height: float = 0.0
 
 var _gravity_model: GravityModel
 var _state: ShipState
+var _ship: Node2D
+# Each building's art, for what's solid.
+var _pictures: Array[Image] = []
 var _radius: float = 0.0
 var _spin: float = 0.0
 var _roll: float = 0.0
@@ -29,10 +37,13 @@ var _show_dot: bool = false
 var _dot_at := Vector2.ZERO
 
 
-## Starts drawing the site, on this body, on level ground this high.
-func start_site(gravity_model: GravityModel, state: ShipState, site: SiteData, world_index: int, level_height: float) -> void:
+## Starts drawing the site, on this body, on level ground this high, solid to the ship.
+func start_site(gravity_model: GravityModel, state: ShipState, site: SiteData, world_index: int, level_height: float, ship: Node2D) -> void:
 	_gravity_model = gravity_model
 	_state = state
+	_ship = ship
+	# Before the ship's tick, so a hit changes the move it's about to make.
+	process_physics_priority = -5
 	data = site
 	world = world_index
 	ground_height = level_height
@@ -45,6 +56,9 @@ func start_site(gravity_model: GravityModel, state: ShipState, site: SiteData, w
 			sprite.centered = false
 			sprite.offset = Vector2(-building.texture.get_width() / 2.0, building.sink - building.texture.get_height())
 		outside.texture = building.texture
+		var picture: Image = building.texture.get_image()
+		picture.convert(Image.FORMAT_RGBA8)
+		_pictures.append(picture)
 		inside.texture = building.interior_texture
 		inside.visible = false
 		# The inside sits under the outside, which fades off it.
@@ -76,6 +90,77 @@ func middle(time: float) -> PackedFloat64Array:
 ## How far the site reaches from its middle, in world units.
 func reach() -> float:
 	return data.half_width
+
+
+func _physics_process(_delta: float) -> void:
+	if _gravity_model == null or not _ship.has_shape() or _ship.docked:
+		return
+	var middle_at: PackedFloat64Array = point_at(_state.time)
+	if Vector2(_state.x - middle_at[0], _state.y - middle_at[1]).length() > reach() + ship_reach:
+		return
+	for i in range(data.buildings.size()):
+		_touch_ship(i)
+
+
+# The buildings are solid to the ship, like the station: it bounces off what it touches, and takes
+# damage above its safe speed. The pilot isn't stopped by them: they walk in front, along the ground.
+func _touch_ship(index: int) -> void:
+	var building: SiteBuilding = data.buildings[index]
+	var time: float = _state.time
+	var origin: PackedFloat64Array = point_at(time, building.offset)
+	var angle: float = angle_at(time, building.offset)
+	var to_ship := Vector2(_state.x - origin[0], _state.y - origin[1])
+	var points: PackedVector2Array = _ship.world_outline_samples(contact_spacing)
+	var contact := Vector2.ZERO
+	var touching: int = 0
+	for point: Vector2 in points:
+		if _is_solid(index, (to_ship + point).rotated(-angle)):
+			contact += point
+			touching += 1
+	if touching == 0:
+		return
+	contact /= touching
+	var normal: Vector2 = _normal_at(index, (to_ship + contact).rotated(-angle)).rotated(angle)
+	if normal == Vector2.ZERO:
+		normal = Vector2.UP.rotated(angle)
+	var push: float = 1.0
+	while push < most_push and _any_solid(index, points, to_ship + normal * push, angle):
+		push += 1.0
+	var hit_at: Vector2 = to_ship + contact
+	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(origin[0] + hit_at.x, origin[1] + hit_at.y, time)
+	_ship.hit_solid(contact, normal, push, ground[0], ground[1], "BUILDING")
+
+
+# Whether a point, measured from where a building stands on the ground and turned upright with it,
+# is solid: on its art, in its solid part, and above the ground.
+func _is_solid(index: int, local: Vector2) -> bool:
+	var building: SiteBuilding = data.buildings[index]
+	var picture: Image = _pictures[index]
+	var on_art: Vector2 = local + Vector2(picture.get_width() / 2.0, picture.get_height() - building.sink)
+	if local.y > 0.0 or (building.solid_box.has_area() and not building.solid_box.has_point(on_art)):
+		return false
+	var x: int = floori(on_art.x)
+	var y: int = floori(on_art.y)
+	if x < 0 or y < 0 or x >= picture.get_width() or y >= picture.get_height():
+		return false
+	return picture.get_pixel(x, y).a > 0.5
+
+
+func _any_solid(index: int, points: PackedVector2Array, shift: Vector2, angle: float) -> bool:
+	for point: Vector2 in points:
+		if _is_solid(index, (shift + point).rotated(-angle)):
+			return true
+	return false
+
+
+# Which way is out of the solid near a point, from where the empty space round it lies.
+func _normal_at(index: int, local: Vector2, around: int = 8) -> Vector2:
+	var total := Vector2.ZERO
+	for dy in range(-around, around + 1):
+		for dx in range(-around, around + 1):
+			if dx * dx + dy * dy <= around * around and not _is_solid(index, local + Vector2(dx, dy)):
+				total += Vector2(dx, dy)
+	return total.normalized()
 
 
 func _on_view_rolled(angle: float) -> void:

@@ -13,3 +13,6 @@ extends Resource
 @export var offset: float = 0.0
 ## How far the art's bottom sits below the ground, in world units, for a pad set flush with it.
 @export var sink: float = 0.0
+## The part of the art a ship hits, in art pixels. Empty means all of it. A tower's swing arms are
+## left out, since they swing clear of a ship coming down onto the pad.
+@export var solid_box: Rect2 = Rect2()

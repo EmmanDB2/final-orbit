@@ -501,3 +501,11 @@ Files: `native/src/terrain_profile.h`, `native/src/terrain_profile.cpp`, `native
 - blending two values with smoothstep
 - placing things on a spinning body with polar coordinates
 - custom Resource classes nested inside a .tres file
+
+## 2026-11-10: Launch base buildings are solid to ships
+
+Files: `scripts/site/site_view.gd`, `scripts/site/site_building.gd`, `data/launch_base.tres`, `scripts/ship.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- collision against an image's alpha in a turned frame
+- a surface normal from the empty space around a point
+- impulse with a lever arm: why an off-center hit spins as well as slows

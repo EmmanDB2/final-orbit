@@ -22,6 +22,7 @@ display_name = "Launch Tower"
 texture = ExtResource("6_tower")
 offset = -39.0
 sink = 40.0
+solid_box = Rect2(18, 0, 98, 450)
 
 [sub_resource type="Resource" id="Resource_mission"]
 script = ExtResource("2_building")
