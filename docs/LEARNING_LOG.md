@@ -555,3 +555,11 @@ Files: `scripts/ship.gd`, `scripts/ui/engine_button.gd` (was `burn_button.gd`), 
 - a toggle on "just pressed" versus an action held down
 - a property setter that redraws (engine_on)
 - safety cutoffs: one function every event calls
+
+## 2026-11-10: HUD rearranged to the mockup
+
+Files: `scripts/ui/flight_hud.gd`, `scripts/ui/top_bar.gd`, `scripts/ui/heading_dial.gd`, `scripts/ui/throttle_lever.gd`, `scripts/ui/tank_gauges.gd`, `scripts/ui/side_panel.gd`, `scripts/ui/side_tab.gd`, `docs/DESIGN.md`
+
+- laying out controls from the screen's corners so it fits any width
+- custom drawing with _draw (arcs, polygons, ticks around a circle)
+- a tap versus a drag on the same widget

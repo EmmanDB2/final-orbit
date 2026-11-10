@@ -19,15 +19,25 @@ signal clear_area_changed(area: Rect2)
 signal comms_area_changed(area: Rect2)
 
 const BAR_HEIGHT: float = 44.0
-const LEFT_WIDTH: float = 60.0
-const RIGHT_WIDTH: float = 148.0
 const EDGE: float = 8.0
 const PAD_BUTTON: float = 44.0
 const ROW_HEIGHT: float = 40.0
 const ROW_GAP: float = 4.0
-const DIAL_SIZE: float = 76.0
+## The column at the right: EVA and LEGS and the dial at the top, STAB, ASST, and ENGINE at the
+## bottom.
+const COLUMN_WIDTH: float = 132.0
+const SMALL_ROW_HEIGHT: float = 32.0
+const DIAL_SIZE: float = 92.0
 const ZOOM_WIDTH: float = 68.0
 const BURN_HEIGHT: float = 72.0
+const LEVER_WIDTH: float = 44.0
+const LEVER_HEIGHT: float = 140.0
+const GAUGES_WIDTH: float = 170.0
+const GAUGES_HEIGHT: float = 55.0
+## The bottom-right group: gauges, lever, then the column, and how tall it is.
+const CORNER_WIDTH: float = EDGE + GAUGES_WIDTH + 16.0 + LEVER_WIDTH + 12.0 + COLUMN_WIDTH + EDGE
+const CORNER_HEIGHT: float = 6.0 + ROW_HEIGHT * 2.0 + 6.0 + 14.0 + BURN_HEIGHT + EDGE
+const TAB_SIZE: Vector2 = Vector2(12.0, 44.0)
 const CENTER_BUTTON_WIDTH: float = 96.0
 ## How far below the top bar RESTART and UNDOCK sit.
 const CENTER_BUTTON_DROP: float = 14.0
@@ -44,8 +54,9 @@ const HOLD_START: int = 400
 @export var auto_hide_seconds: float = 6.0
 
 var _top_bar: TopBar
-var _left_panel: SidePanel
+var _pad_panel: Control
 var _right_panel: SidePanel
+var _gauges: TankGauges
 var _zoom_row: Control
 var _lever: ThrottleLever
 var _burn: EngineButton
@@ -56,12 +67,9 @@ var _pad_left: RcsButton
 var _pad_right: RcsButton
 var _rotate_left: RcsButton
 var _rotate_right: RcsButton
-var _right_height: float = 0.0
-var _left_height: float = 0.0
 var _assist_button: UiButton
 var _stab_button: UiButton
 var _left_tab: SideTab
-var _right_tab: SideTab
 var _zoom_buttons: Array[UiButton] = []
 var _restart_button: UiButton
 var _undock_button: UiButton
@@ -154,7 +162,7 @@ func connect_flight(ship: Node2D, view: Node, turn_guide: Node, catalog: WorldCa
 
 func _build() -> void:
 	var palette: AgencyPalette = UiStyle.palette()
-	_left_panel = _side_panel()
+	_pad_panel = _child_control(self)
 	_right_panel = _side_panel()
 	_zoom_row = _child_control(self)
 	_top_bar = TopBar.new()
@@ -185,12 +193,13 @@ func _build() -> void:
 	_flight_button.tapped.connect(_toggle_flight_menu)
 	_top_bar.add_child(_flight_button)
 
-	_left_panel.shows_fuel = true
+	_gauges = TankGauges.new()
+	_right_panel.add_child(_gauges)
 	_lever = ThrottleLever.new()
-	_left_panel.add_child(_lever)
+	_right_panel.add_child(_lever)
 
 	_dial = HeadingDial.new()
-	_right_panel.add_child(_dial)
+	add_child(_dial)
 	_pad_up = RcsButton.new().setup(Vector2.UP, 0, &"translate_forward")
 	_pad_down = RcsButton.new().setup(Vector2.DOWN, 0, &"translate_back")
 	_pad_left = RcsButton.new().setup(Vector2.LEFT, 0, &"translate_left")
@@ -198,15 +207,16 @@ func _build() -> void:
 	_rotate_left = RcsButton.new().setup(Vector2.ZERO, -1, &"turn_left")
 	_rotate_right = RcsButton.new().setup(Vector2.ZERO, 1, &"turn_right")
 	for button: RcsButton in [_pad_up, _pad_down, _pad_left, _pad_right, _rotate_left, _rotate_right]:
-		_right_panel.add_child(button)
+		_pad_panel.add_child(button)
 	_eva_button = UiButton.new().setup("EVA", palette.telemetry_cyan)
 	_eva_button.visible = false
-	_right_panel.add_child(_eva_button)
+	add_child(_eva_button)
 	_eva_button.tapped.connect(_tap_action.bind(&"eva"))
 	_legs_button = UiButton.new().setup("LEGS", palette.telemetry_cyan)
+	add_child(_legs_button)
 	_stab_button = UiButton.new().setup("STAB", palette.telemetry_cyan)
-	_assist_button = UiButton.new().setup("ASSIST", palette.telemetry_cyan)
-	for button: UiButton in [_legs_button, _stab_button, _assist_button]:
+	_assist_button = UiButton.new().setup("ASST", palette.telemetry_cyan)
+	for button: UiButton in [_stab_button, _assist_button]:
 		_right_panel.add_child(button)
 	_legs_button.tapped.connect(_tap_action.bind(&"toggle_legs"))
 	_stab_button.tapped.connect(_tap_action.bind(&"toggle_stab"))
@@ -221,12 +231,9 @@ func _build() -> void:
 		_zoom_buttons.append(button)
 
 	_left_tab = SideTab.new()
-	_right_tab = SideTab.new()
-	_right_tab.from_left = false
 	add_child(_left_tab)
-	add_child(_right_tab)
 	_left_tab.dragged_in.connect(_show_panels)
-	_right_tab.dragged_in.connect(_show_panels)
+	_left_tab.tapped.connect(_toggle_panels)
 
 	_card = ContextCard.new()
 	_card.visible = false
@@ -260,7 +267,6 @@ func _layout() -> void:
 	var view: Vector2 = get_parent().size
 	if view.x <= 0.0:
 		return
-	var body_height: float = view.y - BAR_HEIGHT
 	var bottom_row_y: float = view.y - EDGE - ROW_HEIGHT
 
 	_top_bar.position = Vector2.ZERO
@@ -273,53 +279,53 @@ func _layout() -> void:
 	_center_view_x = view.x / 2.0
 	_place_center_buttons()
 
-	# The lever and fuel gauge stop above the zoom buttons, and the gauge is what stays as the strip.
-	_left_height = bottom_row_y - BAR_HEIGHT - 16.0
-	_left_panel.size = Vector2(LEFT_WIDTH, _left_height)
-	_left_panel.gauge_height = _left_height - 12.0
-	_lever.position = Vector2(8.0, 6.0)
-	_lever.size = Vector2(44.0, _left_height - 12.0)
+	# Top right, under the buttons: EVA and LEGS side by side, then the dial.
+	var column_x: float = view.x - EDGE - COLUMN_WIDTH
+	var half: float = floorf((COLUMN_WIDTH - ROW_GAP) / 2.0)
+	_eva_button.size = Vector2(half, SMALL_ROW_HEIGHT)
+	_legs_button.size = Vector2(COLUMN_WIDTH - half - ROW_GAP, SMALL_ROW_HEIGHT)
+	_eva_button.position = Vector2(column_x, BAR_HEIGHT + 12.0)
+	_legs_button.position = Vector2(column_x + half + ROW_GAP, BAR_HEIGHT + 12.0)
+	_dial.size = Vector2(DIAL_SIZE, DIAL_SIZE + HeadingDial.READOUT_HEIGHT)
+	_dial.position = Vector2(column_x + floorf((COLUMN_WIDTH - DIAL_SIZE) / 2.0), _eva_button.position.y + SMALL_ROW_HEIGHT + 12.0)
 
+	# Bottom left: the zoom buttons, and the pad above them, the turns in the cross's top corners.
 	_zoom_row.size = Vector2((ZOOM_WIDTH + ROW_GAP) * 3.0, ROW_HEIGHT)
 	for i in range(_zoom_buttons.size()):
 		_zoom_buttons[i].position = Vector2(i * (ZOOM_WIDTH + ROW_GAP), 0.0)
 		_zoom_buttons[i].size = Vector2(ZOOM_WIDTH, ROW_HEIGHT)
-
-	# The right side: dial, switch, and pad from the top, and modes and BURN from the bottom.
-	_right_height = body_height
-	_right_panel.size = Vector2(RIGHT_WIDTH, _right_height)
-	var inner_width: float = RIGHT_WIDTH - EDGE * 2.0
-	_dial.size = Vector2(DIAL_SIZE, DIAL_SIZE)
-	_dial.position = Vector2(floorf((RIGHT_WIDTH - DIAL_SIZE) / 2.0), 6.0)
-	var pad_y: float = _dial.position.y + DIAL_SIZE + 12.0
-	# The arrows make a cross, and the two turns sit in its top corners.
-	_rotate_left.position = Vector2(EDGE, pad_y)
-	_rotate_right.position = Vector2(EDGE + PAD_BUTTON * 2.0, pad_y)
-	_pad_up.position = Vector2(EDGE + PAD_BUTTON, pad_y)
-	_pad_left.position = Vector2(EDGE, pad_y + PAD_BUTTON)
-	_pad_right.position = Vector2(EDGE + PAD_BUTTON * 2.0, pad_y + PAD_BUTTON)
-	_pad_down.position = Vector2(EDGE + PAD_BUTTON, pad_y + PAD_BUTTON * 2.0)
+	_pad_panel.size = Vector2(PAD_BUTTON * 3.0, PAD_BUTTON * 3.0)
+	_rotate_left.position = Vector2(0.0, 0.0)
+	_rotate_right.position = Vector2(PAD_BUTTON * 2.0, 0.0)
+	_pad_up.position = Vector2(PAD_BUTTON, 0.0)
+	_pad_left.position = Vector2(0.0, PAD_BUTTON)
+	_pad_right.position = Vector2(PAD_BUTTON * 2.0, PAD_BUTTON)
+	_pad_down.position = Vector2(PAD_BUTTON, PAD_BUTTON * 2.0)
 	for button: RcsButton in [_pad_up, _pad_down, _pad_left, _pad_right, _rotate_left, _rotate_right]:
 		button.size = Vector2(PAD_BUTTON, PAD_BUTTON)
 
-	_burn.size = Vector2(inner_width, BURN_HEIGHT)
-	_burn.position = Vector2(EDGE, _right_height - EDGE - BURN_HEIGHT)
+	# Bottom right: the fuel and RCS gauges, the lever, then STAB, ASST, and ENGINE.
+	_right_panel.size = Vector2(CORNER_WIDTH, CORNER_HEIGHT)
+	var inner_x: float = CORNER_WIDTH - EDGE - COLUMN_WIDTH
+	_burn.size = Vector2(COLUMN_WIDTH, BURN_HEIGHT)
+	_burn.position = Vector2(inner_x, CORNER_HEIGHT - EDGE - BURN_HEIGHT)
+	_assist_button.size = Vector2(COLUMN_WIDTH, ROW_HEIGHT)
+	_assist_button.position = Vector2(inner_x, _burn.position.y - 14.0 - ROW_HEIGHT)
+	_stab_button.size = Vector2(COLUMN_WIDTH, ROW_HEIGHT)
+	_stab_button.position = Vector2(inner_x, _assist_button.position.y - 6.0 - ROW_HEIGHT)
+	_lever.size = Vector2(LEVER_WIDTH, LEVER_HEIGHT)
+	_lever.position = Vector2(inner_x - 12.0 - LEVER_WIDTH, CORNER_HEIGHT - EDGE - LEVER_HEIGHT)
+	_gauges.size = Vector2(GAUGES_WIDTH, GAUGES_HEIGHT)
+	_gauges.position = Vector2(_lever.position.x - 16.0 - GAUGES_WIDTH, CORNER_HEIGHT - EDGE - 14.0 - GAUGES_HEIGHT)
+	# Hidden, the panel's left edge stays as a strip: the fuel level, and a mark where ENGINE is.
+	_right_panel.fuel_mark = Rect2(STRIP - 3.0, _stab_button.position.y, 3.0, _burn.position.y - 6.0 - _stab_button.position.y)
 	_right_panel.burn_mark = Rect2(0.0, _burn.position.y, 2.0, BURN_HEIGHT)
-	var row_y: float = _burn.position.y - 12.0 - ROW_HEIGHT
-	for button: UiButton in [_assist_button, _stab_button, _legs_button, _eva_button]:
-		button.size = Vector2(inner_width, ROW_HEIGHT)
-		button.position = Vector2(EDGE, row_y)
-		row_y -= ROW_HEIGHT + ROW_GAP
 
-	_left_tab.size = Vector2(12.0, 44.0)
-	_right_tab.size = Vector2(12.0, 44.0)
-	_left_tab.position = Vector2(STRIP, floorf(BAR_HEIGHT + body_height / 2.0 - 22.0))
-	_right_tab.position = Vector2(view.x - STRIP - 12.0, _left_tab.position.y)
+	_left_tab.size = TAB_SIZE
+	_left_tab.position = Vector2(STRIP, floorf(BAR_HEIGHT + (bottom_row_y - BAR_HEIGHT) / 2.0 - TAB_SIZE.y / 2.0))
 
 	_comms_log.place(Vector2(view.x - EDGE, BAR_HEIGHT + 2.0))
 	_flight_menu.place(Vector2(view.x - EDGE, BAR_HEIGHT + 2.0))
-	var comms_left: float = EDGE + (ZOOM_WIDTH + ROW_GAP) * 3.0 + 8.0
-	comms_area_changed.emit(Rect2(comms_left, bottom_row_y, view.x - RIGHT_WIDTH - comms_left - 4.0, ROW_HEIGHT))
 	_place_panels()
 
 
@@ -337,22 +343,24 @@ func _place_center_buttons() -> void:
 		x += CENTER_BUTTON_WIDTH + ROW_GAP
 
 
-# Slides the panels by how far hidden they are, leaving strips at the edges.
+# Slides the corner groups off by how far hidden they are: the pad off the left, and the bottom-right
+# group off the right, leaving a strip. The zoom buttons drop away; the top, EVA, LEGS, and the dial
+# stay.
 func _place_panels() -> void:
 	var view: Vector2 = get_parent().size
-	var left_offset: float = -(LEFT_WIDTH - STRIP) * _hide_amount
-	var right_offset: float = (RIGHT_WIDTH - STRIP) * _hide_amount
-	_left_panel.position = Vector2(left_offset, BAR_HEIGHT + 8.0)
-	_right_panel.position = Vector2(view.x - RIGHT_WIDTH + right_offset, view.y - _right_height)
-	_zoom_row.position = Vector2(EDGE, view.y - EDGE - ROW_HEIGHT + (ROW_HEIGHT + EDGE * 2.0) * _hide_amount)
-	_left_tab.visible = _hidden
-	_right_tab.visible = _hidden
+	var bottom_row_y: float = view.y - EDGE - ROW_HEIGHT
+	var pad_x: float = EDGE + TAB_SIZE.x + 8.0
+	_pad_panel.position = Vector2(pad_x - (pad_x + _pad_panel.size.x) * _hide_amount, bottom_row_y - 12.0 - _pad_panel.size.y)
+	_right_panel.position = Vector2(view.x - CORNER_WIDTH + (CORNER_WIDTH - STRIP) * _hide_amount, view.y - CORNER_HEIGHT)
+	_zoom_row.position = Vector2(EDGE, bottom_row_y + (ROW_HEIGHT + EDGE * 2.0) * _hide_amount)
 	_right_panel.mark_shows = _hide_amount > 0.0
 	# Slid off the safe area, it could still show in the space around a camera cutout.
 	_lever.visible = _mode == Pilot.ABOARD and _hide_amount < 1.0
-	var clear_left: float = _left_panel.position.x + LEFT_WIDTH
-	clear_area_changed.emit(Rect2(clear_left, BAR_HEIGHT, _right_panel.position.x - clear_left,
-			view.y - EDGE - ROW_HEIGHT - BAR_HEIGHT - 4.0))
+	_pad_panel.visible = _hide_amount < 1.0
+	var comms_left: float = EDGE + (ZOOM_WIDTH + ROW_GAP) * 3.0 + 8.0
+	var comms_right: float = _right_panel.position.x + _gauges.position.x - 12.0 if _hide_amount < 1.0 else view.x - STRIP - 8.0
+	comms_area_changed.emit(Rect2(comms_left, bottom_row_y, comms_right - comms_left, ROW_HEIGHT))
+	clear_area_changed.emit(_clear_area())
 
 
 func _process(delta: float) -> void:
@@ -384,6 +392,13 @@ func _show_panels() -> void:
 	_place_panels()
 
 
+func _toggle_panels() -> void:
+	if _hidden:
+		_show_panels()
+	else:
+		_hidden = true
+
+
 func _tap_action(action: StringName) -> void:
 	Input.action_press(action)
 	_tapped_actions.append(action)
@@ -391,7 +406,7 @@ func _tap_action(action: StringName) -> void:
 
 func _on_assist_changed(enabled: bool) -> void:
 	var palette: AgencyPalette = UiStyle.palette()
-	_assist_button.set_lamp(true, palette.telemetry_cyan if enabled else palette.telemetry_amber, "ASSIST" if enabled else "RAW")
+	_assist_button.set_lamp(true, palette.telemetry_cyan if enabled else palette.telemetry_amber, "ASST" if enabled else "RAW")
 
 
 func _on_legs_changed(down: bool, moving: bool) -> void:
@@ -467,10 +482,16 @@ func _keep_card_current(delta: float) -> void:
 		_card.show_info(_catalog.info_of(thing), thing, _markers.is_target(thing), _view.is_focus(thing))
 
 
+# What's left between the corner groups and the right column: the top bar above, the right column
+# beside, and below, whichever is higher of the pad and the bottom-right group while they show.
 func _clear_area() -> Rect2:
 	var view: Vector2 = get_parent().size
-	var left: float = _left_panel.position.x + LEFT_WIDTH
-	return Rect2(left, BAR_HEIGHT + 4.0, _right_panel.position.x - left, view.y - EDGE - ROW_HEIGHT - BAR_HEIGHT - 8.0)
+	var left: float = EDGE + TAB_SIZE.x + 8.0
+	var right: float = view.x - EDGE - COLUMN_WIDTH - 8.0
+	var bottom: float = view.y - EDGE - ROW_HEIGHT - 8.0
+	if _hide_amount < 1.0:
+		bottom = minf(_pad_panel.position.y, _right_panel.position.y) - 4.0
+	return Rect2(left, BAR_HEIGHT + 4.0, maxf(right - left, 0.0), maxf(bottom - BAR_HEIGHT - 4.0, 0.0))
 
 
 func _on_card_target_pressed() -> void:
@@ -564,7 +585,8 @@ func _on_ship_data(data: Dictionary) -> void:
 func _show_flight_data(data: Dictionary) -> void:
 	_top_bar.on_flight_data(data)
 	_dial.on_flight_data(data)
-	_left_panel.on_flight_data(data)
+	_gauges.on_flight_data(data)
+	_right_panel.on_flight_data(data)
 	_comms._on_flight_data(data)
 
 
@@ -579,6 +601,7 @@ func _on_pilot_mode_changed(mode: String) -> void:
 	for control: Control in [_rotate_left, _rotate_right]:
 		control.visible = aboard or mode == Pilot.EVA
 	_eva_button.visible = aboard and _can_leave
+	_gauges.shows_rcs = aboard
 	_right_panel.burn_mark = Rect2(0.0, _burn.position.y, 2.0, BURN_HEIGHT) if aboard else Rect2()
 	_show_panels()
 	_turn_guide.ship = _ship if aboard else _pilot
@@ -605,13 +628,11 @@ func _widgets_in_reach() -> Array[UiWidget]:
 	if _card.visible:
 		widgets.append_array(_card.buttons())
 	widgets.append_array([_restart_button, _undock_button, _action_button])
-	if _hidden:
-		widgets.append(_left_tab)
-		widgets.append(_right_tab)
-	else:
+	widgets.append_array([_left_tab, _eva_button, _legs_button])
+	if not _hidden:
 		widgets.append(_lever)
 		widgets.append(_burn)
-		widgets.append_array([_eva_button, _stab_button, _legs_button, _assist_button])
+		widgets.append_array([_stab_button, _assist_button])
 		widgets.append_array([_pad_up, _pad_down, _pad_left, _pad_right, _rotate_left, _rotate_right])
 		widgets.append_array(_zoom_buttons)
 	return widgets
@@ -627,7 +648,7 @@ func _on_finger_down(index: int, position: Vector2) -> void:
 			return
 	# The top bar is hardware too, so touching it doesn't steer. Between the panels' controls, it's
 	# all open space now.
-	if _top_bar.get_global_rect().has_point(position):
+	if _top_bar.covers(position):
 		return
 	if get_tree().paused:
 		return

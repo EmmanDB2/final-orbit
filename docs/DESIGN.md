@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | HUD rearranged to Manny's mockup: the top bar splits into a readouts box and a clock box with the middle open, the pad moves bottom left, ENGINE, ASST, STAB, the lever, and new F and R gauges go bottom right, EVA and LEGS sit side by side over a restyled dial with a spin readout, and the auto-hide tab is always there at the left, tapped to hide or show \[Leaning\] |
 | 2026-11-10 | BURN becomes ENGINE, an on/off switch, on Manny's call (his brother's idea): the throttle sets how hard it pushes and 0 idles, so long burns are hands-free. It cuts out on touchdown, docking, the pilot leaving, or running dry. W flips it on the Mac \[Leaning\] |
 | 2026-11-10 | The RCS has its own propellant tank, apart from the engine's fuel, on Manny's call: 2,400 kg on the lander, two minutes flat out. Empty, the ship can't turn or translate. Docking and landing at home refill it \[Leaning\] |
 | 2026-11-10 | A landed ship that settles or tips against a building slides along the ground out of it, instead of leaning into it \[Leaning\] |
@@ -469,16 +470,19 @@ UI principles: \[Locked\]
 Top bar: \[Locked\]
 
 - Always visible; it never auto-hides.
-- Contains, left to right: ALT, SPD, AP, PE, delta-v, and the mission clock, split by thin dividers, then the comms log button and the FLIGHT menu button.
+- Two boxes hanging from the top edge, leaving the middle open: ALT, SPD, AP, PE, and delta-v on the left, split by thin dividers, with AP and PE in orange; and the mission clock on the right, then the comms log button and the FLIGHT menu button. Manny's mockup, 2026-11-10, replacing one bar across. \[Leaning\]
 - Master Caution and the pending-payout counter are still to come, once what feeds them exists. \[Open\]
 
 Side panels: \[Locked\]
 
-- Left edge: a notched throttle lever and a thin fuel gauge, cyan, then amber and red as it runs low. Hull and heat gauges are still to come.
-- Bottom-left: zoom buttons. SYS shows the local system, and pressing it again shows the whole star system. ORBIT shows what you're orbiting, and SHIP goes to the closest view of the ship. Whichever one the zoom is on is lit.
-- Along the bottom, from the zoom buttons to BURN: the comms line, reading COMMS: and how the flight stands, like ORBIT STABLE, DOCKED, or IMPACT TRAJECTORY. Each thing that happens takes it over for a few seconds, in order, and the comms log button at the top lists them with their times. All pilot messages go here now, so the center stays clear. \[Leaning\]
-- Right side, from the top: the heading dial, the arrows and rotate buttons, then EVA, LEGS, STAB, and ASSIST, with BURN at the bottom. NODE joins them when it's built.
-- EVA sits above LEGS. Out of the ship, the only controls are the arrows and the action button, which appears under the top bar with whatever can be done here: BOARD SHIP, BOARD STATION, EXIT STATION, or USE TERMINAL. On the Mac, V is EVA and F is the action. \[Leaning\]
+- Laid out to Manny's mockup, 2026-11-10, with the controls in the corners. \[Leaning\]
+- Bottom right: the F and R gauges, engine fuel in orange and RCS propellant in cyan, each red when nearly gone; the notched throttle lever in a boxed track; then STAB, ASST, and ENGINE stacked. Hull and heat gauges are still to come.
+- Bottom left: the RCS pad, above the zoom buttons.
+- Top right, under the comms log and FLIGHT buttons: EVA and LEGS side by side, then the heading dial.
+- Bottom-left zoom buttons: SYS shows the local system, and pressing it again shows the whole star system. ORBIT shows what you're orbiting, and SHIP goes to the closest view of the ship. Whichever one the zoom is on is lit.
+- Along the bottom, from the zoom buttons to the gauges: the comms line, reading COMMS: and how the flight stands, like ORBIT STABLE, DOCKED, or IMPACT TRAJECTORY. Each thing that happens takes it over for a few seconds, in order, and the comms log button at the top lists them with their times. All pilot messages go here now, so the center stays clear. \[Leaning\]
+- NODE joins STAB and ASST when it's built.
+- Out of the ship, the only controls are the arrows and the action button, which appears under the top bar with whatever can be done here: BOARD SHIP, BOARD STATION, EXIT STATION, or USE TERMINAL. On the Mac, V is EVA and F is the action. \[Leaning\]
 - ENGINE is orange, and hatched over while its safety cover is down. It's an on/off switch, lit solid while the engine's on, and the throttle lever sets how hard it pushes, with 0 idling. Manny's call (his brother's idea), 2026-11-10, replacing BURN, which fired while held: long burns are hands-free now, which time warp needs, and the RCS still makes small nudges. \[Leaning\]
 - The first touch lifts ENGINE's cover, and each touch after that flips the switch. The cover drops again 6 seconds after the engine's off. W flips it on the Mac. \[Leaning\]
 - The engine cuts out by itself on touchdown, on docking, when the pilot leaves, and when the fuel or the engine's gone, so it's never left on by mistake. \[Leaning\]
@@ -486,9 +490,9 @@ Side panels: \[Locked\]
 
 Auto-hide: \[Locked\]
 
-- After a few seconds with no input, the side panels shrink into thin strips at the screen edges.
-- The strips still show the fuel level and where BURN is. The comms line stays where it is.
-- A small tab sticks out from each side while the panels are hidden, and dragging in from either side brings them back.
+- After a few seconds with no input, the pad slides off the left and the bottom-right group off the right, leaving a thin strip. The zoom buttons drop away. The top boxes, EVA, LEGS, and the dial stay.
+- The strip still shows the fuel level and where ENGINE is. The comms line stays where it is.
+- A small tab at the left edge is always there: tapping it hides or shows the panels, and dragging in from it brings them back. Manny's call, 2026-11-10, replacing tabs that only showed while hidden. \[Leaning\]
 - Zen Mode can hide everything except a minimal top bar. \[Leaning\]
 
 Cover screen (folded): \[Leaning\]
@@ -507,11 +511,11 @@ Turning and RCS controls: \[Leaning\]
 - While turning, a dashed heading ring appears around the ship and fades when released.
 - Drag to point works even when the side panels are auto-hidden, and leaves them hidden.
 - Two fingers on open space pinch to zoom. \[Leaning\]
-- RCS pad (right side), on every screen: four arrows in a cross that translate (forward, back, left, right), with rotate left and rotate right in the cross's top corners. Manny's call, replacing the TRANS / ROT switch. \[Leaning\]
+- RCS pad (bottom left), on every screen: four arrows in a cross that translate (forward, back, left, right), with rotate left and rotate right in the cross's top corners. Manny's call, replacing the TRANS / ROT switch. \[Leaning\]
 - Translation moves the ship without turning it and is required for docking and precise landings.
-- The button for ASS reads ASSIST on Manny's rework, and RAW when it's off. LEGS lights up amber while the legs move and cyan when they're down, and STAB is cyan when on. \[Leaning\]
-- Heading dial at the top of the right side, on every screen: nose direction, prograde (cyan) and retrograde (orange) markers, and spin as an amber arc along the rim, which is gone when the ship is still. The markers hide when landed or barely moving, since there's no direction of travel to show.
-- The right side is 148 game pixels wide, full height. Buttons can be drawn smaller than 44 game pixels as long as what a finger can touch isn't.
+- The button for ASS reads ASST, and RAW when it's off. LEGS lights up amber while the legs move and cyan when they're down, and STAB is cyan when on. \[Leaning\]
+- Heading dial at the top right, on every screen, drawn like a compass to Manny's mockup: ticks every 10 degrees inside the ring, a dim crosshair, the nose as a cyan arrowhead, prograde as a cyan ring and retrograde as an orange one with a cross, spin as an amber arc along the rim, and the spin rate in degrees a second underneath. The markers hide when landed or barely moving, since there's no direction of travel to show.
+- The right column is 132 game pixels wide. Buttons can be drawn smaller than 44 game pixels as long as what a finger can touch isn't.
 - Translation gives the lander about 30 m/s² when full. It's too weak to lift off from the planet or the moon, and ASS doesn't cancel it. \[Leaning\]
 - The RCS has its own propellant tank, apart from the engine's fuel, like Apollo's: 2,400 kg on the lander, two minutes of firing flat out. Turning, translating, STAB, ASSIST, and drag to point all use it, and with it empty the ship can't turn or translate, though the engine still burns. It refills with the fuel, at a station's port or landing at home. Manny's call, 2026-11-10. \[Leaning\]
 
