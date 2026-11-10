@@ -517,3 +517,11 @@ Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_vie
 - a state machine with a new state (indoors), and its ways in and out
 - local coordinates on a picture, turned into world coordinates
 - fading with alpha (modulate) toward a target over time
+
+## 2026-11-10: Cleaned-up launch base art
+
+Files: `art/launch_base/*.png`, `data/launch_base.tres`, `docs/DESIGN.md`, removed `tools/slice_launch_base.gd`
+
+- art coordinates kept in data, so new art means new numbers, not new code
+- a sprite's transparent margin and where its ground line sits (sink)
+- Godot reimporting a changed texture

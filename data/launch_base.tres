@@ -14,31 +14,33 @@ script = ExtResource("2_building")
 display_name = "Vehicle Assembly"
 texture = ExtResource("4_assembly")
 interior_texture = ExtResource("5_assembly_in")
-offset = -476.0
-floors = PackedVector3Array(9, 286, 447, 9, 110, 290, 9, 110, 170)
-ladders = PackedVector3Array(87, 170, 447)
-door = Vector2(25, 447)
-terminals = PackedVector2Array(36, 170)
+offset = -390.0
+sink = 5.0
+floors = PackedVector3Array(10, 216, 348, 9, 88, 226, 9, 88, 136)
+ladders = PackedVector3Array(67, 136, 348)
+door = Vector2(27, 348)
+terminals = PackedVector2Array(30, 136)
 terminal_messages = PackedStringArray("ASSEMBLY BAY EMPTY")
 
 [sub_resource type="Resource" id="Resource_tower"]
 script = ExtResource("2_building")
 display_name = "Launch Tower"
 texture = ExtResource("6_tower")
-offset = -39.0
-sink = 40.0
-solid_box = Rect2(18, 0, 98, 450)
+offset = -29.0
+sink = 34.0
+solid_box = Rect2(16, 0, 84, 364)
 
 [sub_resource type="Resource" id="Resource_mission"]
 script = ExtResource("2_building")
 display_name = "Mission Control"
 texture = ExtResource("7_mission")
 interior_texture = ExtResource("8_mission_in")
-offset = 477.0
-floors = PackedVector3Array(14, 292, 205, 14, 292, 142)
-ladders = PackedVector3Array(269, 142, 205)
-door = Vector2(36, 205)
-terminals = PackedVector2Array(150, 142)
+offset = 413.0
+sink = 3.0
+floors = PackedVector3Array(14, 218, 172, 14, 218, 122)
+ladders = PackedVector3Array(205, 122, 172)
+door = Vector2(33, 172)
+terminals = PackedVector2Array(120, 122)
 terminal_messages = PackedStringArray("NO MISSIONS POSTED YET")
 
 [resource]
@@ -52,5 +54,5 @@ half_width = 690.0
 blend = 160.0
 buildings = Array[ExtResource("2_building")]([SubResource("Resource_assembly"), SubResource("Resource_tower"), SubResource("Resource_mission")])
 pad_offset = 18.0
-pad_width = 200.0
+pad_width = 158.0
 services = PackedStringArray("PAD", "MISSION COMPUTER", "ASSEMBLY")
