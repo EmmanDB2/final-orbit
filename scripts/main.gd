@@ -14,7 +14,7 @@ extends Node2D
 ## How high above the surface the ship starts, in a circular orbit.
 @export var start_altitude: float = 30000.0
 ## Places built on worlds.
-@export var sites: Array[SiteData] = [preload("res://data/launch_base.tres")]
+@export var sites: Array[SiteData] = [preload("res://data/launch_base.tres"), preload("res://data/moon_base.tres")]
 
 
 func _ready() -> void:

@@ -1,0 +1,67 @@
+[gd_resource type="Resource" script_class="SiteData" format=3]
+
+[ext_resource type="Script" path="res://scripts/site/site_data.gd" id="1_site"]
+[ext_resource type="Script" path="res://scripts/site/site_building.gd" id="2_building"]
+[ext_resource type="Resource" path="res://data/moon.tres" id="3_moon"]
+[ext_resource type="Texture2D" path="res://art/moon_base/assembly.png" id="4_assembly"]
+[ext_resource type="Texture2D" path="res://art/moon_base/assembly_interior.png" id="5_assembly_in"]
+[ext_resource type="Texture2D" path="res://art/moon_base/tower.png" id="6_tower"]
+[ext_resource type="Texture2D" path="res://art/moon_base/pad.png" id="7_pad"]
+[ext_resource type="Texture2D" path="res://art/moon_base/mission_control.png" id="8_mission"]
+[ext_resource type="Texture2D" path="res://art/moon_base/mission_control_interior.png" id="9_mission_in"]
+
+[sub_resource type="Resource" id="Resource_assembly"]
+script = ExtResource("2_building")
+display_name = "Assembly Hangar"
+texture = ExtResource("4_assembly")
+interior_texture = ExtResource("5_assembly_in")
+offset = -583.0
+sink = 6.0
+floors = PackedVector3Array(10, 216, 349, 9, 90, 225, 9, 90, 135)
+ladders = PackedVector3Array(69, 135, 349)
+door = Vector2(28, 349)
+terminals = PackedVector2Array(32, 135)
+terminal_messages = PackedStringArray("ASSEMBLY BAY EMPTY")
+
+[sub_resource type="Resource" id="Resource_tower"]
+script = ExtResource("2_building")
+display_name = "Service Tower"
+texture = ExtResource("6_tower")
+offset = -79.0
+sink = 4.0
+solid_box = Rect2(0, 0, 236, 360)
+
+[sub_resource type="Resource" id="Resource_pad"]
+script = ExtResource("2_building")
+display_name = "Landing Pad"
+texture = ExtResource("7_pad")
+offset = 104.0
+sink = 27.0
+solid = false
+
+[sub_resource type="Resource" id="Resource_mission"]
+script = ExtResource("2_building")
+display_name = "Mission Control"
+texture = ExtResource("8_mission")
+interior_texture = ExtResource("9_mission_in")
+offset = 586.0
+sink = 4.0
+floors = PackedVector3Array(16, 219, 260, 12, 224, 171)
+ladders = PackedVector3Array(204, 171, 260)
+door = Vector2(38, 260)
+terminals = PackedVector2Array(125, 171)
+terminal_messages = PackedStringArray("NO MISSIONS POSTED YET")
+
+[resource]
+script = ExtResource("1_site")
+display_name = "Kepla Moon Base"
+callsign = "MOON BASE"
+chip = "MOON BASE"
+world = ExtResource("3_moon")
+column = 73681
+half_width = 760.0
+blend = 160.0
+buildings = Array[ExtResource("2_building")]([SubResource("Resource_assembly"), SubResource("Resource_tower"), SubResource("Resource_pad"), SubResource("Resource_mission")])
+pad_offset = 104.0
+pad_width = 175.0
+services = PackedStringArray("PAD", "MISSION COMPUTER", "ASSEMBLY")

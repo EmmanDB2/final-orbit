@@ -525,3 +525,11 @@ Files: `art/launch_base/*.png`, `data/launch_base.tres`, `docs/DESIGN.md`, remov
 - art coordinates kept in data, so new art means new numbers, not new code
 - a sprite's transparent margin and where its ground line sits (sink)
 - Godot reimporting a changed texture
+
+## 2026-11-10: Moon base
+
+Files: `art/moon_base/*.png`, `tools/split_moon_pad.gd`, `data/moon_base.tres`, `scripts/main.gd`, `scripts/site/site_building.gd`, `scripts/site/site_view.gd`, `scripts/world_catalog.gd`, `docs/DESIGN.md`
+
+- reusing a system with new data: a second site on another world, no new site code
+- a tool script that cuts an image into regions (get_region, fill_rect) without resizing
+- filtering an array with a lambda (Array.filter)

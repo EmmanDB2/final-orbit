@@ -160,7 +160,7 @@ func _site_info(index: int) -> Dictionary:
 	var away: float = Vector2(at[0] - _state.x, at[1] - _state.y).length()
 	var rows: Array = [
 		["ON", _bodies[site.world].display_name, true],
-		["BUILDINGS", str(site.data.buildings.size()), true],
+		["BUILDINGS", str(site.data.buildings.filter(func(b: SiteBuilding) -> bool: return b.solid).size()), true],
 		["PAD", _meters(site.data.pad_width) if site.data.pad_width > 0.0 else "NONE", true],
 		["SERVICES", ", ".join(site.data.services), true],
 		["DISTANCE", _meters(away), true],

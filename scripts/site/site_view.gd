@@ -140,7 +140,8 @@ func _physics_process(_delta: float) -> void:
 	if Vector2(_state.x - middle_at[0], _state.y - middle_at[1]).length() > reach() + ship_reach:
 		return
 	for i in range(data.buildings.size()):
-		_touch_ship(i)
+		if data.buildings[i].solid:
+			_touch_ship(i)
 
 
 # The buildings are solid to the ship, like the station: it bounces off what it touches, and takes
