@@ -547,3 +547,11 @@ Files: `scripts/ship.gd`, `scripts/ship/ship_design.gd`, `scripts/world_catalog.
 
 - a second resource with its own drain and refill
 - the rocket equation with mass that the engine doesn't burn (dry mass plus RCS propellant)
+
+## 2026-11-10: ENGINE switch
+
+Files: `scripts/ship.gd`, `scripts/ui/engine_button.gd` (was `burn_button.gd`), `scripts/ui/flight_hud.gd`, `docs/DESIGN.md`
+
+- a toggle on "just pressed" versus an action held down
+- a property setter that redraws (engine_on)
+- safety cutoffs: one function every event calls

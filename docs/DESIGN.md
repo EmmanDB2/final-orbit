@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | BURN becomes ENGINE, an on/off switch, on Manny's call (his brother's idea): the throttle sets how hard it pushes and 0 idles, so long burns are hands-free. It cuts out on touchdown, docking, the pilot leaving, or running dry. W flips it on the Mac \[Leaning\] |
 | 2026-11-10 | The RCS has its own propellant tank, apart from the engine's fuel, on Manny's call: 2,400 kg on the lander, two minutes flat out. Empty, the ship can't turn or translate. Docking and landing at home refill it \[Leaning\] |
 | 2026-11-10 | A landed ship that settles or tips against a building slides along the ground out of it, instead of leaning into it \[Leaning\] |
 | 2026-11-10 | Moon base built from Manny's asset editor sprites and placed on the moon's near side, 190 m from the point facing the planet: hangar, tanks and service tower, a pad set flush into the ground, and a sealed two-floor hab, all walk-in like the launch base. A building can now be marked not solid, for pads \[Leaning\] |
@@ -478,9 +479,9 @@ Side panels: \[Locked\]
 - Along the bottom, from the zoom buttons to BURN: the comms line, reading COMMS: and how the flight stands, like ORBIT STABLE, DOCKED, or IMPACT TRAJECTORY. Each thing that happens takes it over for a few seconds, in order, and the comms log button at the top lists them with their times. All pilot messages go here now, so the center stays clear. \[Leaning\]
 - Right side, from the top: the heading dial, the arrows and rotate buttons, then EVA, LEGS, STAB, and ASSIST, with BURN at the bottom. NODE joins them when it's built.
 - EVA sits above LEGS. Out of the ship, the only controls are the arrows and the action button, which appears under the top bar with whatever can be done here: BOARD SHIP, BOARD STATION, EXIT STATION, or USE TERMINAL. On the Mac, V is EVA and F is the action. \[Leaning\]
-- BURN is orange, and hatched over while its safety cover is down.
-- The throttle lever sets thrust power, and BURN activates it.
-- The first touch lifts BURN's cover and the button fires while held. The cover drops again after 6 seconds with no burning. \[Leaning\]
+- ENGINE is orange, and hatched over while its safety cover is down. It's an on/off switch, lit solid while the engine's on, and the throttle lever sets how hard it pushes, with 0 idling. Manny's call (his brother's idea), 2026-11-10, replacing BURN, which fired while held: long burns are hands-free now, which time warp needs, and the RCS still makes small nudges. \[Leaning\]
+- The first touch lifts ENGINE's cover, and each touch after that flips the switch. The cover drops again 6 seconds after the engine's off. W flips it on the Mac. \[Leaning\]
+- The engine cuts out by itself on touchdown, on docking, when the pilot leaves, and when the fuel or the engine's gone, so it's never left on by mistake. \[Leaning\]
 - The center stays clear for the planet, orbit line, ship, and markers.
 
 Auto-hide: \[Locked\]

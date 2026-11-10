@@ -48,7 +48,7 @@ var _left_panel: SidePanel
 var _right_panel: SidePanel
 var _zoom_row: Control
 var _lever: ThrottleLever
-var _burn: BurnButton
+var _burn: EngineButton
 var _dial: HeadingDial
 var _pad_up: RcsButton
 var _pad_down: RcsButton
@@ -140,6 +140,7 @@ func connect_flight(ship: Node2D, view: Node, turn_guide: Node, catalog: WorldCa
 	ship.legs_changed.connect(_on_legs_changed)
 	_on_legs_changed(ship.legs_down, false)
 	_lever.throttle_changed.connect(ship._on_throttle_changed)
+	ship.engine_switched.connect(func(on: bool) -> void: _burn.engine_on = on)
 	zoom_button_pressed.connect(view._on_zoom_button_pressed)
 	zoom_scaled.connect(view._on_zoom_scaled)
 	view.view_rolled.connect(_dial.on_view_rolled)
@@ -210,7 +211,7 @@ func _build() -> void:
 	_legs_button.tapped.connect(_tap_action.bind(&"toggle_legs"))
 	_stab_button.tapped.connect(_tap_action.bind(&"toggle_stab"))
 	_assist_button.tapped.connect(_tap_action.bind(&"toggle_assist"))
-	_burn = BurnButton.new()
+	_burn = EngineButton.new()
 	_right_panel.add_child(_burn)
 
 	for button_name: String in ["SYS", "ORBIT", "SHIP"]:

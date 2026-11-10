@@ -11,7 +11,9 @@
 # Three things can steer the nose, strongest first: the turn keys, drag to point, and
 # STAB, which holds whichever of four directions was closest when it took over (along
 # the path or toward the body, nose first or thruster first). All of them use the RCS,
-# at turn_acceleration. Thrust is the throttle setting while BURN is held.
+# at turn_acceleration. The ENGINE switch turns the main engine on and off, and the throttle
+# sets how hard it pushes, with 0 idling. It cuts out on touchdown, docking, the pilot leaving,
+# or running dry, so it's never left on by mistake.
 #
 # The RCS can also translate, moving the ship in any of four directions without turning
 # it, for docking and precise landings. ASS doesn't cancel this, and it's too weak to lift
@@ -60,6 +62,8 @@ signal stab_changed(enabled: bool)
 signal touched_down(speed: float, upright: bool, safe_speed: float)
 ## Emitted when how hard the engine is pushing changes, from 0 for off to 1 for flat out.
 signal engine_changed(share: float)
+## Emitted when the ENGINE switch goes on or off, by the pilot or cutting out by itself.
+signal engine_switched(on: bool)
 ## Emitted when the legs start or finish moving: which way they're going, and whether they
 ## still are.
 signal legs_changed(down: bool, moving: bool)
@@ -130,8 +134,10 @@ var turn_acceleration: float = 0.0
 var translate_acceleration: float = 0.0
 ## How fast the nose is turning, in radians per second.
 var angular_velocity: float = 0.0
-## How much of the engine's thrust BURN uses, from 0 to 1.
+## How much of the engine's thrust it pushes with while it's on, from 0 to 1.
 var throttle: float = 1.0
+## Whether the ENGINE switch is on. It pushes only with fuel, some throttle, and an engine left.
+var engine_on: bool = false
 var stab_enabled: bool = false
 ## Where the ship really is and how it's moving.
 var state: ShipState
@@ -253,6 +259,10 @@ func _physics_process(delta: float) -> void:
 	if docked:
 		_hold_docked(delta)
 		return
+	if pilot_aboard and Input.is_action_just_pressed("thrust"):
+		_switch_engine(not engine_on)
+	if engine_on and (fuel <= 0.0 or _engine_share <= 0.0 or _lost):
+		_switch_engine(false)
 
 	_spin_firing = 0.0
 	if state.is_on_surface():
@@ -287,7 +297,7 @@ func _physics_process(delta: float) -> void:
 		heading += angular_velocity * delta
 	rotation = heading
 
-	_thrusting = pilot_aboard and Input.is_action_pressed("thrust") and throttle > 0.0 and fuel > 0.0 and _engine_share > 0.0 and not _lost
+	_thrusting = pilot_aboard and engine_on and throttle > 0.0 and fuel > 0.0 and _engine_share > 0.0 and not _lost
 	if _thrusting:
 		state.velocity_x += sin(heading) * thrust_acceleration * throttle * delta
 		state.velocity_y -= cos(heading) * thrust_acceleration * throttle * delta
@@ -320,6 +330,7 @@ func _physics_process(delta: float) -> void:
 	if _thrusting or translating or venting or in_air or on_surface != _was_on_surface:
 		orbit_changed.emit()
 	if on_surface and not _was_on_surface:
+		_switch_engine(false)
 		var tilt: float = absf(angle_difference(heading, _local_up_heading()))
 		touched_down.emit(state.get_touchdown_speed(), tilt <= upright_tolerance, _safe_impact_speed())
 		var landed_on: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
@@ -398,6 +409,8 @@ func can_be_boarded() -> bool:
 ## Says whether the pilot's aboard.
 func set_pilot_aboard(aboard: bool) -> void:
 	pilot_aboard = aboard
+	if not aboard:
+		_switch_engine(false)
 	_point_active = false
 
 
@@ -427,6 +440,7 @@ func hatch_from_center() -> Vector2:
 func dock(holder: Callable) -> void:
 	docked = true
 	_dock_holder = holder
+	_switch_engine(false)
 	repair()
 	fuel = body.fuel_capacity
 	rcs_fuel = design.rcs_capacity
@@ -472,6 +486,12 @@ func _process(delta: float) -> void:
 			_translate_forward < 0.0,
 			_sprite_scale)
 	_icon.frame = 1 if _thrusting else 0
+
+
+func _switch_engine(on: bool) -> void:
+	if on != engine_on:
+		engine_on = on
+		engine_switched.emit(on)
 
 
 func _burn_fuel(amount: float) -> void:
