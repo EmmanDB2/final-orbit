@@ -107,7 +107,7 @@ func _draw_marker(marker: Dictionary, middle: Vector2, area: Rect2, arrow_color:
 		from_x = from[0]
 		from_y = from[1]
 	var away := Vector2(at[0] - from_x, at[1] - from_y)
-	var text: String = "%s %s" % [marker["callsign"], UiStyle.distance_text(away.length())]
+	var text: String = "%s %s" % [marker["callsign"], Units.distance_text(away.length())]
 	var spot: Vector2 = middle + offset
 	var reach_px: float = marker["reach"] * _pixels_per_unit
 	if area.has_point(spot):

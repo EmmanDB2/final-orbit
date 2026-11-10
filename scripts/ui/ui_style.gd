@@ -62,13 +62,6 @@ static func draw_text(canvas: CanvasItem, text: String, top_left: Vector2, color
 		x += (4 if NARROW_CHARACTERS.contains(character) else 6) * pixel_size
 
 
-## A distance for a label, where one world unit is one meter.
-static func distance_text(meters: float) -> String:
-	if meters < 10000.0:
-		return "%d M" % roundi(meters)
-	return "%d KM" % roundi(meters / 1000.0)
-
-
 static func text_width(text: String, pixel_size: int = 2) -> float:
 	var width: int = 0
 	for character: String in text:

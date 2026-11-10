@@ -477,3 +477,11 @@ Files: `scripts/pilot/astronaut_view.gd`, `scripts/pilot.gd`, `docs/DESIGN.md`
 - building a rotation from an axis and an angle (Basis)
 - easing a vector toward a target with move_toward
 - choosing points by sorting with a custom comparison
+
+## 2026-11-10: Real units from the pilot's height
+
+Files: `scripts/units.gd`, `scripts/ui/top_bar.gd`, `scripts/world_catalog.gd`, `scripts/ui/target_markers.gd`, `scripts/ui/ui_style.gd`, `docs/DESIGN.md`
+
+- unit conversion kept in one place (a static helper class)
+- how quantities scale with length: distance, speed, and mass from mu (length cubed)
+- formatting numbers for display (decimals, thousands separators)

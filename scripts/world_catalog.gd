@@ -132,7 +132,7 @@ func _station_info(index: int) -> Dictionary:
 	var away: float = Vector2(at[0] - _state.x, at[1] - _state.y).length()
 	var rows: Array = [
 		["ORBITS", _bodies[parent].display_name, true],
-		["ALTITUDE", "%s m" % _grouped(int(radius - _gravity_model.get_body_radius(parent))), true],
+		["ALTITUDE", _meters(radius - _gravity_model.get_body_radius(parent)), true],
 		["PERIOD", _minutes(TAU * radius / speed), true],
 		["ROOMS", str(design.rooms.size()), true],
 		["FREE PORTS", str(entry["free_ports"]), true],
@@ -147,7 +147,7 @@ func _ship_info() -> Dictionary:
 	var rows: Array = [
 		["MASS", "%s kg" % _grouped(int(status["mass"])), true],
 		["FUEL", "%d%%" % roundi(status["fuel_share"] * 100.0), true],
-		["ΔV", "%s m/s" % _grouped(int(status["delta_v"])), true],
+		["ΔV", _speed(status["delta_v"]), true],
 		["HULL", "%d%%" % roundi(status["hull_share"] * 100.0), true],
 		["ENGINE", "%d%%" % roundi(status["engine_share"] * 100.0), true],
 		["LEGS", "DOWN" if status["legs_down"] else "UP", true],
@@ -159,7 +159,7 @@ func _pilot_info() -> Dictionary:
 	var away := Vector2(_pilot.state.x - _state.x, _pilot.state.y - _state.y).length()
 	var rows: Array = [
 		["JETPACK", "%d%%" % roundi(_pilot.gas / _pilot.data.jet_seconds * 100.0), true],
-		["ΔV", "%s m/s" % _grouped(int(_pilot.gas * _pilot.data.jet_acceleration)), true],
+		["ΔV", _speed(_pilot.gas * _pilot.data.jet_acceleration), true],
 		["SHIP", _meters(away), true],
 	]
 	var chip: String = {Pilot.EVA: "ON EVA", Pilot.SURFACE: "ON FOOT"}.get(_pilot.mode, "INSIDE")
@@ -168,24 +168,25 @@ func _pilot_info() -> Dictionary:
 
 # Thousands split with commas.
 func _grouped(value: int) -> String:
-	var digits: String = str(absi(value))
-	var text: String = ""
-	while digits.length() > 3:
-		text = "," + digits.substr(digits.length() - 3) + text
-		digits = digits.substr(0, digits.length() - 3)
-	return ("-" if value < 0 else "") + digits + text
+	return Units.grouped(value)
 
 
-func _km(meters: float) -> String:
-	return "%s km" % _grouped(roundi(meters / 1000.0))
+# Sizes and distances are in world units, shown in real ones at the pilot's scale.
+func _km(units: float) -> String:
+	var km: float = Units.meters(units) / 1000.0
+	return ("%.1f km" % km) if km < 100.0 else "%s km" % _grouped(roundi(km))
 
 
-func _meters(meters: float) -> String:
-	return "%s m" % _grouped(roundi(meters)) if meters < 10000.0 else _km(meters)
+func _meters(units: float) -> String:
+	return Units.distance_text(units).to_lower()
+
+
+func _speed(units_per_second: float) -> String:
+	return Units.speed_text(units_per_second).to_lower()
 
 
 func _mass(mu: float) -> String:
-	var kilograms: float = mu / G
+	var kilograms: float = Units.kilograms_from_mu(mu, G)
 	var power: int = floori(log(kilograms) / log(10.0))
 	var raised: String = ""
 	for digit: String in str(power):
