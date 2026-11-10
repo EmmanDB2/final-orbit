@@ -316,6 +316,10 @@ func thing_at(screen_position: Vector2) -> Dictionary:
 		var at: PackedFloat64Array = _point_of(candidate, PackedFloat64Array([_state.x, _state.y]))
 		var radius: float = _tap_radius_of(candidate)
 		var reach: float = maxf(radius, tap_reach / _zoom)
+		# A place on a world can't take taps on the middle of its world, however far out the view is,
+		# or the world itself could never be picked once it's small.
+		if candidate["kind"] == "site":
+			reach = maxf(radius, minf(reach, _gravity_model.get_body_radius(_sites[candidate["index"]].world) * 0.5))
 		if Vector2(at[0] - tapped.x, at[1] - tapped.y).length() <= reach and radius < smallest:
 			smallest = radius
 			best = candidate
