@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Aerodynamics and landing prediction decided, on Manny's call, to be built by Fable from `docs/briefs/aerodynamics_and_landing_prediction.md`: forces on each exposed part of the outline, with stability, lift, and spin damping coming from shape and mass rather than being chosen; the RCS kept at its strength, so the air overpowers it when you come in too fast; and a predicted path through the air that flies hands-off, with a landing zone between least and most drag and a SAFE, HARD, CRASH, or BURN-UP label at the end \[Leaning\] |
 | 2026-11-10 | Time warp built, on Manny's call: 0.5, 1, 2, 5, and 10× any time, and 50 and 100× while coasting, which drop back to 10× when the coast ends. A tap on the fast forward button by the clock steps up, holding it resets to 1×, and a tap on the readout steps down. Out of the parking lot \[Leaning\] |
 | 2026-11-10 | HUD rearranged to Manny's mockup: the top bar splits into a readouts box and a clock box with the middle open, the pad moves bottom left, ENGINE, ASST, STAB, the lever, and new F and R gauges go bottom right, EVA and LEGS sit side by side over a restyled dial with a spin readout, and the auto-hide tab is always there at the left, tapped to hide or show \[Leaning\] |
 | 2026-11-10 | BURN becomes ENGINE, an on/off switch, on Manny's call (his brother's idea): the throttle sets how hard it pushes and 0 idles, so long burns are hands-free. It cuts out on touchdown, docking, the pilot leaving, or running dry. W flips it on the Mac \[Leaning\] |
@@ -301,6 +302,14 @@ Rotating planets and atmospheres: \[Leaning, Tier 1\]
 - The hull warms toward the heat over about 6 seconds, so a short spike does no harm. Past 1.0 it burns away from the hot side, at 200 MJ a second for each whole step past, about 4% of the lander. Heat shields come with more modules. \[Leaning\]
 - For now the path line ignores the air, so inside the atmosphere it shows where the ship would go with no drag and updates every tick. Drawing the drag into it waits for the background thread. \[Leaning\]
 
+Aerodynamics, decided 2026-11-10 on Manny's call, to be built: \[Leaning\]
+
+- The air pushes on each exposed part of the ship's outline, by how squarely it faces the airflow, with the airflow at each part including the ship's own spin. The pushes add up to drag, lift, and a turning force, around the live center of mass. Nothing about how the ship flies in air is chosen by hand: it comes from shape and mass, the most realistic way.
+- So stability comes out of the physics. With the center of mass ahead of the center of pressure the ship turns to lead with that end, like a dart, and the lander's low engine and tanks should make it fall engine-first, the way returning boosters do, with the engine already pointing where the landing burn goes. Draining the tanks raises the center of mass and makes it less stable. Damage changes the shape, so a broken ship can trim crooked or tumble. A tilted ship gets lift and drifts sideways.
+- Spin is damped by the air, since a spinning ship's parts push into it.
+- The RCS keeps its strength. The air's turning force grows with density times speed squared, so high or slow the RCS wins, and deep and fast the air does. Losing that fight means coming in too fast or too steep: piloting, not a rule. STAB and ASS hit the same limit, and the comms line says AIR OVERPOWERING RCS when they can't hold. Real craft work this way: the Shuttle handed over from thrusters to wings as the air thickened, and boosters steer with grid fins in air.
+- Heating keeps following what faces the airflow.
+
 Ship: \[Locked\]
 
 - Coasting orbits are closed-form ellipses, so time warp and fold-to-coast cost almost nothing.
@@ -334,6 +343,14 @@ Trajectory preview: computed on a background thread, in chunks, and cached while
 The preview draws the ship's current path as a 1 px telemetry cyan line: one full lap on a closed orbit, otherwise up to six hours ahead or until it hits a surface. Closed-form paths are cheap, so it runs on the main thread. It updates on a burn, on a change of dominant body, and every tick while orbiting a moving body or on a path that doesn't close, so no flown part lingers behind the ship. A closed orbit updates twice a second, to catch encounters as the moon moves. The background thread can wait until maneuvers exist. \[Leaning\]
 
 Around a moon, the line is drawn around the moon as it is now. An upcoming encounter is drawn around the moon as it will be on arrival, with a ring showing where that is, so the line has a kink where it enters the moon's frame. The line ends on leaving a moon's or planet's sphere; the path after that shows once you get there. \[Leaning\]
+
+Landing prediction, decided 2026-11-10 on Manny's call, to be built: \[Leaning\]
+
+- Through the air, the path is flown ahead step by step, off the main thread, with the same aerodynamics as the real flight, so it's where the ship really goes.
+- The main line is hands off: no more burns, the ship turning as the air turns it, and STAB and ASS doing what they're set to. Two more runs, least drag (end-on) and most drag (broadside), mark a landing zone on the ground: you'll come down in there, depending on how you fly.
+- The line's end says what touching down there means: SAFE under the safe speed for the legs as they are, HARD with damage, CRASH, or BURN-UP if the hull overheats on the way. It checks the ground's slope too. Speeds are measured against the turning ground.
+- With no more burns assumed, most descents read CRASH until you burn, which is true: a lander from orbit still needs its landing burn.
+- Future burns join the line with maneuver planning, which isn't built.
 
 Landing line: the part of the line inside a body's landing zone, and everything below it, is drawn in telemetry amber, so you can see where a path starts coming down. The zone starts at the top of the atmosphere, or at a set height on an airless body, and both live in the body's data file. \[Leaning\]
 
@@ -675,4 +692,5 @@ Parking lot:
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
 - Water: the sea is only a color for now, so you can land on it like ground. It could splash down, sink, or be off limits \[For later: Manny's call\]
+- Burn point: a mark on the predicted path where the landing burn has to start to touch down safely \[Not built: a piloting aid, only if Manny wants it\]
 - Dim line past a moon's sphere of influence: the rest of the orbit keeps drawing faintly beyond the ring, so you can watch it shrink during a capture burn \[Not built: capture is meant to take some skill\]
