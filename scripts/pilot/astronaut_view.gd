@@ -10,7 +10,7 @@ class_name AstronautView
 extends Node2D
 
 ## How the pilot is seen.
-enum Look { SIDE, EVA, ABOVE }
+enum Look { SIDE, EVA, ABOVE, CLIMB }
 
 ## How big the canvas is, in pixels, with the body's middle at its center.
 const CANVAS: int = 64
@@ -48,7 +48,7 @@ var look: Look = Look.SIDE
 var body_angle: float = 0.0
 ## Which way they face on screen when seen from the side.
 var facing_right: bool = true
-## What they're doing: &"idle", &"walk", &"air", &"jet", &"float", &"land", or &"push".
+## What they're doing: &"idle", &"walk", &"air", &"jet", &"float", &"land", &"push", or &"climb".
 var motion: StringName = &"idle"
 ## Walking speed as a share of full speed, and in the air, how fast they're rising as a share of
 ## a jump's speed (negative falling).
@@ -200,7 +200,10 @@ func _turn(delta: float) -> void:
 	# Kept between a full turn back and none: 0 and -TAU are the back, -PI the front, and the sides
 	# between. Right to left goes through the front, and to or from the back the short way.
 	var wanted_yaw: float = _yaw
-	if look == Look.SIDE:
+	if look == Look.CLIMB:
+		# On a ladder against the back wall: seen from behind.
+		wanted_yaw = 0.0 if _yaw > -PI else -TAU
+	elif look == Look.SIDE:
 		if facing_right and _yaw < -PI * 1.5 - 0.01:
 			_yaw += TAU
 		elif not facing_right and _yaw > -PI * 0.5 + 0.01:
@@ -286,6 +289,17 @@ func _pose(delta: float) -> void:
 			arm_r = 0.2
 			arm_out = 0.5
 			elbow = 0.7
+		&"climb":
+			# Hands reaching up the rungs in turn, and knees lifting to the next.
+			var reach: float = sin(_phase)
+			arm_l = 2.3 + 0.4 * reach
+			arm_r = 2.3 - 0.4 * reach
+			arm_out = 0.12
+			elbow = 0.7
+			hip_l = 0.7 - 0.45 * reach
+			hip_r = 0.7 + 0.45 * reach
+			knee_l = -(1.0 - 0.4 * reach)
+			knee_r = -(1.0 + 0.4 * reach)
 		&"float":
 			hip_l = 0.25 + sin(_time * 0.7) * 0.18
 			hip_r = 0.05 + sin(_time * 0.55 + 2.0) * 0.18

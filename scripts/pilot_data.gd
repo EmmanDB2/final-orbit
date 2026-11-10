@@ -31,6 +31,7 @@ extends Resource
 @export var stride_side: PackedInt32Array = PackedInt32Array([8, 9, 10, 11, 12, 13, 14, 15])
 @export var jump_side: PackedInt32Array = PackedInt32Array([16, 17, 18, 19, 20, 21])
 @export var hover_side: PackedInt32Array = PackedInt32Array([40, 41, 42, 43])
+@export var climb_side: PackedInt32Array = PackedInt32Array([24, 25, 26, 27])
 ## How fast standing still loops, and walking at full speed, in frames per second.
 @export var idle_fps: float = 3.0
 @export var stride_fps: float = 10.0
@@ -67,6 +68,8 @@ extends Resource
 ## without one.
 @export var jump_speed: float = 70.0
 @export var step_height: float = 8.0
+## How fast the pilot climbs a ladder indoors, in world units per second.
+@export var climb_speed: float = 30.0
 ## The hardest the pilot can come down on EVA and land on their feet, in world units per second.
 @export var safe_landing_speed: float = 80.0
 ## Higher than this above the ground, the pilot's flying on EVA again, in world units.

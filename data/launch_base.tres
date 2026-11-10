@@ -15,6 +15,11 @@ display_name = "Vehicle Assembly"
 texture = ExtResource("4_assembly")
 interior_texture = ExtResource("5_assembly_in")
 offset = -476.0
+floors = PackedVector3Array(9, 286, 447, 9, 110, 290, 9, 110, 170)
+ladders = PackedVector3Array(87, 170, 447)
+door = Vector2(25, 447)
+terminals = PackedVector2Array(36, 170)
+terminal_messages = PackedStringArray("ASSEMBLY BAY EMPTY")
 
 [sub_resource type="Resource" id="Resource_tower"]
 script = ExtResource("2_building")
@@ -30,6 +35,11 @@ display_name = "Mission Control"
 texture = ExtResource("7_mission")
 interior_texture = ExtResource("8_mission_in")
 offset = 477.0
+floors = PackedVector3Array(14, 292, 205, 14, 292, 142)
+ladders = PackedVector3Array(269, 142, 205)
+door = Vector2(36, 205)
+terminals = PackedVector2Array(150, 142)
+terminal_messages = PackedStringArray("NO MISSIONS POSTED YET")
 
 [resource]
 script = ExtResource("1_site")

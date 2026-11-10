@@ -509,3 +509,11 @@ Files: `scripts/site/site_view.gd`, `scripts/site/site_building.gd`, `data/launc
 - collision against an image's alpha in a turned frame
 - a surface normal from the empty space around a point
 - impulse with a lever arm: why an off-center hit spins as well as slows
+
+## 2026-11-10: Walking into the launch base
+
+Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_view.gd`, `scripts/site/site_view.gd`, `scripts/site/site_building.gd`, `data/launch_base.tres`, `scripts/ui/flight_hud.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- a state machine with a new state (indoors), and its ways in and out
+- local coordinates on a picture, turned into world coordinates
+- fading with alpha (modulate) toward a target over time

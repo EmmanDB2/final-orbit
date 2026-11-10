@@ -35,6 +35,12 @@ var _outside: Array[Sprite2D] = []
 var _inside: Array[Sprite2D] = []
 var _show_dot: bool = false
 var _dot_at := Vector2.ZERO
+# For each building, how far its front wall has faded off, and where it's heading.
+var _wall_gone: Array[float] = []
+var _wall_wanted: Array[float] = []
+
+## How fast a front wall fades off or back, in shares per second.
+@export var wall_fade_speed: float = 3.0
 
 
 ## Starts drawing the site, on this body, on level ground this high, solid to the ship.
@@ -66,6 +72,8 @@ func start_site(gravity_model: GravityModel, state: ShipState, site: SiteData, w
 		add_child(outside)
 		_inside.append(inside)
 		_outside.append(outside)
+		_wall_gone.append(0.0)
+		_wall_wanted.append(0.0)
 
 
 ## The angle round the world, clockwise from straight up, of a point this far along the ground from
@@ -80,6 +88,39 @@ func point_at(time: float, along: float = 0.0, up: float = 0.0) -> PackedFloat64
 	var angle: float = angle_at(time, along)
 	var reach: float = _radius + ground_height + up
 	return PackedFloat64Array([at[0] + sin(angle) * reach, at[1] - cos(angle) * reach])
+
+
+## How far along the ground a point is from the site's middle, clockwise, in world units.
+func along_of(x: float, y: float, time: float) -> float:
+	var at: PackedFloat64Array = _gravity_model.get_body_position(world, time)
+	var angle: float = atan2(x - at[0], at[1] - y)
+	return angle_difference(angle_at(time), angle) * _radius
+
+
+## Where a point on a building's art is in the world, with its art standing on the ground.
+func building_point(time: float, index: int, on_art: Vector2, up: float = 0.0) -> PackedFloat64Array:
+	var building: SiteBuilding = data.buildings[index]
+	var size: Vector2 = building.texture.get_size()
+	return point_at(time, building.offset + on_art.x - size.x / 2.0, size.y - building.sink - on_art.y + up)
+
+
+## Where along a building's art a point along the ground is, in art pixels from its left edge.
+func art_x(index: int, along: float) -> float:
+	var building: SiteBuilding = data.buildings[index]
+	return along - building.offset + building.texture.get_width() / 2.0
+
+
+## Fades a building's front wall off to show its inside, or back on.
+func set_inside(index: int, inside: bool) -> void:
+	_wall_wanted[index] = 1.0 if inside else 0.0
+
+
+func _process(delta: float) -> void:
+	for i in range(_wall_gone.size()):
+		if _wall_gone[i] != _wall_wanted[i]:
+			_wall_gone[i] = move_toward(_wall_gone[i], _wall_wanted[i], wall_fade_speed * delta)
+			_outside[i].modulate.a = 1.0 - _wall_gone[i]
+			_inside[i].visible = _wall_gone[i] > 0.0 and _inside[i].texture != null
 
 
 ## The site's middle, a little above the ground, for the camera and markers.

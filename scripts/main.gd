@@ -81,6 +81,7 @@ func _start_site(gravity_model: GravityModel, state: ShipState, site: SiteData, 
 	$Camera2D.view_changed.connect(view._on_view_changed)
 	$Camera2D.view_rolled.connect(view._on_view_rolled)
 	$Camera2D.add_site(view)
+	$Pilot.add_site(view)
 	catalog.add_site(view)
 	var half_columns: int = ceili((site.half_width + site.blend) / SiteView.WORLD_PIXEL)
 	$SurfaceProps.clear_columns(world, site.column - half_columns, site.column + half_columns)

@@ -16,3 +16,12 @@ extends Resource
 ## The part of the art a ship hits, in art pixels. Empty means all of it. A tower's swing arms are
 ## left out, since they swing clear of a ship coming down onto the pad.
 @export var solid_box: Rect2 = Rect2()
+## Inside, measured on the art in its pixels from the top left. Floors are where the pilot walks, as
+## (left end, right end, height of the floor's surface); ladders join them, as (x, top, bottom).
+@export var floors: PackedVector3Array = PackedVector3Array()
+@export var ladders: PackedVector3Array = PackedVector3Array()
+## The door, as (x, floor height), where the pilot goes in and out. Below zero means no way in.
+@export var door: Vector2 = Vector2(-1.0, -1.0)
+## Terminals, each as (x, floor height), and what each says when used.
+@export var terminals: PackedVector2Array = PackedVector2Array()
+@export var terminal_messages: PackedStringArray = PackedStringArray()

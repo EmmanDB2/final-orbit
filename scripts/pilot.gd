@@ -6,7 +6,8 @@
 # orbital mechanics like anything else, and can run out. Inside, the pilot walks around the station's floors,
 # which go around with it. On a world they're seen from the side: they walk along the ground as it
 # turns, jump, and fall back under its gravity, which is too strong for the jetpack to do more than
-# stretch a jump, on a second press in the air. From DESIGN.md, "Player" (EVA, walking on worlds, and the same sprite scale inside
+# stretch a jump, on a second press in the air. At a building's door they can go in, and the front
+# wall fades off: they walk its floors, climb its ladders, and use its terminals. From DESIGN.md, "Player" (EVA, walking on worlds, and the same sprite scale inside
 # and outside), "Places on worlds", and "Camera, zoom, and landing" (interiors). Behind
 # FeatureFlags.EVA, FeatureFlags.INTERIORS, and FeatureFlags.WALKING_ON_WORLDS.
 class_name Pilot
@@ -29,6 +30,7 @@ const ABOARD: String = "aboard"
 const EVA: String = "eva"
 const INSIDE: String = "inside"
 const SURFACE: String = "surface"
+const INDOORS: String = "indoors"
 
 @export var data: PilotData
 ## How often the readouts update, in physics ticks.
@@ -83,6 +85,16 @@ var _stride: float = 0.0
 # A frame held for a moment, like the crouch on landing, and for how much longer.
 var _pose: int = 0
 var _pose_left: float = 0.0
+# Places built on worlds, and the door the pilot's standing at outside one, as a site and building.
+var _sites: Array[SiteView] = []
+var _door_site: SiteView
+var _door_building: int = -1
+# Indoors: the site and building, where the pilot's feet are on its art, and the ladder they're on.
+var _site: SiteView
+var _building: int = -1
+var _spot := Vector2.ZERO
+var _ladder: int = -1
+var _climbing: float = 0.0
 
 
 ## Starts the pilot aboard the ship.
@@ -118,6 +130,8 @@ func _physics_process(delta: float) -> void:
 			_tick_inside(delta)
 		SURFACE:
 			_tick_surface(delta)
+		INDOORS:
+			_tick_indoors(delta)
 	if mode == INSIDE and Engine.get_physics_frames() % telemetry_interval_ticks == 0:
 		_report()
 
@@ -383,7 +397,11 @@ func _tick_surface(delta: float) -> void:
 	# The ship hasn't moved yet this tick, so this is the moment the two can be compared.
 	_look_around_on_ground()
 	if _action != "" and _interact_pressed():
-		_board_ship()
+		if _action == "ENTER":
+			_enter_building(_door_site, _door_building)
+			_tick_indoors(delta)
+		else:
+			_board_ship()
 		return
 	if Engine.get_physics_frames() % telemetry_interval_ticks == 0:
 		_report()
@@ -486,10 +504,159 @@ func _place_on_ground(center: PackedFloat64Array, angle: float, feet: float) -> 
 
 # Standing by the ship, the pilot can climb back in.
 func _look_around_on_ground() -> void:
+	_door_site = null
+	_door_building = -1
 	if _grounded and _ship.can_be_boarded() and _beside_ship():
 		_set_action("BOARD SHIP")
+	elif _grounded and FeatureFlags.INTERIORS and _find_door():
+		_set_action("ENTER")
 	else:
 		_set_action("")
+
+
+# Standing at a building's door, outside. Remembers which.
+func _find_door() -> bool:
+	for site: SiteView in _sites:
+		if site.world != _world:
+			continue
+		var along: float = site.along_of(state.x, state.y, state.time)
+		if absf(along) > site.reach() + 50.0:
+			continue
+		for i in range(site.data.buildings.size()):
+			var building: SiteBuilding = site.data.buildings[i]
+			if building.door.x < 0.0:
+				continue
+			if absf(site.art_x(i, along) - building.door.x) <= data.use_reach * 0.5:
+				_door_site = site
+				_door_building = i
+				return true
+	return false
+
+
+# Through the door: the front wall fades off, and the pilot walks the floors inside.
+func _enter_building(site: SiteView, index: int) -> void:
+	_site = site
+	_building = index
+	_spot = site.data.buildings[index].door
+	_ladder = -1
+	_along = 0.0
+	_rising = 0.0
+	_grounded = true
+	site.set_inside(index, true)
+	_set_mode(INDOORS)
+	_place_indoors()
+
+
+# Out the door: back on the ground outside it, and the front wall fades back.
+func _leave_building() -> void:
+	var door: Vector2 = _site.data.buildings[_building].door
+	var outside: PackedFloat64Array = _site.building_point(state.time, _building, Vector2(door.x, door.y))
+	_site.set_inside(_building, false)
+	_world = _site.world
+	var center: PackedFloat64Array = _gravity_model.get_body_position(_world, state.time)
+	var angle: float = atan2(outside[1] - center[1], outside[0] - center[0])
+	_along = 0.0
+	_rising = 0.0
+	_grounded = true
+	_place_on_ground(center, angle, _ground_radius(center, angle, state.time))
+	_set_mode(SURFACE)
+
+
+# Indoors, the floors are level and the walls are their ends. Up and down climb a ladder where
+# there is one, and left or right steps off onto a floor it reaches. Everything's on the
+# building's art, which turns with the world, so this works like walking on the ground.
+func _tick_indoors(delta: float) -> void:
+	# On the ship's clock, as on the ground.
+	state.time = _ship.state.time + delta
+	var building: SiteBuilding = _site.data.buildings[_building]
+	var up := Vector2.UP.rotated(_site.angle_at(state.time, building.offset))
+	var right := Vector2(-up.y, up.x)
+	var move: Vector2 = _wanted_move()
+	var sideways: float = clampf(move.dot(right), -1.0, 1.0)
+	var climb: float = clampf(move.dot(up), -1.0, 1.0)
+	_climbing = 0.0
+	if _ladder >= 0:
+		var ladder: Vector3 = building.ladders[_ladder]
+		_spot.x = ladder.x
+		if absf(climb) > 0.3:
+			_climbing = signf(climb) * data.climb_speed
+			_spot.y = clampf(_spot.y - _climbing * delta, ladder.y, ladder.z)
+		var floor_here: int = _floor_at(building, _spot)
+		if floor_here >= 0 and absf(sideways) > 0.3:
+			_spot.y = building.floors[floor_here].z
+			_ladder = -1
+		_along = 0.0
+	else:
+		var floor_here: int = _floor_at(building, _spot)
+		var level: Vector3 = building.floors[maxi(floor_here, 0)]
+		_along = move_toward(_along, sideways * data.ground_walk_speed, data.walk_acceleration * delta)
+		var stepped: float = clampf(_spot.x + _along * delta, level.x + data.body_radius, level.y - data.body_radius)
+		if stepped != _spot.x + _along * delta:
+			_along = 0.0
+		_spot.x = stepped
+		var ladder_here: int = _ladder_at(building, _spot)
+		if ladder_here >= 0:
+			var ladder: Vector3 = building.ladders[ladder_here]
+			if (climb > 0.5 and ladder.y < _spot.y - 0.5) or (climb < -0.5 and ladder.z > _spot.y + 0.5):
+				_ladder = ladder_here
+				_along = 0.0
+	if absf(sideways) > 0.1:
+		_facing_right = sideways > 0.0
+
+	if absf(_spot.x - building.door.x) <= data.use_reach * 0.5 and absf(_spot.y - building.door.y) < 2.0 and _ladder < 0:
+		_set_action("EXIT")
+	elif _terminal_at(building, _spot) >= 0 and _ladder < 0:
+		_set_action("USE TERMINAL")
+	else:
+		_set_action("")
+	if _action != "" and _interact_pressed():
+		if _action == "EXIT":
+			_leave_building()
+			return
+		message_raised.emit(building.terminal_messages[_terminal_at(building, _spot)])
+	_place_indoors()
+	if Engine.get_physics_frames() % telemetry_interval_ticks == 0:
+		_report()
+
+
+# The floor the pilot's feet are on, or -1 between floors on a ladder.
+func _floor_at(building: SiteBuilding, spot: Vector2) -> int:
+	for i in range(building.floors.size()):
+		var level: Vector3 = building.floors[i]
+		if absf(level.z - spot.y) < 1.5 and spot.x >= level.x - 2.0 and spot.x <= level.y + 2.0:
+			return i
+	return -1
+
+
+func _ladder_at(building: SiteBuilding, spot: Vector2) -> int:
+	for i in range(building.ladders.size()):
+		var ladder: Vector3 = building.ladders[i]
+		if absf(ladder.x - spot.x) <= 10.0 and spot.y >= ladder.y - 1.0 and spot.y <= ladder.z + 1.0:
+			return i
+	return -1
+
+
+func _terminal_at(building: SiteBuilding, spot: Vector2) -> int:
+	for i in range(building.terminals.size()):
+		var terminal: Vector2 = building.terminals[i]
+		if absf(terminal.x - spot.x) <= data.use_reach * 0.5 and absf(terminal.y - spot.y) < 2.0:
+			return i
+	return -1
+
+
+# The pilot's middle above their feet on the art, moving with the ground and their own steps.
+func _place_indoors() -> void:
+	var building: SiteBuilding = _site.data.buildings[_building]
+	var at: PackedFloat64Array = _site.building_point(state.time, _building, _spot, data.stand_height)
+	var up := Vector2.UP.rotated(_site.angle_at(state.time, building.offset + _spot.x - building.texture.get_width() / 2.0))
+	var right := Vector2(-up.y, up.x)
+	state.x = at[0]
+	state.y = at[1]
+	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+	state.velocity_x = ground[0] + right.x * _along + up.x * _climbing
+	state.velocity_y = ground[1] + right.y * _along + up.y * _climbing
+	_up_heading = atan2(up.x, -up.y)
+	facing = _up_heading
 
 
 # Under the ship or beside it, anywhere along its width, and no higher than its top.
@@ -536,6 +703,11 @@ func _wanted_move() -> Vector2:
 	return Vector2.ZERO
 
 
+## Tells the pilot about a place built on a world, so they can go into its buildings.
+func add_site(site: SiteView) -> void:
+	_sites.append(site)
+
+
 ## Starts or updates a drag: the pilot goes this way until it ends.
 func point_at(target_heading: float) -> void:
 	_has_drag = true
@@ -561,7 +733,7 @@ func _set_mode(new_mode: String) -> void:
 	_push_local = Vector2.ZERO
 	visible = mode != ABOARD
 	# From the side on a world, from above everywhere else.
-	var side: bool = mode == SURFACE
+	var side: bool = mode == SURFACE or mode == INDOORS
 	_sprite.frame = 0
 	_sprite.texture = data.side_texture if side else data.texture
 	_sprite.hframes = data.side_hframes if side else data.hframes
@@ -594,11 +766,11 @@ func _report() -> void:
 	var ship_state: ShipState = _ship.state
 	var near: bool = true
 	var status: String = "ON EVA"
-	if mode == SURFACE:
+	if mode == SURFACE or mode == INDOORS:
 		var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
 		against = Vector2(ground[0], ground[1])
 		near = false
-		status = "ON FOOT"
+		status = "ON FOOT" if mode == SURFACE else "IN %s" % _site.data.buildings[_building].display_name.to_upper()
 	elif mode == INSIDE:
 		against = _station.moving_at(_station.frame_at(state.time), Vector2(state.x, state.y) - _station_center())
 	elif _station.is_nearby(state.x, state.y, state.time):
@@ -613,11 +785,11 @@ func _report() -> void:
 	var relative: Vector2 = Vector2(state.velocity_x, state.velocity_y) - against
 	var apsides: PackedFloat64Array = _gravity_model.get_orbit_apsides(state)
 	flight_data_changed.emit({
-		"altitude": _gravity_model.get_altitude(state.x, state.y, state.time) - (data.stand_height if mode == SURFACE else 0.0),
+		"altitude": _gravity_model.get_altitude(state.x, state.y, state.time) - (data.stand_height if mode == SURFACE or mode == INDOORS else 0.0),
 		"speed": relative.length(),
 		"against_station": near,
 		"docked": false,
-		"landed": mode == SURFACE and _grounded,
+		"landed": (mode == SURFACE and _grounded) or mode == INDOORS,
 		"periapsis": apsides[0],
 		"apoapsis": apsides[1],
 		"time": state.time,
@@ -645,7 +817,7 @@ func _process(delta: float) -> void:
 	if _figure != null:
 		_show_figure(delta)
 		return
-	if mode == SURFACE:
+	if mode == SURFACE or mode == INDOORS:
 		_animate_on_ground(delta)
 		return
 	_animation_time += delta
@@ -702,6 +874,19 @@ func _show_figure(delta: float) -> void:
 			_figure.feet_below = 0.0
 			_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(facing - _roll, -PI, PI), 10.0 * delta)
 			_figure.motion = &"jet" if _firing != Vector2.ZERO or _turning != 0.0 else &"float"
+		INDOORS:
+			_figure.feet_below = data.stand_height
+			_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(_up_heading - _roll, -PI, PI), 10.0 * delta)
+			_figure.facing_right = _facing_right
+			if _ladder >= 0:
+				# On a ladder, seen from behind, climbing.
+				_figure.look = AstronautView.Look.CLIMB
+				_figure.motion = &"climb"
+				_figure.speed_share = absf(_climbing) / data.climb_speed
+			else:
+				_figure.look = AstronautView.Look.SIDE
+				_figure.speed_share = absf(_along) / data.ground_walk_speed
+				_figure.motion = &"walk" if absf(_along) > 4.0 else &"idle"
 		INSIDE:
 			# From above, facing the way they walk.
 			_figure.look = AstronautView.Look.ABOVE
