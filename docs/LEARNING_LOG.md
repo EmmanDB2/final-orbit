@@ -445,3 +445,11 @@ Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `data/pilot.tres`, `scripts/
 - polar coordinates on a spinning body
 - 64-bit floats versus 32-bit Vector2
 - projectile motion (v²/2g, 2v/g) and edge-triggered input
+
+## 2026-11-09: 3D pilot model
+
+Files: `scripts/pilot/astronaut_model.gd`, `tests/test_astronaut_model.gd`, `docs/DESIGN.md`
+
+- a tree of Node3D joints, each placed relative to its parent
+- building meshes in code (BoxMesh, SphereMesh, an ArrayMesh from vertex arrays)
+- triangle winding order, and which side of a face shows
