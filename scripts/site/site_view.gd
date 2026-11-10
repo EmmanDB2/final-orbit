@@ -118,7 +118,7 @@ func set_inside(index: int, inside: bool) -> void:
 func _process(delta: float) -> void:
 	for i in range(_wall_gone.size()):
 		if _wall_gone[i] != _wall_wanted[i]:
-			_wall_gone[i] = move_toward(_wall_gone[i], _wall_wanted[i], wall_fade_speed * delta)
+			_wall_gone[i] = move_toward(_wall_gone[i], _wall_wanted[i], wall_fade_speed * TimeWarp.real(delta))
 			_outside[i].modulate.a = 1.0 - _wall_gone[i]
 			_inside[i].visible = _wall_gone[i] > 0.0 and _inside[i].texture != null
 

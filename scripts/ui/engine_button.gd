@@ -42,7 +42,7 @@ func finger_up() -> void:
 
 func _process(delta: float) -> void:
 	if cover_open and not engine_on and not _pressing:
-		_time_open += delta
+		_time_open += TimeWarp.real(delta)
 		if _time_open >= cover_open_seconds:
 			cover_open = false
 			queue_redraw()

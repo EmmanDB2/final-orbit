@@ -38,6 +38,8 @@ const GAUGES_HEIGHT: float = 55.0
 const CORNER_WIDTH: float = EDGE + GAUGES_WIDTH + 16.0 + LEVER_WIDTH + 12.0 + COLUMN_WIDTH + EDGE
 const CORNER_HEIGHT: float = 6.0 + ROW_HEIGHT * 2.0 + 6.0 + 14.0 + BURN_HEIGHT + EDGE
 const TAB_SIZE: Vector2 = Vector2(12.0, 44.0)
+## The time warp control, in the clock's box.
+const WARP_WIDTH: float = 92.0
 const CENTER_BUTTON_WIDTH: float = 96.0
 ## How far below the top bar RESTART and UNDOCK sit.
 const CENTER_BUTTON_DROP: float = 14.0
@@ -74,6 +76,7 @@ var _zoom_buttons: Array[UiButton] = []
 var _restart_button: UiButton
 var _undock_button: UiButton
 var _chat_button: UiButton
+var _warp_control: WarpControl
 var _flight_button: UiButton
 var _comms_log: CommsLog
 var _flight_menu: FlightMenu
@@ -121,6 +124,14 @@ func _ready() -> void:
 	_hidden = false
 	_idle_seconds = 0.0
 	_place_panels()
+
+
+## Connects the time warp control to the warp.
+func connect_warp(warp: TimeWarp) -> void:
+	_warp_control.faster.connect(warp.faster)
+	_warp_control.slower.connect(warp.slower)
+	_warp_control.reset.connect(warp.reset)
+	warp.warp_changed.connect(func(factor: float) -> void: _warp_control.factor = factor)
 
 
 ## Connects the UI to the flight. The UI only talks to the ship and camera through signals
@@ -192,6 +203,9 @@ func _build() -> void:
 	_flight_button.text_size = 1
 	_flight_button.tapped.connect(_toggle_flight_menu)
 	_top_bar.add_child(_flight_button)
+	_warp_control = WarpControl.new()
+	_top_bar.add_child(_warp_control)
+	_top_bar.clock_extra = WARP_WIDTH + 8.0
 
 	_gauges = TankGauges.new()
 	_right_panel.add_child(_gauges)
@@ -275,6 +289,9 @@ func _layout() -> void:
 	_flight_button.position = Vector2(view.x - EDGE - FLIGHT_WIDTH, 7.0)
 	_chat_button.size = Vector2(CHAT_WIDTH, 30.0)
 	_chat_button.position = Vector2(_flight_button.position.x - 6.0 - CHAT_WIDTH, 7.0)
+	var clock: Rect2 = _top_bar.clock_rect()
+	_warp_control.size = Vector2(WARP_WIDTH, 30.0)
+	_warp_control.position = Vector2(clock.end.x - TopBar.CELL_PADDING - WARP_WIDTH, 7.0)
 
 	_center_view_x = view.x / 2.0
 	_place_center_buttons()
@@ -363,7 +380,8 @@ func _place_panels() -> void:
 	clear_area_changed.emit(_clear_area())
 
 
-func _process(delta: float) -> void:
+func _process(frame_delta: float) -> void:
+	var delta: float = TimeWarp.real(frame_delta)
 	if not _hidden:
 		if Input.is_anything_pressed() or not _finger_widgets.is_empty() or _pointing:
 			_idle_seconds = 0.0
@@ -623,6 +641,7 @@ func _widgets_in_reach() -> Array[UiWidget]:
 	if get_tree().paused:
 		return widgets
 	widgets.append(_chat_button)
+	widgets.append(_warp_control)
 	if _comms_log.visible:
 		widgets.append(_comms_log)
 	if _card.visible:

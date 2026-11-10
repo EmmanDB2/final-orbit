@@ -150,7 +150,7 @@ func _on_ship_world_position_changed(x: float, y: float) -> void:
 
 	var closest: float = _closest_zoom()
 	_target_zoom = minf(_target_zoom, closest)
-	var delta: float = get_physics_process_delta_time()
+	var delta: float = TimeWarp.real(get_physics_process_delta_time())
 	var log_zoom: float = log(_zoom)
 	var eased: float = lerpf(log_zoom, log(_target_zoom), 1.0 - exp(-zoom_speed * delta))
 	_zoom = exp(move_toward(log_zoom, eased, zoom_max_rate * delta))

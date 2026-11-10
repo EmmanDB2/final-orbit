@@ -69,6 +69,11 @@ func _ready() -> void:
 	$Camera2D.set_pilot($Pilot)
 	catalog.set_pilot($Pilot)
 	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide, catalog, $Hud/SafeArea/TargetMarkers, $Hud/SafeArea/CommsLine, $Pilot)
+	var warp := TimeWarp.new()
+	add_child(warp)
+	warp.start(gravity_model, $Ship, $Pilot)
+	$Hud/SafeArea/FlightHud.connect_warp(warp)
+	warp.message_raised.connect($Hud/SafeArea/CommsLine._on_ship_warning_raised)
 	$Ship.start_flight(gravity_model, state, PI / 2.0)
 
 

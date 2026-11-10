@@ -563,3 +563,11 @@ Files: `scripts/ui/flight_hud.gd`, `scripts/ui/top_bar.gd`, `scripts/ui/heading_
 - laying out controls from the screen's corners so it fits any width
 - custom drawing with _draw (arcs, polygons, ticks around a circle)
 - a tap versus a drag on the same widget
+
+## 2026-11-10: Time warp
+
+Files: `scripts/time_warp.gd`, `scripts/ui/warp_control.gd`, `scripts/ui/flight_hud.gd`, `scripts/main.gd`, `scripts/ship.gd`, `scripts/flight_view.gd`, `scripts/ui/comms_line.gd`, `scripts/ui/engine_button.gd`, `scripts/ui/turn_guide.gd`, `scripts/station/station_view.gd`, `scripts/site/site_view.gd`, `project.godot`, `docs/DESIGN.md`
+
+- Engine.time_scale, and sim time versus real time
+- static functions on a class (TimeWarp.real, TimeWarp.on_rails)
+- input actions added in project.godot

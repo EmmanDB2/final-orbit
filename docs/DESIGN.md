@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Time warp built, on Manny's call: 0.5, 1, 2, 5, and 10× any time, and 50 and 100× while coasting, which drop back to 10× when the coast ends. A tap on the fast forward button by the clock steps up, holding it resets to 1×, and a tap on the readout steps down. Out of the parking lot \[Leaning\] |
 | 2026-11-10 | HUD rearranged to Manny's mockup: the top bar splits into a readouts box and a clock box with the middle open, the pad moves bottom left, ENGINE, ASST, STAB, the lever, and new F and R gauges go bottom right, EVA and LEGS sit side by side over a restyled dial with a spin readout, and the auto-hide tab is always there at the left, tapped to hide or show \[Leaning\] |
 | 2026-11-10 | BURN becomes ENGINE, an on/off switch, on Manny's call (his brother's idea): the throttle sets how hard it pushes and 0 idles, so long burns are hands-free. It cuts out on touchdown, docking, the pilot leaving, or running dry. W flips it on the Mac \[Leaning\] |
 | 2026-11-10 | The RCS has its own propellant tank, apart from the engine's fuel, on Manny's call: 2,400 kg on the lander, two minutes flat out. Empty, the ship can't turn or translate. Docking and landing at home refill it \[Leaning\] |
@@ -473,6 +474,14 @@ Top bar: \[Locked\]
 - Two boxes hanging from the top edge, leaving the middle open: ALT, SPD, AP, PE, and delta-v on the left, split by thin dividers, with AP and PE in orange; and the mission clock on the right, then the comms log button and the FLIGHT menu button. Manny's mockup, 2026-11-10, replacing one bar across. \[Leaning\]
 - Master Caution and the pending-payout counter are still to come, once what feeds them exists. \[Open\]
 
+Time warp: \[Leaning\]
+
+- Built on Manny's call, 2026-11-10. Time runs at 0.5, 1, 2, 5, or 10× any time, burning included, and at 50 or 100× only while coasting, on rails: no steering or RCS then.
+- The fast warps drop back to 10× by themselves, with a comms note saying why, when the coast ends: the engine on, the RCS used, near the station (within 2,000 m), in air, under 500 m over the ground, landed, docked, the pilot out, or a new body's gravity taking over. They won't start under the same conditions.
+- The control sits in the clock's box: the speed, then a fast forward button. A tap on the button steps up, holding it half a second resets to 1×, and a tap on the speed steps down. On the Mac, period steps up, comma steps down, and slash resets.
+- Everything simulated speeds up, the T+ clock included, while the panels, comms line, camera, and fades keep to real time.
+- A moon lap takes about 14 seconds at 100×, and the star about 24.
+
 Side panels: \[Locked\]
 
 - Laid out to Manny's mockup, 2026-11-10, with the controls in the corners. \[Leaning\]
@@ -666,5 +675,4 @@ Parking lot:
 - Full n-body physics, Lagrange points, free-return loops \[Tier 4, behind the gravity interface\]
 - NASApunk print texture on space \[Cut: NASApunk stays in hardware and UI\]
 - Water: the sea is only a color for now, so you can land on it like ground. It could splash down, sink, or be off limits \[For later: Manny's call\]
-- Time warp: speeding up coasting, which orbits make cheap, since a moon lap takes about 23 minutes at normal speed \[For later: Manny's call on when\]
 - Dim line past a moon's sphere of influence: the rest of the orbit keeps drawing faintly beyond the ring, so you can watch it shrink during a capture burn \[Not built: capture is meant to take some skill\]

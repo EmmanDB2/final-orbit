@@ -115,7 +115,7 @@ func _process(delta: float) -> void:
 	var wanted: float = 1.0 if _roof_off else 0.0
 	if _roof_gone == wanted:
 		return
-	_roof_gone = move_toward(_roof_gone, wanted, delta / roof_seconds)
+	_roof_gone = move_toward(_roof_gone, wanted, TimeWarp.real(delta) / roof_seconds)
 	_inside_sprite.visible = _roof_gone > 0.0 and not _show_dot
 	_sprite.modulate.a = 1.0 - _roof_gone
 

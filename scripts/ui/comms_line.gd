@@ -28,7 +28,7 @@ func _process(delta: float) -> void:
 	var current: Dictionary = _messages[0]
 	if current["stays"]:
 		return
-	current["time_left"] -= delta
+	current["time_left"] -= TimeWarp.real(delta)
 	if _messages.size() > 1:
 		current["time_left"] = minf(current["time_left"], waiting_seconds)
 	if current["time_left"] <= 0.0:

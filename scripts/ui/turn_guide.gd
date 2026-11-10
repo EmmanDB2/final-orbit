@@ -36,7 +36,7 @@ func _process(delta: float) -> void:
 			ship.point_at(atan2(direction.x, -direction.y))
 		queue_redraw()
 	elif _fade > 0.0:
-		_fade = maxf(_fade - fade_speed * delta, 0.0)
+		_fade = maxf(_fade - fade_speed * TimeWarp.real(delta), 0.0)
 		queue_redraw()
 
 

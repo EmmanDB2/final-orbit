@@ -272,7 +272,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		var spin_before: float = angular_velocity
 		var turn_input: float = Input.get_axis("turn_left", "turn_right") if pilot_aboard else 0.0
-		if rcs_fuel <= 0.0 or _lost:
+		if rcs_fuel <= 0.0 or _lost or TimeWarp.on_rails():
 			pass
 		elif turn_input != 0.0:
 			angular_velocity += turn_input * turn_acceleration * delta
@@ -1036,6 +1036,16 @@ func _update_performance() -> void:
 ## How much more speed the fuel aboard can give, from the rocket equation.
 func delta_v() -> float:
 	return design.exhaust_velocity * log((body.mass + rcs_fuel + fuel) / (body.mass + rcs_fuel))
+
+
+## Whether drag to point is turning the ship.
+func is_pointing() -> bool:
+	return _point_active
+
+
+## Whether a station's close enough that speeds read against it.
+func near_station() -> bool:
+	return _nearby_moving.is_valid()
 
 
 ## Starts or updates drag to point, turning the nose toward this heading.
