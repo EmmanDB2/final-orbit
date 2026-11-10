@@ -47,7 +47,13 @@ extends Resource
 @export var tank_leak_rate: float = 2000.0
 ## How fast escaping fuel leaves a hole, in meters per second, which sets how hard it pushes.
 @export var vent_speed: float = 800.0
-## How much the ship's shape catches the air. 1.0 is the blunt lander.
+## How hard the air pushes on a part of the outline that meets it squarely. 2.0 stops every bit of
+## air that hits it, and 1.8 is the usual figure for a blunt body at speed.
+@export var air_pressure_coefficient: float = 1.8
+## How long the pieces are that the outline is cut into for the air to push on, in art pixels.
+@export var air_segment_length: float = 8.0
+## How much the ship's shape catches the air in the old one-box drag, which only runs with
+## FeatureFlags.AERODYNAMICS off. 1.0 is the blunt lander.
 @export var drag_coefficient: float = 1.0
 ## How much air heating reads as the top of the scale. Past it, the hull starts burning.
 @export var heat_limit: float = 2.0e10

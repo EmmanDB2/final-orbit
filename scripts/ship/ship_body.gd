@@ -500,6 +500,18 @@ func outline_now() -> PackedVector2Array:
 	return points
 
 
+## Each layer's outline where it is right now, as its own closed shape, from the middle of the
+## grid. This is what the air pushes on.
+func outline_polygons_now() -> Array[PackedVector2Array]:
+	var polygons: Array[PackedVector2Array] = []
+	for layer: Layer in _layers:
+		var points := PackedVector2Array()
+		for point: Vector2 in layer.outline:
+			points.append(layer.place(point))
+		polygons.append(points)
+	return polygons
+
+
 ## Points along the edges of the ship's outline where they are right now, about this far apart, from
 ## the middle of the grid.
 func outline_samples_now(spacing: float) -> PackedVector2Array:

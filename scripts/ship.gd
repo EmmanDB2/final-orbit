@@ -36,6 +36,12 @@
 # off-center and spins the ship, and a holed tank vents and pushes the ship away from the
 # hole. Lose the cockpit and the ship is lost.
 #
+# In air, from "Aerodynamics" in DESIGN.md, the air pushes on every part of the outline that faces
+# into it. That slows the ship, lifts it sideways when it's tilted, and turns it toward whichever
+# way its shape and mass trim. Deep and fast, the air turns it harder than the RCS can, and STAB,
+# ASS, and drag to point lose until it slows down. The pushing and the RCS's rules are worked out
+# in the physics core's AeroBody, which the landing prediction shares.
+#
 # Two flight modes, from "Flight modes" in DESIGN.md. RAW is just your inputs. ASS
 # (Attitude Stabilization System) also fires the RCS against the spin when you let
 # go of the turn keys. ASS never touches velocity, since that would break orbits.
@@ -117,6 +123,10 @@ signal flight_data_changed(data: Dictionary)
 @export var upright_tolerance: float = 0.5
 ## How many physics ticks between telemetry updates.
 @export var telemetry_interval_ticks: int = 3
+## How long the air has to out-turn an RCS that's trying to hold before the pilot's told, and how
+## long the RCS has to hold again before they'd be told a second time, in seconds.
+@export var overpower_warning_seconds: float = 0.2
+@export var overpower_calm_seconds: float = 4.0
 
 ## Direction of the nose in radians. 0 points up the screen; positive turns clockwise.
 var heading: float = 0.0
@@ -200,6 +210,14 @@ var _jolt_ticks: int = 0
 var _jolt_size: float = 0.0
 var _heat_heading: float = 0.0
 var _soak_way: Vector2 = Vector2.UP
+# The ship as the air sees it: its outline in short pieces, rebuilt when the shape changes.
+var _aero := AeroBody.new()
+var _aero_stale: bool = true
+# The way the side taking the heat faces, on the art.
+var _hot_side: Vector2 = Vector2.UP
+var _overpowered_seconds: float = 0.0
+var _calm_seconds: float = 0.0
+var _overpower_warned: bool = false
 var _translate_forward: float = 0.0
 var _translate_right: float = 0.0
 
@@ -226,6 +244,7 @@ func _ready() -> void:
 	_rest_height = body.reach(_pivot, Vector2.DOWN)
 	fuel = body.fuel_capacity
 	rcs_fuel = design.rcs_capacity
+	_aero.pressure_coefficient = design.air_pressure_coefficient
 	_update_performance()
 	_puffs.set_nozzles(body)
 	_aim_flame()
@@ -265,36 +284,15 @@ func _physics_process(delta: float) -> void:
 		_switch_engine(false)
 
 	_spin_firing = 0.0
+	heat_share = 0.0
+	_air_density = _gravity_model.get_air_density(state.x, state.y, state.time)
+	var in_air: bool = false
 	if state.is_on_surface():
 		angular_velocity = 0.0
 		if not _lost:
 			heading = rotate_toward(heading, _local_up_heading() - _rest_angle + _ground_lean, settle_speed * delta)
 	else:
-		var spin_before: float = angular_velocity
-		var turn_input: float = Input.get_axis("turn_left", "turn_right") if pilot_aboard else 0.0
-		if rcs_fuel <= 0.0 or _lost or TimeWarp.on_rails():
-			pass
-		elif turn_input != 0.0:
-			angular_velocity += turn_input * turn_acceleration * delta
-			_stab_needs_pick = true
-		elif _point_active:
-			_steer_toward(_point_heading, delta)
-			_stab_needs_pick = true
-		elif stab_enabled:
-			_steer_toward(_stab_heading(), delta)
-		elif assist_enabled:
-			# Same thrusters as manual turning, so the same strength. move_toward stops
-			# exactly at zero instead of overshooting into a tiny spin the other way.
-			angular_velocity = move_toward(angular_velocity, 0.0, turn_acceleration * delta)
-		# The left nozzle turns the nose clockwise and the right one back, so a lost one
-		# can't push its way.
-		var spin_change: float = angular_velocity - spin_before
-		if (spin_change > 0.0 and not _rcs_left) or (spin_change < 0.0 and not _rcs_right):
-			angular_velocity = spin_before
-		var firing: float = absf(angular_velocity - spin_before) / (turn_acceleration * delta)
-		_burn_rcs(design.rcs_fuel_rate * firing * delta)
-		_spin_firing = signf(angular_velocity - spin_before) * firing
-		heading += angular_velocity * delta
+		in_air = _turn_and_meet_air(delta)
 	rotation = heading
 
 	_thrusting = pilot_aboard and engine_on and throttle > 0.0 and fuel > 0.0 and _engine_share > 0.0 and not _lost
@@ -318,7 +316,8 @@ func _physics_process(delta: float) -> void:
 		_burn_rcs(design.rcs_fuel_rate * (absf(translate_forward) + absf(translate_right)) * delta)
 
 	var venting: bool = _leak_fuel(delta)
-	var in_air: bool = _push_through_air(delta)
+	if not FeatureFlags.AERODYNAMICS:
+		in_air = _push_through_air(delta)
 	_heat_hull(delta)
 
 	_move_legs(delta)
@@ -506,13 +505,85 @@ func _burn_rcs(amount: float) -> void:
 		_update_performance()
 
 
-# Air pushes back against the ship's motion through it, and it moves with the planet, so
-# this measures against the moving air. Side-on, the ship catches more of it. Returns
-# whether there was any air to push through.
+# Turns the ship for one tick. The RCS does what it's asked: the turn keys, drag to point, STAB, or
+# ASS, strongest first. In air, the air pushes on every part of the outline that faces into it,
+# measured against the air, which moves with the planet. That slows the ship, lifts it, and turns
+# it, and it's where the heat comes from. Returns whether there was any air.
+func _turn_and_meet_air(delta: float) -> bool:
+	var control: int = AeroBody.CONTROL_NONE
+	var control_value: float = 0.0
+	var turn_input: float = Input.get_axis("turn_left", "turn_right") if pilot_aboard else 0.0
+	if rcs_fuel <= 0.0 or _lost or TimeWarp.on_rails():
+		pass
+	elif turn_input != 0.0:
+		control = AeroBody.CONTROL_TURN
+		control_value = turn_input
+		_stab_needs_pick = true
+	elif _point_active:
+		control = AeroBody.CONTROL_STEER
+		control_value = _point_heading
+		_stab_needs_pick = true
+	elif stab_enabled:
+		control = AeroBody.CONTROL_STEER
+		control_value = _stab_heading()
+	elif assist_enabled:
+		# Same thrusters as manual turning, so the same strength.
+		control = AeroBody.CONTROL_DAMP
+
+	var density: float = _air_density if FeatureFlags.AERODYNAMICS else 0.0
+	var through_x: float = 0.0
+	var through_y: float = 0.0
+	if density > 0.0:
+		if _aero_stale:
+			_aero_stale = false
+			_aero.set_outline(body.outline_polygons_now(), design.air_segment_length)
+		var air: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+		through_x = state.velocity_x - air[0]
+		through_y = state.velocity_y - air[1]
+
+	var flown: PackedFloat64Array = _aero.step(delta, density, through_x, through_y, heading, angular_velocity, control, control_value)
+	state.velocity_x += flown[AeroBody.STEP_VELOCITY_X]
+	state.velocity_y += flown[AeroBody.STEP_VELOCITY_Y]
+	heading = flown[AeroBody.STEP_HEADING]
+	angular_velocity = flown[AeroBody.STEP_SPIN]
+	_spin_firing = flown[AeroBody.STEP_RCS_FIRING]
+	_burn_rcs(design.rcs_fuel_rate * flown[AeroBody.STEP_RCS_USE] * delta)
+	_note_overpowered(flown[AeroBody.STEP_OVERPOWERED], delta)
+	if density <= 0.0:
+		return false
+
+	# Heating grows with the cube of speed, so a steep, fast entry is far worse. It's taken from the
+	# part of the outline that meets the air hardest, and the hot side is whichever side that is.
+	heat_share = flown[AeroBody.STEP_HEAT] / design.heat_limit
+	if through_x * through_x + through_y * through_y > 0.000001:
+		_heat_heading = atan2(through_x, -through_y)
+	var hot := Vector2(flown[AeroBody.STEP_HOT_X], flown[AeroBody.STEP_HOT_Y])
+	if hot != Vector2.ZERO:
+		_hot_side = hot
+	return true
+
+
+# Tells the pilot once when the air is turning the ship harder than an RCS that's trying to hold
+# it, and not again until the RCS has held for a while.
+func _note_overpowered(seconds: float, delta: float) -> void:
+	if seconds > 0.0:
+		_calm_seconds = 0.0
+		_overpowered_seconds += seconds
+		if _overpowered_seconds >= overpower_warning_seconds and not _overpower_warned:
+			_overpower_warned = true
+			warning_raised.emit("AIR OVERPOWERING RCS")
+		return
+	_calm_seconds += delta
+	if _calm_seconds >= overpower_calm_seconds:
+		_overpowered_seconds = 0.0
+		_overpower_warned = false
+
+
+# The old drag, kept behind FeatureFlags.AERODYNAMICS to compare with: one box as wide and long as
+# the ship, slowed by how much of it faces the air, and never turned by it. Returns whether there
+# was any air to push through.
 func _push_through_air(delta: float) -> bool:
-	heat_share = 0.0
-	var density: float = _gravity_model.get_air_density(state.x, state.y, state.time)
-	_air_density = density
+	var density: float = _air_density
 	if state.is_on_surface():
 		return false
 	if density <= 0.0:
@@ -534,9 +605,9 @@ func _push_through_air(delta: float) -> bool:
 	state.velocity_x -= through_x / speed * change
 	state.velocity_y -= through_y / speed * change
 
-	# Heating grows with the cube of speed, so a steep, fast entry is far worse.
 	heat_share = sqrt(density) * speed * speed * speed / design.heat_limit
 	_heat_heading = atan2(through_x, -through_y)
+	_hot_side = Vector2.UP.rotated(_heat_heading - heading)
 	return true
 
 
@@ -574,7 +645,7 @@ func _heat_hull(delta: float) -> void:
 		return
 	_burn_wait = design.burn_seconds
 
-	var hot_side: Vector2 = Vector2.UP.rotated(_heat_heading)
+	var hot_side: Vector2 = _hot_side.rotated(heading)
 	if _star_heat > heat_share:
 		hot_side = Vector2(-state.x, -state.y).normalized()
 	var erased: Dictionary = body.crush(hot_side.rotated(-heading), _burn_energy, int(state.time * 1000.0))
@@ -590,7 +661,7 @@ func _soak_up_heat(delta: float) -> void:
 	if _star_heat > heat_share and _star_heat > 0.05:
 		hot_way = Vector2(-state.x, -state.y).normalized().rotated(-heading)
 	elif heat_share > 0.03:
-		hot_way = Vector2.UP.rotated(_heat_heading - heading)
+		hot_way = _hot_side
 	if hot_way == Vector2.ZERO:
 		return
 	if hull_temperature < 0.05:
@@ -652,6 +723,7 @@ func _move_legs(delta: float) -> void:
 		return
 	_legs_out = move_toward(_legs_out, 1.0 if legs_down else 0.0, delta / design.legs_seconds)
 	body.set_parts_out(_legs_out)
+	_aero_stale = true
 	_rest_height = body.reach(_pivot, Vector2.DOWN)
 	_rest_angle = body.rest_angle()
 	_place_art()
@@ -876,6 +948,7 @@ func _aim_flame() -> void:
 
 
 func _update_for_damage() -> void:
+	_aero_stale = true
 	if _wave.is_idle():
 		_wave.show_body(body)
 
@@ -1031,6 +1104,9 @@ func _update_performance() -> void:
 	thrust_acceleration = design.engine_force * _engine_share / _mass_now
 	turn_acceleration = design.rcs_torque / now["spin_resistance"]
 	translate_acceleration = design.rcs_translate_force / _mass_now
+	# The air turns the ship around its center of mass as it is now, which moves as the tanks drain.
+	_aero.set_mass(_mass_now, _spin_resistance_now, now["center_of_mass"])
+	_aero.set_rcs(turn_acceleration, _rcs_left, _rcs_right)
 
 
 ## How much more speed the fuel aboard can give, from the rocket equation.
@@ -1066,14 +1142,6 @@ func guide_radius() -> float:
 
 func _on_throttle_changed(value: float) -> void:
 	throttle = value
-
-
-# Fires the RCS to turn toward a heading and arrive with no spin left.
-func _steer_toward(target_heading: float, delta: float) -> void:
-	var error: float = angle_difference(heading, target_heading)
-	var braking_limit: float = sqrt(2.0 * turn_acceleration * absf(error))
-	var desired: float = signf(error) * minf(braking_limit, absf(error) * 4.0)
-	angular_velocity = move_toward(angular_velocity, desired, turn_acceleration * delta)
 
 
 # The heading of each direction STAB can hold, in the order of _stab_direction.

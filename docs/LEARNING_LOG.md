@@ -571,3 +571,11 @@ Files: `scripts/time_warp.gd`, `scripts/ui/warp_control.gd`, `scripts/ui/flight_
 - Engine.time_scale, and sim time versus real time
 - static functions on a class (TimeWarp.real, TimeWarp.on_rails)
 - input actions added in project.godot
+
+## 2026-11-10: Aerodynamics
+
+Files: `native/src/aero_body.h`, `native/src/aero_body.cpp`, `native/src/register_types.cpp`, `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/ship/ship_design.gd`, `scripts/feature_flags.gd`, `tests/test_aerodynamics.gd`, `docs/DESIGN.md`
+
+- force and torque summed over the pieces of an outline (center of pressure against center of mass)
+- substeps and an energy check to keep a simulation steady at long time steps
+- driving a scene's physics tick by hand from a test

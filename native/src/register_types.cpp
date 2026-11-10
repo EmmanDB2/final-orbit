@@ -1,5 +1,6 @@
 #include "register_types.h"
 
+#include "aero_body.h"
 #include "gravity_model.h"
 #include "patched_conics_model.h"
 #include "ship_state.h"
@@ -18,6 +19,7 @@ void initialize_final_orbit_module(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(final_orbit::ShipState);
 	GDREGISTER_ABSTRACT_CLASS(final_orbit::GravityModel);
 	GDREGISTER_CLASS(final_orbit::PatchedConicsModel);
+	GDREGISTER_CLASS(final_orbit::AeroBody);
 }
 
 void uninitialize_final_orbit_module(ModuleInitializationLevel p_level) {
