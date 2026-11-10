@@ -533,3 +533,10 @@ Files: `art/moon_base/*.png`, `tools/split_moon_pad.gd`, `data/moon_base.tres`, 
 - reusing a system with new data: a second site on another world, no new site code
 - a tool script that cuts an image into regions (get_region, fill_rect) without resizing
 - filtering an array with a lambda (Array.filter)
+
+## 2026-11-10: Landed ships kept out of buildings
+
+Files: `scripts/ship.gd`, `docs/DESIGN.md`
+
+- projecting a vector onto a plane (removing its "up" part) to move along the ground
+- resolving overlap a little each tick instead of all at once

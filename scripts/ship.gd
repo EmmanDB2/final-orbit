@@ -99,6 +99,10 @@ signal flight_data_changed(data: Dictionary)
 @export var terrain_check_height: float = 200.0
 ## The steepest ground the ship leans with when it's resting on it, in radians.
 @export var most_ground_lean: float = 0.5
+## Landed against something solid, the ship slides along the ground at most this far a tick, in
+## world units, and only when the solid faces at least this much sideways (a share of its normal).
+@export var most_slide: float = 8.0
+@export var most_slide_slope: float = 0.3
 ## A piece that breaks off with fewer pixels than this is just sparks.
 @export var smallest_chunk: int = 30
 ## An engine keeps pushing, more weakly, down to this share of its bell.
@@ -695,9 +699,11 @@ func _hit_ground(speed: float, landed_on: int) -> void:
 ## Something solid stopped the ship, at this offset from it in the world. The normal points out of
 ## the solid, the ship moves out along it by this much, and the solid is moving at this velocity.
 ## It bounces, and takes damage above the safe speed, as with hitting the ground, with a warning
-## naming what it hit.
+## naming what it hit. A landed ship slides along the ground out of it instead, so one that tips
+## over beside a building ends up beside it, not in it.
 func hit_solid(contact: Vector2, normal: Vector2, push: float, solid_x: float, solid_y: float, what: String = "STATION") -> void:
 	if state.is_on_surface():
+		_slide_out_on_ground(normal, push)
 		return
 	state.x += normal.x * push
 	state.y += normal.y * push
@@ -721,6 +727,20 @@ func hit_solid(contact: Vector2, normal: Vector2, push: float, solid_x: float, s
 	var touching: Vector2 = contact.rotated(-heading) + _pivot
 	warning_raised.emit("%s COLLISION" % what)
 	_take_damage(body.crush(inward, energy, int(state.time * 1000.0)), normal * minf(into * 0.4, 200.0), touching, clampf(into * 0.7, 60.0, 320.0))
+
+
+# Landed, the ship moves along the ground only, never up off it or down into it, as far as it takes
+# to clear the solid by the push along its normal. A solid pressing straight down, like an overhang,
+# can't push it anywhere. The ground sets it back down where it ends up.
+func _slide_out_on_ground(normal: Vector2, push: float) -> void:
+	var up := Vector2.UP.rotated(_local_up_heading())
+	var along: Vector2 = normal - up * normal.dot(up)
+	var share: float = along.length()
+	if share < most_slide_slope:
+		return
+	var shift: Vector2 = along / share * minf(push / share, most_slide)
+	state.x += shift.x
+	state.y += shift.y
 
 
 ## Puts every pixel back, as a station's repair bay will.
