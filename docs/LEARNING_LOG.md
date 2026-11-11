@@ -603,3 +603,11 @@ Files: `scripts/ui/context_menu.gd`, `scripts/ui/flight_hud.gd`, `scripts/pilot.
 - world coordinates to screen coordinates (camera center, zoom, and roll)
 - storing a Callable (a lambda) to work something out later, each frame
 - one clock for everything that moves, so positions agree
+
+## 2026-11-10: Context menus that move out of the way
+
+Files: `scripts/ui/context_menu.gd`, `scripts/ui/flight_hud.gd`, `scripts/pilot.gd`, `scripts/ship.gd`, `docs/DESIGN.md`
+
+- scoring candidate positions and picking the cheapest (overlap areas as cost)
+- hysteresis: only switching when the new choice is clearly better
+- easing toward a target each frame with an exponential (frame-rate independent)

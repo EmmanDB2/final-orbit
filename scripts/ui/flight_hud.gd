@@ -38,6 +38,12 @@ const GAUGES_HEIGHT: float = 55.0
 const CORNER_WIDTH: float = EDGE + GAUGES_WIDTH + 16.0 + LEVER_WIDTH + 12.0 + COLUMN_WIDTH + EDGE
 const CORNER_HEIGHT: float = 6.0 + ROW_HEIGHT * 2.0 + 6.0 + 14.0 + BURN_HEIGHT + EDGE
 const TAB_SIZE: Vector2 = Vector2(12.0, 44.0)
+## The pilot's box on screen for the context menu to keep off, in world units each way from their
+## middle, and how far ahead their walking is followed, in seconds.
+const PILOT_HALF: Vector2 = Vector2(14.0, 26.0)
+const PILOT_LOOKAHEAD: float = 1.0
+## The least distance ahead of the pilot kept clear while they're being pushed, in screen pixels.
+const PILOT_REACH_AHEAD: float = 90.0
 ## The time warp control, in the clock's box.
 const WARP_WIDTH: float = 92.0
 const CENTER_BUTTON_WIDTH: float = 96.0
@@ -86,6 +92,11 @@ var _tap_started: int = 0
 var _legs_button: UiButton
 var _eva_button: UiButton
 var _context_menu: ContextMenu
+# Where the pilot was on screen against the context menu's target, and how fast that's changing, to
+# keep the label out of where they're walking.
+var _menu_pilot_from := Vector2.ZERO
+var _menu_pilot_speed := Vector2.ZERO
+var _menu_tracking: bool = false
 var _center_view_x: float = 0.0
 
 var _ship: Node2D
@@ -396,7 +407,7 @@ func _process(frame_delta: float) -> void:
 		_place_panels()
 	_check_for_hold()
 	_keep_card_current(delta)
-	_place_context_menu()
+	_place_context_menu(delta)
 
 
 func _physics_process(_delta: float) -> void:
@@ -580,24 +591,56 @@ func _on_docked_changed(is_docked: bool) -> void:
 func _on_action_changed(label: String) -> void:
 	_context_menu.options = PackedStringArray([label]) if label != "" else PackedStringArray()
 	_context_menu.visible = label != ""
-	_place_context_menu()
+	_context_menu.reset()
+	_menu_tracking = false
+	_menu_pilot_speed = Vector2.ZERO
+	_place_context_menu(0.0)
 
 
-# The context menu sits on what the pilot's action is about, which moves, so it's placed every frame.
-func _place_context_menu() -> void:
+# The context menu sits on what the pilot's action is about, which moves, so it's placed every frame,
+# keeping off the ship, the pilot, and where the pilot's walking.
+func _place_context_menu(delta: float) -> void:
 	if not _context_menu.visible or _pilot == null or _view == null:
 		return
 	var corners: PackedFloat64Array = _pilot.action_target()
-	var box := Rect2()
-	for i in range(0, corners.size(), 2):
-		var at: Vector2 = _view.to_screen(corners[i], corners[i + 1])
-		box = Rect2(at, Vector2.ZERO) if i == 0 else box.expand(at)
+	var box: Rect2 = _screen_box(corners)
+	var avoid: Array = []
+	if _ship != null:
+		avoid.append([_screen_box(_ship.hull_corners()), 2.0])
+	if _mode != Pilot.ABOARD and corners.size() >= 8:
+		var pilot_at: Vector2 = _view.to_screen(_pilot.state.x, _pilot.state.y)
+		var half: Vector2 = (PILOT_HALF * _view._zoom).max(Vector2(8.0, 12.0))
+		var pilot_box := Rect2(pilot_at - half, half * 2.0)
+		avoid.append([pilot_box, 3.0])
+		# How the pilot's moving against the thing on screen, smoothed, since the camera follows them.
+		var against: Vector2 = pilot_at - box.get_center()
+		if _menu_tracking and delta > 0.0:
+			_menu_pilot_speed = _menu_pilot_speed.lerp((against - _menu_pilot_from) / delta, 1.0 - exp(-6.0 * delta))
+		_menu_pilot_from = against
+		_menu_tracking = true
+		# Where they're about to be: the way they're being pushed if they are, or else how they're
+		# drifting against the thing.
+		var heading: Vector2 = _pilot.wanted_on_screen() * maxf(_pilot.data.ground_walk_speed * _view._zoom, PILOT_REACH_AHEAD)
+		if heading == Vector2.ZERO and _menu_pilot_speed.length() > 15.0:
+			heading = _menu_pilot_speed
+		if heading != Vector2.ZERO:
+			var ahead := Rect2(pilot_box.position + heading * PILOT_LOOKAHEAD, pilot_box.size)
+			avoid.append([pilot_box.merge(ahead), 2.0])
 	# Below UNDOCK and RESTART when they're up, so the label never lands under them.
 	var clear: Rect2 = _clear_area()
 	if _undock_button.visible or _restart_button.visible:
 		var below: float = BAR_HEIGHT + CENTER_BUTTON_DROP + ROW_HEIGHT + 6.0
 		clear = clear.grow_individual(0.0, -maxf(below - clear.position.y, 0.0), 0.0, 0.0)
-	_context_menu.show_at(box, corners.size() >= 8, clear)
+	_context_menu.place(box, corners.size() >= 8, clear, avoid, delta)
+
+
+# The screen box round some world corners, given as x, y pairs.
+func _screen_box(corners: PackedFloat64Array) -> Rect2:
+	var box := Rect2()
+	for i in range(0, corners.size(), 2):
+		var at: Vector2 = _view.to_screen(corners[i], corners[i + 1])
+		box = Rect2(at, Vector2.ZERO) if i == 0 else box.expand(at)
+	return box
 
 
 func _on_can_leave_changed(can_leave: bool) -> void:

@@ -3,6 +3,11 @@
 # the cockpit, ENTER at a door, or USE TERMINAL at a console. The same menu serves ships, stations,
 # doors, and boards; it can hold more than one choice, one row each. From DESIGN.md, "UI" (context
 # menus), drawn to Manny's 2026-11-10 mockup.
+#
+# The label isn't fixed to one side. Each frame it tries spots all round the thing, near and farther
+# out, and takes the one that covers least of what matters: the ship, the pilot, where the pilot's
+# heading, and the thing itself. It only moves to a new spot when that's clearly better, and it
+# slides there, so it gets out of the way without flickering.
 class_name ContextMenu
 extends UiWidget
 
@@ -12,38 +17,67 @@ signal chosen(index: int)
 const ROW_HEIGHT: float = 30.0
 const PADDING: float = 12.0
 const DIAMOND: float = 7.0
-## How far the label sits from the brackets, along the dotted line.
-const LEADER: float = 40.0
 ## The brackets are never smaller than this, so something tiny far out still gets them.
 const SMALLEST_BOX: float = 18.0
 const BRACKET_ARM: float = 7.0
+## Where the label can go: this many directions round the thing, at each of these gaps from it.
+const DIRECTIONS: int = 12
+const GAPS: Array[float] = [28.0, 60.0, 104.0]
+## How much better a new spot has to score before the label moves there, so it doesn't flicker,
+## in the score's units (square pixels of overlap, roughly).
+const STICKINESS: float = 700.0
+## How quickly the label slides to a new spot, per second.
+const SLIDE: float = 12.0
+## How far the line runs straight out of the label before it turns toward the thing.
+const STUB: float = 10.0
 
 var options: PackedStringArray = PackedStringArray()
 var _box := Rect2()
 var _has_box: bool = false
 var _label := Rect2()
 var _pressed: int = -1
+var _spot: int = -1
+var _at := Vector2.ZERO
+var _placed: bool = false
 
 
-## Shows the choices beside a box on screen, kept inside the clear part of the view. With no box, the
-## label sits at the top of that clear part.
-func show_at(box: Rect2, has_box: bool, clear: Rect2) -> void:
+## Forgets where the label was, so the next placing puts it straight where it's best.
+func reset() -> void:
+	_spot = -1
+	_placed = false
+
+
+## Places the label for a box on screen, inside the clear part of the view, keeping off whatever's in
+## avoid: pairs of a screen rect and how much covering it counts against a spot. With no box, the
+## label sits at the top of the clear part.
+func place(box: Rect2, has_box: bool, clear: Rect2, avoid: Array, delta: float) -> void:
 	_has_box = has_box
-	var size_now := Vector2(_label_width(), ROW_HEIGHT * options.size())
+	var label_size := Vector2(_label_width(), ROW_HEIGHT * options.size())
+	var wanted: Vector2
 	if has_box:
 		var grow := Vector2(maxf(SMALLEST_BOX - box.size.x, 0.0), maxf(SMALLEST_BOX - box.size.y, 0.0)) / 2.0
 		_box = box.grow_individual(grow.x + 4.0, grow.y + 4.0, grow.x + 4.0, grow.y + 4.0)
-		var x: float = _box.end.x + LEADER
-		if x + size_now.x > clear.end.x:
-			x = _box.position.x - LEADER - size_now.x
-		var y: float = _box.get_center().y - size_now.y / 2.0
-		_label = Rect2(Vector2(x, y), size_now)
+		var best: int = -1
+		var best_score: float = INF
+		var current_score: float = INF
+		for i in range(DIRECTIONS * GAPS.size()):
+			var score: float = _score(i, label_size, clear, avoid)
+			if score < best_score:
+				best_score = score
+				best = i
+			if i == _spot:
+				current_score = score
+		if _spot < 0 or best_score < current_score - STICKINESS:
+			_spot = best
+		wanted = _spot_rect(_spot, label_size, clear).position
 	else:
-		_label = Rect2(Vector2(clear.get_center().x - size_now.x / 2.0, clear.position.y + 10.0), size_now)
-	# Kept in the clear part, so it never lands under the panels.
-	_label.position.x = clampf(_label.position.x, clear.position.x, maxf(clear.end.x - size_now.x, clear.position.x))
-	_label.position.y = clampf(_label.position.y, clear.position.y, maxf(clear.end.y - size_now.y, clear.position.y))
-	_label.position = _label.position.floor()
+		wanted = Vector2(clear.get_center().x - label_size.x / 2.0, clear.position.y + 10.0)
+	if not _placed:
+		_at = wanted
+		_placed = true
+	else:
+		_at = _at.lerp(wanted, 1.0 - exp(-SLIDE * delta))
+	_label = Rect2(_at.round(), label_size)
 	queue_redraw()
 
 
@@ -64,6 +98,45 @@ func finger_up() -> void:
 	queue_redraw()
 
 
+# Spot i: one of the directions round the box, at one of the gaps, kept inside the clear part.
+func _spot_rect(i: int, label_size: Vector2, clear: Rect2) -> Rect2:
+	var way := Vector2.RIGHT.rotated(TAU * (i % DIRECTIONS) / DIRECTIONS)
+	var gap: float = GAPS[i / DIRECTIONS]
+	var half_box: Vector2 = _box.size / 2.0
+	var half_label: Vector2 = label_size / 2.0
+	# Far enough out along that way that the label clears the box by the gap.
+	var reach: float = absf(way.x) * (half_box.x + half_label.x) + absf(way.y) * (half_box.y + half_label.y) + gap
+	var top_left: Vector2 = _box.get_center() + way * reach - half_label
+	top_left.x = clampf(top_left.x, clear.position.x, maxf(clear.end.x - label_size.x, clear.position.x))
+	top_left.y = clampf(top_left.y, clear.position.y, maxf(clear.end.y - label_size.y, clear.position.y))
+	return Rect2(top_left, label_size)
+
+
+# Lower is better: little of what matters covered, not shoved about by the edges, and close to the
+# thing.
+func _score(i: int, label_size: Vector2, clear: Rect2, avoid: Array) -> float:
+	var spot: Rect2 = _spot_rect(i, label_size, clear)
+	var score: float = _covered(spot, _box) * 4.0
+	for pair: Array in avoid:
+		score += _covered(spot, pair[0]) * pair[1]
+	var way := Vector2.RIGHT.rotated(TAU * (i % DIRECTIONS) / DIRECTIONS)
+	var gap: float = GAPS[i / DIRECTIONS]
+	var half_box: Vector2 = _box.size / 2.0
+	var half_label: Vector2 = label_size / 2.0
+	var reach: float = absf(way.x) * (half_box.x + half_label.x) + absf(way.y) * (half_box.y + half_label.y) + gap
+	var free: Vector2 = _box.get_center() + way * reach - half_label
+	score += free.distance_to(spot.position) * 8.0
+	score += gap * 3.0
+	# Beside it first, the right before the left, then above, then below, which on a world is the dirt.
+	score += (1.0 - absf(way.x)) * 90.0 + (30.0 if way.x < -0.1 else 0.0) + (40.0 if way.y > 0.1 else 0.0)
+	return score
+
+
+func _covered(a: Rect2, b: Rect2) -> float:
+	var overlap: Rect2 = a.intersection(b)
+	return overlap.get_area() if overlap.has_area() else 0.0
+
+
 func _label_width() -> float:
 	var widest: float = 0.0
 	for option: String in options:
@@ -78,15 +151,7 @@ func _draw() -> void:
 	var line: Color = palette.gold_light
 	if _has_box:
 		_draw_brackets(_box, line, palette.hull_darkest)
-		# The dotted line from the brackets to the label, on whichever side the label is.
-		var from := Vector2(_box.end.x + 3.0 if _label.position.x > _box.end.x else _box.position.x - 3.0, _box.get_center().y)
-		var to := Vector2(_label.position.x - 6.0 if _label.position.x > _box.end.x else _label.end.x + 6.0, _label.get_center().y)
-		var length: float = from.distance_to(to)
-		var step: float = 5.0
-		var dots: int = int(length / step)
-		for i in range(dots + 1):
-			var at: Vector2 = from.lerp(to, float(i) / maxf(dots, 1)).floor()
-			draw_rect(Rect2(at, Vector2(2.0, 2.0)), line)
+		_draw_leader(line)
 	# The label: a dark box with a thin edge, gold brackets on its corners, and a row per choice.
 	UiStyle.draw_box(self, _label, palette.hull_mid, palette.hull_mid if _pressed >= 0 else UiStyle.box_fill())
 	_draw_brackets(_label.grow(3.0), line, Color(0.0, 0.0, 0.0, 0.0))
@@ -98,6 +163,45 @@ func _draw() -> void:
 			Vector2(diamond_x, middle - 4.0), Vector2(diamond_x + 4.0, middle),
 			Vector2(diamond_x, middle + 4.0), Vector2(diamond_x - 4.0, middle)]), palette.gold)
 		UiStyle.draw_text(self, options[i], Vector2(_label.position.x + PADDING + DIAMOND + 8.0, middle - 7.0), palette.gold_light)
+
+
+# Like the hold card's line: straight out of the label's side that faces the thing, then straight to
+# the nearest point on the brackets, at whatever angle that takes. Dotted, as in the mockup.
+func _draw_leader(color: Color) -> void:
+	var to_box: Vector2 = _box.get_center()
+	var from: Vector2
+	var out: Vector2
+	if to_box.x > _label.end.x + 4.0:
+		from = Vector2(_label.end.x + 3.0, _label.get_center().y)
+		out = Vector2.RIGHT
+	elif to_box.x < _label.position.x - 4.0:
+		from = Vector2(_label.position.x - 3.0, _label.get_center().y)
+		out = Vector2.LEFT
+	elif to_box.y < _label.position.y:
+		from = Vector2(_label.get_center().x, _label.position.y - 3.0)
+		out = Vector2.UP
+	else:
+		from = Vector2(_label.get_center().x, _label.end.y + 3.0)
+		out = Vector2.DOWN
+	var elbow: Vector2 = from + out * STUB
+	var target: Rect2 = _box.grow(2.0)
+	var end := Vector2(clampf(elbow.x, target.position.x, target.end.x), clampf(elbow.y, target.position.y, target.end.y))
+	if target.has_point(elbow):
+		return
+	_draw_dots(from, elbow, color)
+	_draw_dots(elbow, end, color)
+
+
+# Gold dots with a dark edge, like the brackets, so the line reads over a pale hull too.
+func _draw_dots(from: Vector2, to: Vector2, color: Color) -> void:
+	var dots: int = int(from.distance_to(to) / 5.0)
+	var edge: Color = UiStyle.palette().hull_darkest
+	for i in range(dots + 1):
+		var at: Vector2 = from.lerp(to, float(i) / maxf(dots, 1)).floor()
+		draw_rect(Rect2(at - Vector2(2.0, 2.0), Vector2(4.0, 4.0)), edge)
+	for i in range(dots + 1):
+		var at: Vector2 = from.lerp(to, float(i) / maxf(dots, 1)).floor()
+		draw_rect(Rect2(at - Vector2.ONE, Vector2(2.0, 2.0)), color)
 
 
 # Four corner brackets around a box, each with a dark edge so it reads over bright art.

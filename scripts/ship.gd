@@ -1274,10 +1274,20 @@ func delta_v() -> float:
 ## The cockpit's box in the world, for pointing at it: its four corners as x, y pairs, turning
 ## with the ship. Empty if the cockpit's gone.
 func cockpit_corners() -> PackedFloat64Array:
+	return _corners_of("cockpit")
+
+
+## The whole ship's box in the world, the same way, for keeping things from covering it.
+func hull_corners() -> PackedFloat64Array:
+	return _corners_of("")
+
+
+# The box round what's left of the modules of one kind, or of all of them, as world corners.
+func _corners_of(kind: String) -> PackedFloat64Array:
 	var box := Rect2()
 	var found: bool = false
 	for i in range(body.modules.size()):
-		if body.modules[i].kind == "cockpit" and body.module_share(i) > 0.0:
+		if (kind == "" or body.modules[i].kind == kind) and body.module_share(i) > 0.0:
 			box = _module_boxes[i] if not found else box.merge(_module_boxes[i])
 			found = true
 	var corners := PackedFloat64Array()

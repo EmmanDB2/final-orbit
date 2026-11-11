@@ -706,13 +706,24 @@ func _interact_pressed() -> bool:
 
 # Which way the pilot wants to go, in the world, up to full push. The buttons go by the screen.
 func _wanted_move() -> Vector2:
+	var on_screen: Vector2 = wanted_on_screen()
+	if on_screen != Vector2.ZERO:
+		return on_screen.rotated(_roll)
+	if _has_drag:
+		return Vector2.UP.rotated(_drag_heading)
+	return Vector2.ZERO
+
+
+## Which way the player's pushing the pilot, on screen, from the arrows or a drag: nothing if
+## they're not. The context menu uses it to keep out of the way.
+func wanted_on_screen() -> Vector2:
 	var on_screen := Vector2(
 			Input.get_axis("translate_left", "translate_right") + Input.get_axis("turn_left", "turn_right"),
 			-Input.get_axis("translate_back", "translate_forward") - (1.0 if Input.is_action_pressed("thrust") else 0.0))
 	if on_screen != Vector2.ZERO:
-		return on_screen.limit_length(1.0).rotated(_roll)
+		return on_screen.limit_length(1.0)
 	if _has_drag:
-		return Vector2.UP.rotated(_drag_heading)
+		return Vector2.UP.rotated(_drag_heading - _roll)
 	return Vector2.ZERO
 
 
