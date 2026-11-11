@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-11 | Saving and the title screen decided, on Manny's call, from his title screen mockup: the game saves only while the pilot's aboard, with credits and gigs saved whenever they change; a lost ship is saved as it is and left to the player; normal play and Zen Mode are separate worlds; the title screen is the saved moment frozen behind a menu that takes two taps, and going in zooms into the ship \[Leaning\] |
 | 2026-11-11 | Crash sounds built, building with how bad the hit is: a knock for a bump, a thud and grinding then the frame groaning for damage, a crack for each part lost with debris rattling after, and for a lost ship one huge impact, then silence but for radio static. Outside, crashes are heard only across air. Sound is done for now; the wind waits for planets to get their real environments \[Leaning\] |
 | 2026-11-11 | The cockpit's buttons are silent except ENGINE, on Manny's call; the wind is a darker, softer whoosh at about half its old loudness \[Leaning\] |
 | 2026-11-11 | No breathing in the suit, on Manny's call: on foot it played nonstop and sounded like the RCS \[Cut\] |
@@ -687,6 +688,30 @@ Decided 2026-11-10, on Manny's call. \[Leaning\]
 - How it's built: the Effects channel's filter sits at 650 Hz through the hull and 3,500 Hz through the suit's microphone, and opens toward 9,000 Hz with the square root of the air's density. Wind grows with how fast the ship or pilot moves through the air, a full gale at about 20 m/s at the ground's density; standing outside in air there's a light breeze. The re-entry roar follows the heat. Outside, the ship's engine, RCS, and legs carry across air only, fading out by 100 m. \[Leaning\]
 - Every sound the game makes itself is made at start on another thread, so nothing waits for one mid-flight.
 - Time warp doesn't change sounds' pitch.
+
+## Saving and the title screen
+
+Decided 2026-11-11, on Manny's call, from his title screen mockup. \[Leaning\]
+
+Saving:
+
+- The game saves only while the pilot is aboard: where the ship is and how it's moving, its damage, both tanks, its cargo and switches, and the clock. It saves every few seconds aboard, and whenever the app goes to the background. Out of the ship, that part of the save holds still, so quitting mid-EVA puts the pilot back in the cockpit at the moment they stepped out.
+- Credits, gig progress, and what's been learned about each world save the moment they change, wherever the pilot is, so a delivery is never lost.
+- The universe comes from the seed, so planets, stations, and gig boards aren't saved, only what the player changed.
+- A lost ship is saved as it is. Nothing rescues, rewinds, or replaces it: the player decides what to do next, continuing into the wreck or starting a new flight.
+- Normal play and Zen Mode are separate worlds, with a save each. NEW FLIGHT replaces the normal save.
+- Every save carries a version number, and an older save is upgraded, never wiped (see Tech).
+- Time warp always comes back at 1x.
+
+Title screen:
+
+- It opens on the game itself, frozen at the saved moment and framed like the ORBIT view on the body the ship last landed on or began orbiting: the body in a corner and the ship on its path. Frozen, so a ship saved mid-descent doesn't crash behind the menu.
+- Drawn from Manny's mockup: FINAL ORBIT in big stencil letters with an orange orbit arc through it, "KEPLA SYSTEM · AGENCY FLIGHT OPERATIONS" under it, the mission clock top right, a comms line along the bottom, and the version. The menu runs down the left: CONTINUE, with where the ship is and the credits under it, then NEW FLIGHT, ZEN MODE, and SETTINGS, as thin outlined boxes over space like the flight HUD. SETTINGS is there for the settings screen that's coming.
+- Everything takes two taps: the first selects, widening the box and turning it orange with corner brackets, and the second goes. It keeps NEW FLIGHT from wiping a save by accident, and gives the background time to change: selecting ZEN MODE pulls the camera out to the whole star system and pushes in to the Zen ship, since both worlds are the same system, and selecting NEW FLIGHT shows the fresh start in orbit near Kapteyn-3.
+- CONTINUE is selected when the screen opens, so a returning player is one tap from flying. With no save it's hidden, and NEW FLIGHT starts selected.
+- Going in, the menu, title, and clock slide off to their nearest side, left or right; the camera zooms into the ship, as the SHIP button does; the world starts moving; and the flight HUD slides in.
+- The FLIGHT menu's RESTART becomes TITLE, back to this screen. Starting over is NEW FLIGHT's job.
+- Zen Mode isn't built yet, so its button waits on it. \[Open\]
 
 ## Art direction
 
