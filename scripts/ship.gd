@@ -1331,6 +1331,16 @@ func _corners_of(kind: String) -> PackedFloat64Array:
 	return corners
 
 
+## How hard the RCS thrusters are firing right now, from 0 to 1, turning or translating, for sound.
+func rcs_activity() -> float:
+	return clampf(maxf(absf(_spin_firing), maxf(absf(_translate_forward), absf(_translate_right))), 0.0, 1.0)
+
+
+## How thick the air around the ship is, where 1 is the home planet's ground and 0 is none.
+func air_density() -> float:
+	return _air_density
+
+
 ## Whether drag to point is turning the ship.
 func is_pointing() -> bool:
 	return _point_active

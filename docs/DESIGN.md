@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Sound ticket 2 built: the ship through its hull, muffled, with the engine's rumble deepening and swelling with the throttle, RCS hiss, leg motors, touchdown thuds, crunches, and docking clunks, all silent once the pilot's out in vacuum; the phone buzzes on touchdowns and hits and purrs faintly while the engine burns \[Leaning\] |
 | 2026-11-10 | Sound planned and begun, on Manny's call: space is silent, so you hear what the pilot hears, through the hull, the suit, or real air; cockpit clicks and radio sounds; music in Zen Mode; haptics. Sounds are made by the game until recordings are dropped in. Ticket 1 built: the sound director, channels, clicks, and radio \[Leaning\] |
 | 2026-11-10 | Context menus get smaller zoomed out, on Manny's call: full size at 1/2 and closer, a compact one with small text out to 1/32, and none past that \[Leaning\] |
 | 2026-11-10 | Auto-hide turned off on Manny's call: only the tab at the left hides and shows the controls. The gig tracker folds only when tapped, apart from the controls. Gig board rows keep one title size, with the pay on the second line when titles run long. The tap that opens a board can no longer take a gig \[Leaning\] |

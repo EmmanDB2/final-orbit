@@ -672,3 +672,11 @@ Files: `scripts/audio/sound_synth.gd`, `scripts/audio/sound_set.gd`, `scripts/au
 - audio buses (channels) made in code with AudioServer
 - making sound from numbers: samples, sine waves, noise, envelopes, and a low-pass filter
 - a pool of players reused round-robin for one-off sounds
+
+## 2026-11-10: Sound, ticket 2: the ship through its hull, and haptics
+
+Files: `scripts/audio/sound_director.gd`, `scripts/ship.gd`, `scripts/main.gd`
+
+- looping sounds whose loudness and pitch follow the game (linear_to_db)
+- an audio effect on a bus (a low-pass filter) standing in for hearing through a hull
+- haptics with Input.vibrate_handheld, only on phones

@@ -84,7 +84,7 @@ func _ready() -> void:
 	agency.message_raised.connect($Hud/SafeArea/CommsLine.on_agency_message)
 	var sound := SoundDirector.new()
 	add_child(sound)
-	sound.start($Hud/SafeArea/FlightHud, $Hud/SafeArea/CommsLine)
+	sound.start($Hud/SafeArea/FlightHud, $Hud/SafeArea/CommsLine, $Ship, $Pilot)
 	warp.message_raised.connect($Hud/SafeArea/CommsLine._on_ship_warning_raised)
 	_start_landing_forecast()
 	$Ship.start_flight(gravity_model, state, PI / 2.0)
