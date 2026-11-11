@@ -17,6 +17,8 @@ signal space_tapped(screen_position: Vector2)
 signal clear_area_changed(area: Rect2)
 ## Emitted when the layout changes, with where the comms line goes.
 signal comms_area_changed(area: Rect2)
+## Emitted when a finger lands on a control, for its click.
+signal widget_touched(widget: UiWidget)
 
 const BAR_HEIGHT: float = 44.0
 const EDGE: float = 8.0
@@ -858,6 +860,7 @@ func _on_finger_down(index: int, position: Vector2) -> void:
 	for widget: UiWidget in _widgets_in_reach():
 		if widget.is_inside_tree() and widget.is_visible_in_tree() and widget.touch_rect().has_point(position):
 			_finger_widgets[index] = widget
+			widget_touched.emit(widget)
 			widget.finger_down(position)
 			return
 	# The top bar is hardware too, so touching it doesn't steer. Between the panels' controls, it's

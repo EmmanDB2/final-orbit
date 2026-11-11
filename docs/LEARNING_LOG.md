@@ -664,3 +664,11 @@ Files: `scripts/ui/context_menu.gd`, `scripts/ui/flight_hud.gd`, `docs/DESIGN.md
 
 - sizes from functions instead of constants, so one switch changes them all
 - why pixel text steps between whole sizes instead of scaling smoothly
+
+## 2026-11-10: Sound, ticket 1: the sound director, channels, clicks, and radio
+
+Files: `scripts/audio/sound_synth.gd`, `scripts/audio/sound_set.gd`, `scripts/audio/sound_director.gd`, `data/sound_set.tres`, `scripts/ui/flight_hud.gd`, `scripts/ui/comms_line.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- audio buses (channels) made in code with AudioServer
+- making sound from numbers: samples, sine waves, noise, envelopes, and a low-pass filter
+- a pool of players reused round-robin for one-off sounds

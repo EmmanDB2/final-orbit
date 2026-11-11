@@ -4,6 +4,9 @@
 class_name CommsLine
 extends Node2D
 
+## Emitted with each message as it's shown, for its sound.
+signal message_shown(text: String, color: Color)
+
 ## Top speed for a hard landing rather than a crash, in world units per second.
 @export var hard_touchdown_speed: float = 250.0
 ## How long a message stays up, and how long it gets if another is waiting, in seconds.
@@ -102,6 +105,7 @@ func _on_ship_lost() -> void:
 
 
 func _show_message(text: String, color: Color, stays: bool = false) -> void:
+	message_shown.emit(text, color)
 	_messages.append({"text": text, "color": color, "time_left": message_seconds, "stays": stays})
 	history.append({"time": _time, "text": text, "color": color})
 	while history.size() > most_remembered:

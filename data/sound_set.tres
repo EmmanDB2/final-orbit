@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="SoundSet" format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/sound_set.gd" id="1_set"]
+
+[resource]
+script = ExtResource("1_set")
+effects_db = -2.0
+ui_db = -10.0
+radio_db = -8.0
+music_db = -12.0

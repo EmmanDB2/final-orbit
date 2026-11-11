@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Sound planned and begun, on Manny's call: space is silent, so you hear what the pilot hears, through the hull, the suit, or real air; cockpit clicks and radio sounds; music in Zen Mode; haptics. Sounds are made by the game until recordings are dropped in. Ticket 1 built: the sound director, channels, clicks, and radio \[Leaning\] |
 | 2026-11-10 | Context menus get smaller zoomed out, on Manny's call: full size at 1/2 and closer, a compact one with small text out to 1/32, and none past that \[Leaning\] |
 | 2026-11-10 | Auto-hide turned off on Manny's call: only the tab at the left hides and shows the controls. The gig tracker folds only when tapped, apart from the controls. Gig board rows keep one title size, with the pay on the second line when titles run long. The tap that opens a board can no longer take a gig \[Leaning\] |
 | 2026-11-10 | Survey gigs built: a spot on the planet's dry land or the moon; land within 80 m, SCAN SITE for 8 seconds while landed, and the data uplinks and pays once Kapteyn-3 or a base is in line of sight; losing the ship first loses the data \[Leaning\] |
@@ -664,6 +665,19 @@ Knowledge and ties to other systems: \[Locked for design, Tier 1\]
 - First to chart pays the discovery bonus.
 - Survey gigs are scanning jobs.
 - Landing somewhere unscanned means flying in without knowing its surface temperature or atmosphere.
+
+## Sound
+
+Decided 2026-11-10, on Manny's call. \[Leaning\]
+
+- Space is silent, so you hear what the pilot hears. Aboard, the ship sounds through its hull, muffled and low: the engine's rumble following the throttle, the RCS thrusters, docking, touchdowns, and parts breaking. On EVA, the suit: breathing, the jetpack's hiss, and the radio. In air, real sound opens up with the air's density: wind, the engine's roar, and re-entry. The moon stays quiet all the way down.
+- The cockpit sounds like NASApunk hardware: switch clicks on every control, a cover flipping up and a heavy clunk for ENGINE, and ticks as the throttle lever moves notch to notch.
+- The comms line has a radio: a burst of static and a blip with each message, two falling tones for a caution in amber, an alarm for a loss in red, and a chime when a gig pays.
+- Music is ambient, in Zen Mode. Normal flight stays mostly silent, so the engine and alarms land.
+- The phone buzzes too: touchdowns, impacts, and the engine burning.
+- One sound director plays everything by listening to what happens, through signals, so no other system knows sound exists. Four channels, each with its own volume for a settings screen later: Effects for the ship and the world, UI for the cockpit, Radio for the comms, and Music.
+- Sounds are data: `data/sound_set.tres` names a sound for each event, and any it leaves empty is made by the game itself (`scripts/audio/sound_synth.gd`), from shaped noise and tones, so the game has sound before it has recordings. Recordings can replace them one at a time.
+- Time warp doesn't change sounds' pitch.
 
 ## Art direction
 
