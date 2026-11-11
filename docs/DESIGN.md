@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Cargo delivery on the context menu: arriving offers UNLOAD CARGO from the cockpit, pointing at the pad or the docking port, as a second row under BOARD STATION when docked; unloading pays \[Leaning\] |
 | 2026-11-10 | Gig board built from Manny's mockup: USE TERMINAL at Kapteyn-3's gig board or a base's mission computer opens it over the flight, with gigs on the left and the picked one's pay, destination, cargo, hazards, description, and requirements on the right, and ACCEPT GIG \[Leaning\] |
 | 2026-11-10 | Gigs begun, on Manny's call from his mockups: cargo and survey gigs first, picked at gig boards; cargo rides in the cockpit and weighs; credits start at 0 and pay on delivery; one active gig at a time; the station is renamed Kapteyn-3. Ticket 1 built: gig types as data, boards filled the same way for the same seed, requirements and hazards, loading, and payout \[Leaning\] |
 | 2026-11-10 | Context menu labels move to stay out of the way, on Manny's call: they keep off the ship, the pilot, and where the pilot's heading, going above when beside won't do, and the line to the thing runs straight or diagonal like the hold card's \[Leaning\] |
@@ -211,7 +212,8 @@ Boards: \[Leaning\]
 Cargo gigs: \[Leaning\]
 
 - Taking one loads the cargo then and there. The steps are LOAD, then DOCK AT the station or LAND ON the base's PAD, then UNLOAD THE CARGO.
-- Arriving offers UNLOAD CARGO on the context menu, from the cockpit, pointing at the pad or the docking port. Unloading pays.
+- Arriving offers UNLOAD CARGO on the context menu, from the cockpit, pointing at the pad or the docking port. Docked at the station it's a second row, under BOARD STATION. Unloading pays. F picks it on the Mac when nothing else is on offer.
+- The context menu gathers its rows from the pilot's own action and from the agency, so a gig can add choices to places without the places knowing about gigs.
 - Losing the ship loses the cargo, and the gig pays nothing.
 
 ## Player

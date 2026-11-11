@@ -627,3 +627,10 @@ Files: `scripts/ui/gig_board.gd`, `scripts/ui/flight_hud.gd`, `scripts/ui/comms_
 - a modal screen: one widget that takes every touch while it's up
 - hit-testing named regions (rows, buttons) from one finger position
 - word wrapping text to a width
+
+## 2026-11-10: Gigs, ticket 3: delivering cargo
+
+Files: `scripts/ui/flight_hud.gd`, `docs/DESIGN.md` (with the agency's delivery from ticket 1)
+
+- merging choices from two sources into one menu, each row keeping its own action (Callables)
+- an event bus in practice: the agency adds menu rows without the station or sites knowing

@@ -99,6 +99,8 @@ var _agency: Agency
 var _menu_pilot_from := Vector2.ZERO
 var _menu_pilot_speed := Vector2.ZERO
 var _menu_tracking: bool = false
+# What each of the context menu's rows does, in order.
+var _menu_runs: Array[Callable] = []
 var _center_view_x: float = 0.0
 
 var _ship: Node2D
@@ -223,7 +225,7 @@ func _build() -> void:
 	add_child(_undock_button)
 	_context_menu = ContextMenu.new()
 	_context_menu.visible = false
-	_context_menu.chosen.connect(func(_index: int) -> void: _tap_action(&"interact"))
+	_context_menu.chosen.connect(_on_context_chosen)
 	add_child(_context_menu)
 
 	_chat_button = UiButton.new().setup("", palette.telemetry_cyan)
@@ -620,21 +622,50 @@ func _on_docked_changed(is_docked: bool) -> void:
 	_update_center_buttons()
 
 
-func _on_action_changed(label: String) -> void:
-	_context_menu.options = PackedStringArray([label]) if label != "" else PackedStringArray()
-	_context_menu.visible = label != ""
-	_context_menu.reset()
-	_menu_tracking = false
-	_menu_pilot_speed = Vector2.ZERO
+func _on_action_changed(_label: String) -> void:
 	_place_context_menu(0.0)
+
+
+func _on_context_chosen(index: int) -> void:
+	if index < _menu_runs.size():
+		_menu_runs[index].call()
+
+
+# The rows the context menu shows: the pilot's own action first, if there is one, then whatever the
+# agency adds, such as UNLOAD CARGO. The brackets go round the first row's thing.
+func _gather_context_rows() -> Array:
+	var labels := PackedStringArray()
+	_menu_runs.clear()
+	var corners := PackedFloat64Array()
+	if _pilot._action != "":
+		labels.append(_pilot._action)
+		_menu_runs.append(_tap_action.bind(&"interact"))
+		corners = _pilot.action_target()
+	if _agency != null:
+		for option: Dictionary in _agency.options():
+			labels.append(option["label"])
+			_menu_runs.append(option["run"])
+			if corners.is_empty() and option["target"].is_valid():
+				corners = option["target"].call()
+	return [labels, corners]
 
 
 # The context menu sits on what the pilot's action is about, which moves, so it's placed every frame,
 # keeping off the ship, the pilot, and where the pilot's walking.
 func _place_context_menu(delta: float) -> void:
-	if not _context_menu.visible or _pilot == null or _view == null:
+	if _pilot == null or _view == null:
 		return
-	var corners: PackedFloat64Array = _pilot.action_target()
+	var gathered: Array = _gather_context_rows()
+	var labels: PackedStringArray = gathered[0]
+	if labels != _context_menu.options:
+		_context_menu.options = labels
+		_context_menu.visible = not labels.is_empty()
+		_context_menu.reset()
+		_menu_tracking = false
+		_menu_pilot_speed = Vector2.ZERO
+	if not _context_menu.visible:
+		return
+	var corners: PackedFloat64Array = gathered[1]
 	var box: Rect2 = _screen_box(corners)
 	var avoid: Array = []
 	if _ship != null:
