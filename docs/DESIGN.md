@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Auto-hide turned off on Manny's call: only the tab at the left hides and shows the controls. The gig tracker folds only when tapped, apart from the controls. Gig board rows keep one title size, with the pay on the second line when titles run long. The tap that opens a board can no longer take a gig \[Leaning\] |
 | 2026-11-10 | Survey gigs built: a spot on the planet's dry land or the moon; land within 80 m, SCAN SITE for 8 seconds while landed, and the data uplinks and pays once Kapteyn-3 or a base is in line of sight; losing the ship first loses the data \[Leaning\] |
 | 2026-11-10 | Active-gig tracker built from Manny's mockup, top left under the readouts, folding into an orange GIG tab; taking a gig makes its destination the target \[Leaning\] |
 | 2026-11-10 | Cargo delivery on the context menu: arriving offers UNLOAD CARGO from the cockpit, pointing at the pad or the docking port, as a second row under BOARD STATION when docked; unloading pays \[Leaning\] |
@@ -208,13 +209,13 @@ Boards: \[Leaning\]
 - Pay is a flat part, more for the route's delta-v, and more per tonne carried, rounded to 100 Cr. A route's delta-v is a rough sum, one leg up to the station's orbit and one down: from the planet's surface 400 m/s up and 120 down, from the moon 250 up and 260 down, and 30 to dock. So a run from the launch base to the moon base pays most.
 - Each gig lists its requirements, met in green and unmet in red, and a gig can only be taken with all of them met: cargo room, the ship at the place it starts (docked at the station, or landed on the base's pad), and the delta-v the route takes with the cargo aboard.
 - Hazards come from the route: the delta-v margin, low, medium, or high risk, and what arriving takes (docking, a landing in air, or an airless landing).
-- The board, from Manny's mockup: USE TERMINAL at the gig board or a mission computer opens it over the flight, which keeps running. AGENCY GIG BOARD between warning signs heads it, with where it is and CLOSE [×]. Down the left, the gigs, each with its title, pay, and kind and destination; the one picked is filled orange. On the right, the picked gig: its title, payout, destination, cargo, hazards (high in red, medium in amber, low in green), what it is in a sentence, and MIN. REQS, each [x] in green or [ ] in red. [ ACCEPT GIG ] lights once they're all met, and taking a gig closes the board. The balance shows at the bottom. \[Leaning\]
+- The board, from Manny's mockup: USE TERMINAL at the gig board or a mission computer opens it over the flight, which keeps running. AGENCY GIG BOARD between warning signs heads it, with where it is and CLOSE [×]. Down the left, the gigs, each with its title, pay, and kind and destination; the one picked is filled orange. Every title is the same size: the pay sits beside it, as in the mockup, or on every row's second line when a title would run into it, as on the inner screen. On the right, the picked gig: its title, payout, destination, cargo, hazards (high in red, medium in amber, low in green), what it is in a sentence, and MIN. REQS, each [x] in green or [ ] in red. [ ACCEPT GIG ] lights once they're all met, and taking a gig closes the board. The balance shows at the bottom. The tap or key that opens the board doesn't count on it, so opening never takes a gig. \[Leaning\]
 - While it's up, the pilot doesn't move or use anything. A tap off the panel closes it. On the Mac, up and down pick a gig, F takes it, and Escape closes it.
 
 Tracker: \[Leaning\]
 
 - From Manny's mockup, adapted to the HUD: while a gig's active, a panel under the readouts at the top left shows ACTIVE GIG with a warning sign, the gig's title, its steps, each [x] once done and the one being worked on marked OBJ, how far it is to where that step happens, the cargo aboard, and the pay.
-- A tap on its header folds it into an orange GIG tab at the top of the left edge, and a tap on the tab opens it again. It folds with the side panels when they hide. The tab is only there while a gig is.
+- A tap on its header folds it into an orange GIG tab at the top of the left edge, and a tap on the tab opens it again. Only that changes it, on Manny's call: hiding the controls leaves it as it is. The tab is only there while a gig is.
 - Taking a gig makes its destination the target, so the edge marker points the way.
 - The context menu keeps off it, and gets first claim on a touch if they ever meet.
 
@@ -596,9 +597,11 @@ Context menus: \[Leaning\]
 - The engine cuts out by itself on touchdown, on docking, when the pilot leaves, and when the fuel or the engine's gone, so it's never left on by mistake. \[Leaning\]
 - The center stays clear for the planet, orbit line, ship, and markers.
 
-Auto-hide: \[Locked\]
+Hiding the controls: \[Locked, auto-hide off\]
 
-- After a few seconds with no input, the pad slides off the left and the bottom-right group off the right, leaving a thin strip. The zoom buttons drop away. The top boxes, EVA, LEGS, and the dial stay.
+- Auto-hide is off, on Manny's call, 2026-11-10: the controls stay up until the tab at the left hides them. What follows is what hiding does, by the tab, and auto-hide can come back as a setting. \[Leaning\]
+
+- Hidden, the pad slides off the left and the bottom-right group off the right, leaving a thin strip. The zoom buttons drop away. The top boxes, EVA, LEGS, and the dial stay.
 - The strip still shows the fuel level and where ENGINE is. The comms line stays where it is.
 - A small tab at the left edge is always there: tapping it hides or shows the panels, and dragging in from it brings them back. Manny's call, 2026-11-10, replacing tabs that only showed while hidden. \[Leaning\]
 - Zen Mode can hide everything except a minimal top bar. \[Leaning\]

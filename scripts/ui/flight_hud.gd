@@ -58,7 +58,9 @@ const DRAG_START: float = 6.0
 ## How long a finger stays still before it's a hold rather than a tap, in milliseconds.
 const HOLD_START: int = 400
 
-## Seconds with no input before the side panels hide.
+## Whether the side panels hide by themselves after a while with no input, and after how long. Off,
+## on Manny's call: the tab at the left hides and shows them.
+@export var auto_hide: bool = false
 @export var auto_hide_seconds: float = 6.0
 
 var _top_bar: TopBar
@@ -172,7 +174,6 @@ func _on_gig_changed(gig: Gig) -> void:
 func _update_gig_tracker() -> void:
 	var gig: Gig = _agency.active if _agency != null else null
 	_gig_tracker.gig = gig
-	_gig_tracker.folded_by_panels = _hidden
 	if gig == null:
 		_survey_marker.visible = false
 		_gig_tracker.queue_redraw()
@@ -488,7 +489,7 @@ func _process(frame_delta: float) -> void:
 			_idle_seconds = 0.0
 		else:
 			_idle_seconds += delta
-		if _idle_seconds >= auto_hide_seconds:
+		if auto_hide and _idle_seconds >= auto_hide_seconds:
 			_hidden = true
 	var target: float = 1.0 if _hidden else 0.0
 	if _hide_amount != target:

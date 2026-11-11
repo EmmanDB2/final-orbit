@@ -650,3 +650,10 @@ Files: `scripts/gig/agency.gd`, `scripts/gig/gig.gd`, `scripts/gig/gig_type.gd`,
 - line of sight: the closest point on a segment to a circle's center
 - angles around a turning world (a spot's angle grows with the world's spin)
 - progress over time that pauses when its condition breaks
+
+## 2026-11-10: Gig fixes: opening tap, tracker, rows, auto-hide off
+
+Files: `scripts/ui/gig_board.gd`, `scripts/ui/gig_tracker.gd`, `scripts/ui/flight_hud.gd`, `docs/DESIGN.md`
+
+- one input event seen by two systems in the same frame, and arming a screen until keys are let go
+- keeping a list's look consistent by deciding the layout once for all rows

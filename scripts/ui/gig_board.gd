@@ -22,6 +22,12 @@ var _picked: int = 0
 var _panel := Rect2()
 var _finger := Vector2.ZERO
 var _pressed: String = ""
+# The press that opened the board, a tap on USE TERMINAL or F, is still down when it opens. The keys
+# only count once everything's been let go since, so that press can't take a gig too.
+var _keys_ready: bool = false
+# Whether the pay sits on each row's second line, because some title won't fit beside it. Every row
+# does the same, so the titles all stay one size.
+var _pay_below: bool = false
 
 
 ## Shows the board of gigs that start at a place.
@@ -29,6 +35,7 @@ func open(agency: Agency, place: Dictionary) -> void:
 	_agency = agency
 	_place = place
 	_picked = 0
+	_keys_ready = false
 	visible = true
 	refresh()
 
@@ -78,6 +85,9 @@ func finger_up() -> void:
 
 func _process(_delta: float) -> void:
 	if not visible:
+		return
+	if not _keys_ready:
+		_keys_ready = not (Input.is_action_pressed("interact") or Input.is_action_pressed("translate_forward") or Input.is_action_pressed("translate_back") or Input.is_action_pressed("ui_cancel"))
 		return
 	# On the Mac: up and down pick, F takes it, and Escape closes.
 	if Input.is_action_just_pressed("translate_forward"):
@@ -182,6 +192,11 @@ func _draw() -> void:
 	if _gigs.is_empty():
 		UiStyle.draw_text(self, "NO GIGS POSTED", _row_rect(0).position + Vector2(12.0, 8.0), palette.hull_lighter)
 		return
+	_pay_below = false
+	for gig: Gig in _gigs:
+		var pay_width: float = UiStyle.text_width("%s Cr" % Units.grouped(gig.payout))
+		if UiStyle.text_width(gig.title) + pay_width + 36.0 > _list_width():
+			_pay_below = true
 	for i in range(_gigs.size()):
 		_draw_row(i)
 	_draw_detail(_gigs[_picked])
@@ -201,10 +216,13 @@ func _draw_row(i: int) -> void:
 	UiStyle.draw_box(self, rect, line, fill)
 	var pay: String = "%s Cr" % Units.grouped(gig.payout)
 	var pay_width: float = UiStyle.text_width(pay)
-	UiStyle.draw_text(self, pay, Vector2(rect.end.x - 12.0 - pay_width, rect.position.y + 10.0), palette.hull_lightest)
-	var title_size: int = 2 if UiStyle.text_width(gig.title) + pay_width + 36.0 <= rect.size.x else 1
-	UiStyle.draw_text(self, gig.title, Vector2(rect.position.x + 12.0, rect.position.y + (10.0 if title_size == 2 else 14.0)), palette.hull_lightest, title_size)
+	# The pay beside the title, as in the mockup, or on the line under it when titles run long.
+	var pay_y: float = rect.position.y + (32.0 if _pay_below else 10.0)
+	UiStyle.draw_text(self, pay, Vector2(rect.end.x - 12.0 - pay_width, pay_y), palette.hull_lightest)
+	UiStyle.draw_text(self, gig.title, Vector2(rect.position.x + 12.0, rect.position.y + 10.0), palette.hull_lightest)
 	var under: String = "%s // TO %s" % [gig.type.category, _agency.place_tag(gig.destination)]
+	if _pay_below and UiStyle.text_width(under, 1) > rect.size.x - pay_width - 36.0:
+		under = "TO %s" % _agency.place_tag(gig.destination)
 	UiStyle.draw_text(self, under, Vector2(rect.position.x + 12.0, rect.position.y + 36.0), palette.gold_light if picked else palette.hull_lighter, 1)
 
 

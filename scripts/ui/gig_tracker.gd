@@ -1,7 +1,7 @@
 # gig_tracker.gd: the active gig, under the readouts at the top left: what it is, its steps with the
 # one being worked on marked OBJ, how far it is to where that step happens, the cargo aboard, and the
 # pay. A tap on its header folds it into an orange GIG tab on the left edge, and a tap on the tab opens
-# it again. It folds with the side panels too, and it's only there while a gig is. From DESIGN.md,
+# it again, whether the controls are hidden or not. It's only there while a gig is. From DESIGN.md,
 # "Gigs" (tracker), drawn to Manny's 2026-11-10 mockup.
 class_name GigTracker
 extends UiWidget
@@ -13,10 +13,8 @@ const HEADER: float = 22.0
 const TAB_SIZE: Vector2 = Vector2(18.0, 70.0)
 
 var gig: Gig = null
-## Whether the pilot wants it open; it still folds while the panels are hidden.
+## Whether it's open, rather than folded to its tab. Only a tap changes it.
 var wanted_open: bool = true
-## Whether the panels are hidden right now.
-var folded_by_panels: bool = false
 ## How far it is to where the current step happens, as text, or nothing.
 var distance_text: String = ""
 var cargo_text: String = ""
@@ -24,7 +22,7 @@ var _pressed: bool = false
 
 
 func is_open() -> bool:
-	return gig != null and wanted_open and not folded_by_panels
+	return gig != null and wanted_open
 
 
 ## Where it's drawn now: the panel, the tab, or nothing.
@@ -53,11 +51,7 @@ func finger_down(_position: Vector2) -> void:
 
 func finger_up() -> void:
 	if _pressed:
-		if is_open():
-			wanted_open = false
-		else:
-			wanted_open = true
-			folded_by_panels = false
+		wanted_open = not wanted_open
 	_pressed = false
 	queue_redraw()
 
