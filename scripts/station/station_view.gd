@@ -147,6 +147,29 @@ func port_inner(port: int) -> Vector2:
 	return _ports[port]["at"] - _ports[port]["face"] * port_door_depth
 
 
+## Where a port's hatch is, in the station's frame.
+func port_point(port: int) -> Vector2:
+	return _ports[port]["at"]
+
+
+## Where a spot to use is, in the station's frame.
+func spot_point(spot: Dictionary) -> Vector2:
+	return (Vector2(spot["point"]) - Vector2(layout.origin)) * _design.art_pixel_size
+
+
+## A box around a point in the station's frame, turning with the station, as its four corners in the
+## world: for pointing at a hatch, a door, or a terminal. Its half size is in art pixels.
+func box_corners(local: Vector2, half_pixels: Vector2, time: float) -> PackedFloat64Array:
+	var frame: Dictionary = _frame_at(time)
+	var half: Vector2 = half_pixels * _design.art_pixel_size
+	var corners := PackedFloat64Array()
+	for corner: Vector2 in [Vector2(-1.0, -1.0), Vector2(1.0, -1.0), Vector2(1.0, 1.0), Vector2(-1.0, 1.0)]:
+		var offset: Vector2 = (local + corner * half).rotated(frame["angle"])
+		corners.append(frame["x"] + offset.x)
+		corners.append(frame["y"] + offset.y)
+	return corners
+
+
 ## A point just outside a free port, in the station's frame.
 func port_outer(port: int, clearance: float) -> Vector2:
 	return _ports[port]["at"] + _ports[port]["face"] * clearance

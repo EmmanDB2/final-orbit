@@ -31,6 +31,11 @@ const EVA: String = "eva"
 const INSIDE: String = "inside"
 const SURFACE: String = "surface"
 const INDOORS: String = "indoors"
+## The boxes the context menu draws around what an action is about, in art pixels: half a station
+## hatch or terminal each way, a building's doorway, and half a building's terminal console.
+const PORT_BOX: Vector2 = Vector2(10.0, 10.0)
+const TERMINAL_BOX: Vector2 = Vector2(14.0, 14.0)
+const DOOR_BOX: Vector2 = Vector2(28.0, 44.0)
 
 @export var data: PilotData
 ## How often the readouts update, in physics ticks.
@@ -64,6 +69,8 @@ var _local := Vector2.ZERO
 var _walking := Vector2.ZERO
 var _local_facing: float = 0.0
 var _action: String = ""
+# Says where what the action's about is, as box corners in the world.
+var _action_target: Callable = Callable()
 var _can_leave: bool = false
 var _stranded: bool = false
 var _lost: bool = false
@@ -140,7 +147,10 @@ func _tick_aboard(delta: float) -> void:
 	var ship_state: ShipState = _ship.state
 	_set_can_leave(FeatureFlags.EVA and _ship.can_be_left())
 	var docked_port: int = _station.docked_port
-	_set_action("BOARD STATION" if FeatureFlags.INTERIORS and _ship.docked and docked_port >= 0 else "")
+	if FeatureFlags.INTERIORS and _ship.docked and docked_port >= 0:
+		_set_action("BOARD STATION", _station_box(_station.port_point(docked_port), PORT_BOX))
+	else:
+		_set_action("")
 	if _can_leave and Input.is_action_just_pressed("eva"):
 		if ship_state.is_on_surface():
 			_step_out_onto_ground()
@@ -256,10 +266,11 @@ func _look_around_outside() -> void:
 	var from_ship := Vector2(state.x - ship_state.x - cockpit.x, state.y - ship_state.y - cockpit.y)
 	var against_ship: float = (Vector2(state.velocity_x, state.velocity_y) - Vector2(ship_state.velocity_x, ship_state.velocity_y)).length()
 	if from_ship.length() <= data.board_reach and against_ship <= data.board_speed and _ship.can_be_boarded():
-		_set_action("BOARD SHIP")
+		_set_action("BOARD SHIP", _ship.cockpit_corners)
 		return
-	if FeatureFlags.INTERIORS and _station.free_port_near(state.x, state.y, state.time, data.hatch_reach) >= 0:
-		_set_action("BOARD STATION")
+	var port: int = _station.free_port_near(state.x, state.y, state.time, data.hatch_reach) if FeatureFlags.INTERIORS else -1
+	if port >= 0:
+		_set_action("BOARD STATION", _station_box(_station.port_point(port), PORT_BOX))
 		return
 	_set_action("")
 
@@ -318,9 +329,11 @@ func _tick_inside(delta: float) -> void:
 	var spot: Dictionary = _station.spot_near(_local, data.use_reach)
 	var port: int = _station.port_near_inside(_local, data.use_reach)
 	if not spot.is_empty():
-		_set_action("USE TERMINAL")
+		_set_action("USE TERMINAL", _station_box(_station.spot_point(spot), TERMINAL_BOX))
+	elif port >= 0 and port == _station.docked_port:
+		_set_action("BOARD SHIP", _ship.cockpit_corners)
 	elif port >= 0:
-		_set_action("BOARD SHIP" if port == _station.docked_port else "EXIT STATION")
+		_set_action("EXIT STATION", _station_box(_station.port_inner(port), PORT_BOX))
 	else:
 		_set_action("")
 	if _action != "" and _interact_pressed():
@@ -507,9 +520,9 @@ func _look_around_on_ground() -> void:
 	_door_site = null
 	_door_building = -1
 	if _grounded and _ship.can_be_boarded() and _beside_ship():
-		_set_action("BOARD SHIP")
+		_set_action("BOARD SHIP", _ship.cockpit_corners)
 	elif _grounded and FeatureFlags.INTERIORS and _find_door():
-		_set_action("ENTER")
+		_set_action("ENTER", _door_box(_door_site, _door_building))
 	else:
 		_set_action("")
 
@@ -604,9 +617,9 @@ func _tick_indoors(delta: float) -> void:
 		_facing_right = sideways > 0.0
 
 	if absf(_spot.x - building.door.x) <= data.use_reach * 0.5 and absf(_spot.y - building.door.y) < 2.0 and _ladder < 0:
-		_set_action("EXIT")
+		_set_action("EXIT", _door_box(_site, _building))
 	elif _terminal_at(building, _spot) >= 0 and _ladder < 0:
-		_set_action("USE TERMINAL")
+		_set_action("USE TERMINAL", _terminal_box(_site, _building, _terminal_at(building, _spot)))
 	else:
 		_set_action("")
 	if _action != "" and _interact_pressed():
@@ -742,7 +755,37 @@ func _set_mode(new_mode: String) -> void:
 	mode_changed.emit(mode)
 
 
-func _set_action(label: String) -> void:
+## What the action on offer is about, as the four corners of a box around it in the world, or
+## nothing: the cockpit to board, the door to go through, the terminal to use. It moves with the
+## thing, so it's worked out each time it's asked for, on the ship's clock, which keeps running while
+## the pilot's own waits aboard.
+func action_target() -> PackedFloat64Array:
+	if _action == "" or not _action_target.is_valid():
+		return PackedFloat64Array()
+	return _action_target.call()
+
+
+# Points at something in the station's frame, turning with it.
+func _station_box(local: Vector2, half_pixels: Vector2) -> Callable:
+	return func() -> PackedFloat64Array: return _station.box_corners(local, half_pixels, _ship.state.time)
+
+
+# Points at a building's door: a doorway a little taller than the pilot, on its floor.
+func _door_box(site: SiteView, building: int) -> Callable:
+	var door: Vector2 = site.data.buildings[building].door
+	var box := Rect2(door.x - DOOR_BOX.x / 2.0, door.y - DOOR_BOX.y, DOOR_BOX.x, DOOR_BOX.y)
+	return func() -> PackedFloat64Array: return site.art_box_corners(building, box, _ship.state.time)
+
+
+# Points at a building's terminal: the console in front of where the pilot stands to use it.
+func _terminal_box(site: SiteView, building: int, terminal: int) -> Callable:
+	var at: Vector2 = site.data.buildings[building].terminals[terminal]
+	var box := Rect2(at.x - TERMINAL_BOX.x, at.y - 10.0 - TERMINAL_BOX.y * 2.0, TERMINAL_BOX.x * 2.0, TERMINAL_BOX.y * 2.0)
+	return func() -> PackedFloat64Array: return site.art_box_corners(building, box, _ship.state.time)
+
+
+func _set_action(label: String, target: Callable = Callable()) -> void:
+	_action_target = target
 	if label != _action:
 		_action = label
 		action_changed.emit(label)

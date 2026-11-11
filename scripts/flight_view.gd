@@ -289,6 +289,11 @@ func point_getter(thing: Dictionary) -> Callable:
 	return func() -> PackedFloat64Array: return _point_of(thing, PackedFloat64Array([_state.x, _state.y]))
 
 
+## Where a point in the world shows on screen.
+func to_screen(x: float, y: float) -> Vector2:
+	return _view_size / 2.0 + Vector2((x - _center_x) * _zoom, (y - _center_y) * _zoom).rotated(-_roll)
+
+
 ## Where this thing shows on screen: its "center", and its "radius" in pixels.
 func screen_spot_of(thing: Dictionary) -> Dictionary:
 	var at: PackedFloat64Array = _point_of(thing, PackedFloat64Array([_state.x, _state.y]))

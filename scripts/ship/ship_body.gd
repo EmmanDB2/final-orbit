@@ -307,6 +307,18 @@ func with_fuel(fuel: float) -> Dictionary:
 
 
 ## How much of a module's pixels are left, from 0 to 1.
+## Where a module's art sits, from the grid's middle, trimmed to its drawn pixels: for pointing at
+## the module, not for physics.
+func module_art_rect(module_index: int) -> Rect2:
+	var module: ModuleData = modules[module_index]
+	var art: Image = _art_of(module.texture)
+	if art == null:
+		return Rect2()
+	var used: Rect2i = art.get_used_rect()
+	var corner: Vector2 = Vector2(module.cell * _cell_size) if module.on_grid else Vector2(module.art_position)
+	return Rect2(corner + Vector2(used.position) - _half, Vector2(used.size))
+
+
 func module_share(module_index: int) -> float:
 	var start: int = _module_start[module_index]
 	return float(_module_left[module_index]) / start if start > 0 else 0.0

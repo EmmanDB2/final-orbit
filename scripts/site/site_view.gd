@@ -104,6 +104,17 @@ func building_point(time: float, index: int, on_art: Vector2, up: float = 0.0) -
 	return point_at(time, building.offset + on_art.x - size.x / 2.0, size.y - building.sink - on_art.y + up)
 
 
+## A box on a building's art, as its four corners in the world, turning with the world: for pointing
+## at a door or a terminal.
+func art_box_corners(index: int, box: Rect2, time: float) -> PackedFloat64Array:
+	var corners := PackedFloat64Array()
+	for corner: Vector2 in [box.position, Vector2(box.end.x, box.position.y), box.end, Vector2(box.position.x, box.end.y)]:
+		var at: PackedFloat64Array = building_point(time, index, corner)
+		corners.append(at[0])
+		corners.append(at[1])
+	return corners
+
+
 ## Where along a building's art a point along the ground is, in art pixels from its left edge.
 func art_x(index: int, along: float) -> float:
 	var building: SiteBuilding = data.buildings[index]

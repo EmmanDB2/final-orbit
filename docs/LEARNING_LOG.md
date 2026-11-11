@@ -595,3 +595,11 @@ Files: `native/src/gravity_model.{h,cpp}`, `docs/DESIGN.md`
 - frames of reference: velocity measured against the body versus against its turning ground
 - one shared function for the real flight and the forecast, so they can't drift apart
 - guarding a direction that's undefined when the speed is near zero
+
+## 2026-11-10: In-world context menus
+
+Files: `scripts/ui/context_menu.gd`, `scripts/ui/flight_hud.gd`, `scripts/pilot.gd`, `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/station/station_view.gd`, `scripts/site/site_view.gd`, `scripts/flight_view.gd`, `docs/DESIGN.md`
+
+- world coordinates to screen coordinates (camera center, zoom, and roll)
+- storing a Callable (a lambda) to work something out later, each frame
+- one clock for everything that moves, so positions agree

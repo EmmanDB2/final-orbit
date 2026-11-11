@@ -85,7 +85,7 @@ var _tap_possible: bool = false
 var _tap_started: int = 0
 var _legs_button: UiButton
 var _eva_button: UiButton
-var _action_button: UiButton
+var _context_menu: ContextMenu
 var _center_view_x: float = 0.0
 
 var _ship: Node2D
@@ -188,11 +188,10 @@ func _build() -> void:
 	_undock_button.visible = false
 	_undock_button.tapped.connect(_tap_action.bind(&"undock"))
 	add_child(_undock_button)
-	_action_button = UiButton.new().setup("", palette.telemetry_cyan)
-	_action_button.lamp_on = true
-	_action_button.visible = false
-	_action_button.tapped.connect(_tap_action.bind(&"interact"))
-	add_child(_action_button)
+	_context_menu = ContextMenu.new()
+	_context_menu.visible = false
+	_context_menu.chosen.connect(func(_index: int) -> void: _tap_action(&"interact"))
+	add_child(_context_menu)
 
 	_chat_button = UiButton.new().setup("", palette.telemetry_cyan)
 	_chat_button.icon = "chat"
@@ -343,13 +342,15 @@ func _layout() -> void:
 
 	_comms_log.place(Vector2(view.x - EDGE, BAR_HEIGHT + 2.0))
 	_flight_menu.place(Vector2(view.x - EDGE, BAR_HEIGHT + 2.0))
+	_context_menu.position = Vector2.ZERO
+	_context_menu.size = view
 	_place_panels()
 
 
 # Whichever of these are up sit side by side, under the top bar.
 func _place_center_buttons() -> void:
 	var showing: Array[UiButton] = []
-	for button: UiButton in [_restart_button, _undock_button, _action_button]:
+	for button: UiButton in [_restart_button, _undock_button]:
 		if button.visible:
 			showing.append(button)
 	var total: float = showing.size() * CENTER_BUTTON_WIDTH + maxi(showing.size() - 1, 0) * ROW_GAP
@@ -395,6 +396,7 @@ func _process(frame_delta: float) -> void:
 		_place_panels()
 	_check_for_hold()
 	_keep_card_current(delta)
+	_place_context_menu()
 
 
 func _physics_process(_delta: float) -> void:
@@ -576,10 +578,26 @@ func _on_docked_changed(is_docked: bool) -> void:
 
 
 func _on_action_changed(label: String) -> void:
-	_action_button.label = label
-	_action_button.visible = label != ""
-	_action_button.queue_redraw()
-	_place_center_buttons()
+	_context_menu.options = PackedStringArray([label]) if label != "" else PackedStringArray()
+	_context_menu.visible = label != ""
+	_place_context_menu()
+
+
+# The context menu sits on what the pilot's action is about, which moves, so it's placed every frame.
+func _place_context_menu() -> void:
+	if not _context_menu.visible or _pilot == null or _view == null:
+		return
+	var corners: PackedFloat64Array = _pilot.action_target()
+	var box := Rect2()
+	for i in range(0, corners.size(), 2):
+		var at: Vector2 = _view.to_screen(corners[i], corners[i + 1])
+		box = Rect2(at, Vector2.ZERO) if i == 0 else box.expand(at)
+	# Below UNDOCK and RESTART when they're up, so the label never lands under them.
+	var clear: Rect2 = _clear_area()
+	if _undock_button.visible or _restart_button.visible:
+		var below: float = BAR_HEIGHT + CENTER_BUTTON_DROP + ROW_HEIGHT + 6.0
+		clear = clear.grow_individual(0.0, -maxf(below - clear.position.y, 0.0), 0.0, 0.0)
+	_context_menu.show_at(box, corners.size() >= 8, clear)
 
 
 func _on_can_leave_changed(can_leave: bool) -> void:
@@ -646,7 +664,7 @@ func _widgets_in_reach() -> Array[UiWidget]:
 		widgets.append(_comms_log)
 	if _card.visible:
 		widgets.append_array(_card.buttons())
-	widgets.append_array([_restart_button, _undock_button, _action_button])
+	widgets.append_array([_restart_button, _undock_button, _context_menu])
 	widgets.append_array([_left_tab, _eva_button, _legs_button])
 	if not _hidden:
 		widgets.append(_lever)

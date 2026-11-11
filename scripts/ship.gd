@@ -244,6 +244,8 @@ var _landing: Dictionary = {}
 # Which bodies have air, as they're asked about.
 var _has_air: Dictionary = {}
 var _translate_forward: float = 0.0
+# Each module's drawn box on the art, for pointing at parts of the ship.
+var _module_boxes: Array[Rect2] = []
 var _translate_right: float = 0.0
 
 @onready var _flame: EngineFlame = $Flame
@@ -269,6 +271,8 @@ func _ready() -> void:
 	_rest_height = body.reach(_pivot, Vector2.DOWN)
 	fuel = body.fuel_capacity
 	rcs_fuel = design.rcs_capacity
+	for i in range(body.modules.size()):
+		_module_boxes.append(body.module_art_rect(i))
 	_aero.pressure_coefficient = design.air_pressure_coefficient
 	_update_performance()
 	_puffs.set_nozzles(body)
@@ -1265,6 +1269,25 @@ func _update_performance() -> void:
 ## How much more speed the fuel aboard can give, from the rocket equation.
 func delta_v() -> float:
 	return design.exhaust_velocity * log((body.mass + rcs_fuel + fuel) / (body.mass + rcs_fuel))
+
+
+## The cockpit's box in the world, for pointing at it: its four corners as x, y pairs, turning
+## with the ship. Empty if the cockpit's gone.
+func cockpit_corners() -> PackedFloat64Array:
+	var box := Rect2()
+	var found: bool = false
+	for i in range(body.modules.size()):
+		if body.modules[i].kind == "cockpit" and body.module_share(i) > 0.0:
+			box = _module_boxes[i] if not found else box.merge(_module_boxes[i])
+			found = true
+	var corners := PackedFloat64Array()
+	if not found:
+		return corners
+	for corner: Vector2 in [box.position, Vector2(box.end.x, box.position.y), box.end, Vector2(box.position.x, box.end.y)]:
+		var offset: Vector2 = _art_to_world(corner)
+		corners.append(state.x + offset.x)
+		corners.append(state.y + offset.y)
+	return corners
 
 
 ## Whether drag to point is turning the ship.
