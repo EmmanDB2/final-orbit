@@ -25,6 +25,8 @@ const ENGINE_CARRY: float = 2000.0
 const LOOP_FOLLOW: float = 10.0
 ## Loudness that counts as silent, in decibels.
 const SILENT_DB: float = -60.0
+## How loud the RCS hiss is at full thrust, from 0 to 1. Manny halved it on 2026-11-10.
+const RCS_LEVEL: float = 0.35
 ## The loops, each on the Effects channel.
 const LOOPS: Array[String] = ["rumble", "hiss", "servo", "wind", "roar", "breath"]
 
@@ -146,7 +148,7 @@ func _process(delta: float) -> void:
 	var outside: bool = _pilot.mode == Pilot.EVA or _pilot.mode == Pilot.SURFACE
 	var jetpack: float = 0.6 if outside and (_pilot._firing.length() > 0.01 or _pilot._jetting or absf(_pilot._turning) > 0.01) else 0.0
 	_loop_wanted["rumble"] = _engine_share * heard
-	_loop_wanted["hiss"] = maxf(_ship.rcs_activity() * 0.7 * heard, jetpack)
+	_loop_wanted["hiss"] = maxf(_ship.rcs_activity() * RCS_LEVEL * heard, jetpack)
 	_loop_wanted["servo"] = 0.6 * heard if _legs_moving else 0.0
 	# Wind from moving through the air, and a light breeze standing in it; a roar from re-entry heat.
 	var ground: PackedFloat64Array = gravity_model.get_surface_velocity(where.x, where.y, where.time)

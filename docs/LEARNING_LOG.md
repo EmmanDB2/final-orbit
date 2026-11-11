@@ -687,3 +687,11 @@ Files: `scripts/audio/sound_director.gd`, `docs/DESIGN.md`
 
 - sound that depends on the medium: a filter's cutoff following the air's density
 - mixing several causes into one loop (RCS or jetpack into the same hiss)
+
+## 2026-11-10: Fix the re-entry crash, and quieter RCS
+
+Files: `scripts/audio/sound_synth.gd`, `scripts/audio/sound_director.gd`
+
+- off-by-one: an inclusive loop end reading one sample past the buffer
+- reading a native crash log (tombstone) from `adb logcat -b crash`
+- why a bug can crash on the phone and not the Mac (the allocator's guard pages)

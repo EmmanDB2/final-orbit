@@ -167,7 +167,12 @@ static func _loop(seconds: float, sample: Callable) -> AudioStreamWAV:
 	return _wav(samples, true)
 
 
+# Godot plays the sample at the loop's end too, and on the phone reading past the end of a long sound
+# crashes the game, so every sound carries one sample more than it plays: a loop's own first sample,
+# so it stays seamless, or silence after a one-shot.
 static func _wav(samples: PackedFloat32Array, looping: bool) -> AudioStreamWAV:
+	var count: int = samples.size()
+	samples.append(samples[0] if looping else 0.0)
 	var data := PackedByteArray()
 	data.resize(samples.size() * 2)
 	for i in range(samples.size()):
@@ -180,7 +185,7 @@ static func _wav(samples: PackedFloat32Array, looping: bool) -> AudioStreamWAV:
 	if looping:
 		wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		wav.loop_begin = 0
-		wav.loop_end = samples.size()
+		wav.loop_end = count
 	return wav
 
 
