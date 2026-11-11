@@ -634,3 +634,11 @@ Files: `scripts/ui/flight_hud.gd`, `docs/DESIGN.md` (with the agency's delivery 
 
 - merging choices from two sources into one menu, each row keeping its own action (Callables)
 - an event bus in practice: the agency adds menu rows without the station or sites knowing
+
+## 2026-11-10: Gigs, ticket 4: the active-gig tracker
+
+Files: `scripts/ui/gig_tracker.gd`, `scripts/ui/flight_hud.gd`, `scripts/gig/agency.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- one widget with two looks (open panel, folded tab) and a state flag
+- reacting to a signal (gig_changed) to set the target marker once per gig
+- touch priority: which widget gets a finger when two overlap

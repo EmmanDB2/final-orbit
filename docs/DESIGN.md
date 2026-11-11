@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Active-gig tracker built from Manny's mockup, top left under the readouts, folding into an orange GIG tab; taking a gig makes its destination the target \[Leaning\] |
 | 2026-11-10 | Cargo delivery on the context menu: arriving offers UNLOAD CARGO from the cockpit, pointing at the pad or the docking port, as a second row under BOARD STATION when docked; unloading pays \[Leaning\] |
 | 2026-11-10 | Gig board built from Manny's mockup: USE TERMINAL at Kapteyn-3's gig board or a base's mission computer opens it over the flight, with gigs on the left and the picked one's pay, destination, cargo, hazards, description, and requirements on the right, and ACCEPT GIG \[Leaning\] |
 | 2026-11-10 | Gigs begun, on Manny's call from his mockups: cargo and survey gigs first, picked at gig boards; cargo rides in the cockpit and weighs; credits start at 0 and pay on delivery; one active gig at a time; the station is renamed Kapteyn-3. Ticket 1 built: gig types as data, boards filled the same way for the same seed, requirements and hazards, loading, and payout \[Leaning\] |
@@ -208,6 +209,13 @@ Boards: \[Leaning\]
 - Hazards come from the route: the delta-v margin, low, medium, or high risk, and what arriving takes (docking, a landing in air, or an airless landing).
 - The board, from Manny's mockup: USE TERMINAL at the gig board or a mission computer opens it over the flight, which keeps running. AGENCY GIG BOARD between warning signs heads it, with where it is and CLOSE [×]. Down the left, the gigs, each with its title, pay, and kind and destination; the one picked is filled orange. On the right, the picked gig: its title, payout, destination, cargo, hazards (high in red, medium in amber, low in green), what it is in a sentence, and MIN. REQS, each [x] in green or [ ] in red. [ ACCEPT GIG ] lights once they're all met, and taking a gig closes the board. The balance shows at the bottom. \[Leaning\]
 - While it's up, the pilot doesn't move or use anything. A tap off the panel closes it. On the Mac, up and down pick a gig, F takes it, and Escape closes it.
+
+Tracker: \[Leaning\]
+
+- From Manny's mockup, adapted to the HUD: while a gig's active, a panel under the readouts at the top left shows ACTIVE GIG with a warning sign, the gig's title, its steps, each [x] once done and the one being worked on marked OBJ, how far it is to where that step happens, the cargo aboard, and the pay.
+- A tap on its header folds it into an orange GIG tab at the top of the left edge, and a tap on the tab opens it again. It folds with the side panels when they hide. The tab is only there while a gig is.
+- Taking a gig makes its destination the target, so the edge marker points the way.
+- The context menu keeps off it, and gets first claim on a touch if they ever meet.
 
 Cargo gigs: \[Leaning\]
 

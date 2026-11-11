@@ -93,7 +93,9 @@ var _legs_button: UiButton
 var _eva_button: UiButton
 var _context_menu: ContextMenu
 var _gig_board: GigBoard
+var _gig_tracker: GigTracker
 var _agency: Agency
+var _targeted_gig: int = -1
 # Where the pilot was on screen against the context menu's target, and how fast that's changing, to
 # keep the label out of where they're walking.
 var _menu_pilot_from := Vector2.ZERO
@@ -146,6 +148,35 @@ func connect_agency(agency: Agency) -> void:
 	_agency = agency
 	_pilot.terminal_used.connect(_open_gig_board)
 	agency.credits_changed.connect(func(_credits: int) -> void: _gig_board.refresh())
+	agency.gig_changed.connect(_on_gig_changed)
+
+
+# A newly taken gig becomes the target, so the edge marker points the way.
+func _on_gig_changed(gig: Gig) -> void:
+	_gig_tracker.gig = gig
+	_gig_tracker.wanted_open = true if gig != null and gig.id != _targeted_gig else _gig_tracker.wanted_open
+	if gig != null and gig.id != _targeted_gig:
+		_targeted_gig = gig.id
+		var thing: Dictionary = _agency.place_thing(gig.destination)
+		if not thing.is_empty():
+			_markers.set_target(thing, _catalog.callsign_of(thing), _catalog.reach_of(thing), _view.point_getter(thing))
+	_gig_tracker.queue_redraw()
+
+
+# The tracker's numbers: how far to where the current step happens, and the cargo aboard.
+func _update_gig_tracker() -> void:
+	var gig: Gig = _agency.active if _agency != null else null
+	_gig_tracker.gig = gig
+	_gig_tracker.folded_by_panels = _hidden
+	if gig == null:
+		_gig_tracker.queue_redraw()
+		return
+	var place: Dictionary = _agency.current_place(gig)
+	var at: PackedFloat64Array = _agency.place_point(place)
+	var from: ShipState = _ship.state if _mode == Pilot.ABOARD else _pilot.state
+	_gig_tracker.distance_text = Units.distance_text(Vector2(at[0] - from.x, at[1] - from.y).length()) if at.size() == 2 else ""
+	_gig_tracker.cargo_text = "CARGO: %s KG" % Units.grouped(roundi(_ship.cargo_kg)) if _ship.cargo_kg > 0.0 else ""
+	_gig_tracker.queue_redraw()
 
 
 func _open_gig_board(place: Dictionary) -> void:
@@ -296,6 +327,8 @@ func _build() -> void:
 	_flight_menu.pause_pressed.connect(_toggle_pause)
 	_flight_menu.restart_pressed.connect(_restart)
 	add_child(_flight_menu)
+	_gig_tracker = GigTracker.new()
+	add_child(_gig_tracker)
 	# Last, so it covers everything while it's up.
 	_gig_board = GigBoard.new()
 	_gig_board.visible = false
@@ -386,6 +419,8 @@ func _layout() -> void:
 	_context_menu.size = view
 	_gig_board.position = Vector2.ZERO
 	_gig_board.size = view
+	_gig_tracker.position = Vector2(EDGE, BAR_HEIGHT + 8.0)
+	_gig_tracker.size = Vector2(GigTracker.WIDTH, 200.0)
 	_place_panels()
 
 
@@ -441,6 +476,7 @@ func _process(frame_delta: float) -> void:
 	# What a board asks for can change while it's up, such as the ship docking.
 	if _gig_board.visible:
 		_gig_board.queue_redraw()
+	_update_gig_tracker()
 	_place_context_menu(delta)
 
 
@@ -670,6 +706,9 @@ func _place_context_menu(delta: float) -> void:
 	var avoid: Array = []
 	if _ship != null:
 		avoid.append([_screen_box(_ship.hull_corners()), 2.0])
+	var tracker: Rect2 = _gig_tracker.shown_rect()
+	if tracker.has_area():
+		avoid.append([Rect2(_gig_tracker.position + tracker.position, tracker.size).grow(6.0), 4.0])
 	if _mode != Pilot.ABOARD and corners.size() >= 8:
 		var pilot_at: Vector2 = _view.to_screen(_pilot.state.x, _pilot.state.y)
 		var half: Vector2 = (PILOT_HALF * _view._zoom).max(Vector2(8.0, 12.0))
@@ -775,6 +814,9 @@ func _widgets_in_reach() -> Array[UiWidget]:
 	if _card.visible:
 		widgets.append_array(_card.buttons())
 	widgets.append_array([_restart_button, _undock_button, _context_menu])
+	# After the context menu, which keeps off it anyway, so a choice is never lost under it.
+	if _gig_tracker.gig != null:
+		widgets.append(_gig_tracker)
 	widgets.append_array([_left_tab, _eva_button, _legs_button])
 	if not _hidden:
 		widgets.append(_lever)

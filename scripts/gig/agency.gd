@@ -34,6 +34,7 @@ var _ship: Node2D
 var _pilot: Pilot
 var _station: Node2D
 var _station_design: StationDesign
+var _station_index: int = -1
 var _sites: Array = []
 # For each board, by place: its slots, each a gig or null once taken, and how many times each slot
 # has been filled, so a taken gig is replaced by a new one.
@@ -42,8 +43,9 @@ var _rounds: Dictionary = {}
 var _next_id: int = 1
 
 
-func start(gravity_model: GravityModel, ship: Node2D, pilot: Pilot, station: Node2D, station_design: StationDesign, sites: Array) -> void:
+func start(gravity_model: GravityModel, ship: Node2D, pilot: Pilot, station: Node2D, station_design: StationDesign, station_index: int, sites: Array) -> void:
 	_gravity_model = gravity_model
+	_station_index = station_index
 	_ship = ship
 	_pilot = pilot
 	_station = station
@@ -141,6 +143,23 @@ func place_point(place: Dictionary) -> PackedFloat64Array:
 		"site":
 			return _sites[place["index"]].point_at(time, _sites[place["index"]].data.pad_offset)
 	return PackedFloat64Array()
+
+
+## The thing the camera and markers know a place as, for targeting it.
+func place_thing(place: Dictionary) -> Dictionary:
+	match place.get("kind", ""):
+		"station":
+			return {"kind": "satellite", "index": _station_index}
+		"site":
+			return {"kind": "site", "index": place["index"]}
+	return {}
+
+
+## Where the gig's current step happens, or nothing once it's there.
+func current_place(gig: Gig) -> Dictionary:
+	if gig == null:
+		return {}
+	return gig.destination
 
 
 ## A place's full name, such as Kepla Moon Base.
