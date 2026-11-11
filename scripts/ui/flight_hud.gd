@@ -94,6 +94,7 @@ var _eva_button: UiButton
 var _context_menu: ContextMenu
 var _gig_board: GigBoard
 var _gig_tracker: GigTracker
+var _survey_marker: SurveyMarker
 var _agency: Agency
 var _targeted_gig: int = -1
 # Where the pilot was on screen against the context menu's target, and how fast that's changing, to
@@ -160,6 +161,10 @@ func _on_gig_changed(gig: Gig) -> void:
 		var thing: Dictionary = _agency.place_thing(gig.destination)
 		if not thing.is_empty():
 			_markers.set_target(thing, _catalog.callsign_of(thing), _catalog.reach_of(thing), _view.point_getter(thing))
+		else:
+			# A survey spot isn't anything the camera knows, so it gets its own way to be found.
+			var destination: Dictionary = gig.destination
+			_markers.set_target({"kind": "survey", "gig": gig.id}, "SURVEY", 0.0, func() -> PackedFloat64Array: return _agency.place_point(destination))
 	_gig_tracker.queue_redraw()
 
 
@@ -169,6 +174,7 @@ func _update_gig_tracker() -> void:
 	_gig_tracker.gig = gig
 	_gig_tracker.folded_by_panels = _hidden
 	if gig == null:
+		_survey_marker.visible = false
 		_gig_tracker.queue_redraw()
 		return
 	var place: Dictionary = _agency.current_place(gig)
@@ -176,6 +182,18 @@ func _update_gig_tracker() -> void:
 	var from: ShipState = _ship.state if _mode == Pilot.ABOARD else _pilot.state
 	_gig_tracker.distance_text = Units.distance_text(Vector2(at[0] - from.x, at[1] - from.y).length()) if at.size() == 2 else ""
 	_gig_tracker.cargo_text = "CARGO: %s KG" % Units.grouped(roundi(_ship.cargo_kg)) if _ship.cargo_kg > 0.0 else ""
+	if gig.type.kind == "survey":
+		match gig.step:
+			1:
+				_gig_tracker.cargo_text = "SCAN: %d%%" % roundi(gig.scan_share * 100.0) if gig.scanning or gig.scan_share > 0.0 else "LANDED: READY TO SCAN"
+			2:
+				_gig_tracker.cargo_text = "UPLINKING" if _agency.relay_in_sight else "NO RELAY IN SIGHT"
+	# The survey spot gets brackets on screen once it's in view, while it's being found and while the
+	# scan runs. Waiting to be scanned, the context menu's brackets are on it instead.
+	_survey_marker.visible = gig.type.kind == "survey" and (gig.step == 0 or (gig.step == 1 and gig.scanning))
+	if _survey_marker.visible and at.size() == 2:
+		_survey_marker.at = _view.to_screen(at[0], at[1])
+		_survey_marker.queue_redraw()
 	_gig_tracker.queue_redraw()
 
 
@@ -327,6 +345,9 @@ func _build() -> void:
 	_flight_menu.pause_pressed.connect(_toggle_pause)
 	_flight_menu.restart_pressed.connect(_restart)
 	add_child(_flight_menu)
+	_survey_marker = SurveyMarker.new()
+	_survey_marker.visible = false
+	add_child(_survey_marker)
 	_gig_tracker = GigTracker.new()
 	add_child(_gig_tracker)
 	# Last, so it covers everything while it's up.
@@ -419,6 +440,8 @@ func _layout() -> void:
 	_context_menu.size = view
 	_gig_board.position = Vector2.ZERO
 	_gig_board.size = view
+	_survey_marker.position = Vector2.ZERO
+	_survey_marker.size = view
 	_gig_tracker.position = Vector2(EDGE, BAR_HEIGHT + 8.0)
 	_gig_tracker.size = Vector2(GigTracker.WIDTH, 200.0)
 	_place_panels()

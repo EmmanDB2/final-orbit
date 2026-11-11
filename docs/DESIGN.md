@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Survey gigs built: a spot on the planet's dry land or the moon; land within 80 m, SCAN SITE for 8 seconds while landed, and the data uplinks and pays once Kapteyn-3 or a base is in line of sight; losing the ship first loses the data \[Leaning\] |
 | 2026-11-10 | Active-gig tracker built from Manny's mockup, top left under the readouts, folding into an orange GIG tab; taking a gig makes its destination the target \[Leaning\] |
 | 2026-11-10 | Cargo delivery on the context menu: arriving offers UNLOAD CARGO from the cockpit, pointing at the pad or the docking port, as a second row under BOARD STATION when docked; unloading pays \[Leaning\] |
 | 2026-11-10 | Gig board built from Manny's mockup: USE TERMINAL at Kapteyn-3's gig board or a base's mission computer opens it over the flight, with gigs on the left and the picked one's pay, destination, cargo, hazards, description, and requirements on the right, and ACCEPT GIG \[Leaning\] |
@@ -223,6 +224,15 @@ Cargo gigs: \[Leaning\]
 - Arriving offers UNLOAD CARGO on the context menu, from the cockpit, pointing at the pad or the docking port. Docked at the station it's a second row, under BOARD STATION. Unloading pays. F picks it on the Mac when nothing else is on offer.
 - The context menu gathers its rows from the pilot's own action and from the agency, so a gig can add choices to places without the places knowing about gigs.
 - Losing the ship loses the cargo, and the gig pays nothing.
+
+Survey gigs: \[Leaning\]
+
+- A survey is a spot to scan: a crater rim, a ridge line, and so on, on the planet or the moon, picked from the seed like everything on a board. On a world with seas, only on dry land. There's no scanner module yet, so the ship scans from the cockpit.
+- Its steps: LAND WITHIN 80 M OF THE SITE, SCAN THE SITE, and UPLINK THE DATA. It asks only for the delta-v there, since nothing's loaded.
+- Landed near enough, SCAN SITE shows on the context menu, on the spot. The scan takes 8 seconds and only runs while the ship stays landed there; lifting off pauses it.
+- The data uplinks by itself once Kapteyn-3 or a base is in line of sight, with no world in the way, and the gig pays then, as the payment rules say for data. Until then the tracker says NO RELAY IN SIGHT. Losing the ship before the uplink loses the data, and the gig pays nothing.
+- The spot is the target, and on screen it gets orange brackets marked SURVEY SITE while it's being found and while the scan runs.
+- Pay is a flat part and more for the route's delta-v: a moon survey from the launch base pays most.
 
 ## Player
 

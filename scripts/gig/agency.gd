@@ -22,7 +22,11 @@ const DOWN_DELTA_V: Dictionary = {"station": 30.0, "planet": 120.0, "moon": 260.
 ## world units.
 const PAD_SLACK: float = 60.0
 
-@export var gig_types: Array[GigType] = [preload("res://data/gigs/cargo.tres")]
+@export var gig_types: Array[GigType] = [preload("res://data/gigs/cargo.tres"), preload("res://data/gigs/survey.tres")]
+## Below this map band a planet's surface is sea, where nothing's surveyed.
+const SEA_BAND: float = 3.3
+## How long between checks for a relay in sight, in seconds.
+const RELAY_CHECK_SECONDS: float = 0.5
 @export var world_seed: int = 2611
 ## How many gigs each board shows.
 @export var board_size: int = 4
@@ -36,6 +40,10 @@ var _station: Node2D
 var _station_design: StationDesign
 var _station_index: int = -1
 var _sites: Array = []
+var _bodies: Dictionary = {}
+var _relay_wait: float = 0.0
+## Whether the last check found a relay in sight, for the tracker.
+var relay_in_sight: bool = false
 # For each board, by place: its slots, each a gig or null once taken, and how many times each slot
 # has been filled, so a taken gig is replaced by a new one.
 var _boards: Dictionary = {}
@@ -43,7 +51,8 @@ var _rounds: Dictionary = {}
 var _next_id: int = 1
 
 
-func start(gravity_model: GravityModel, ship: Node2D, pilot: Pilot, station: Node2D, station_design: StationDesign, station_index: int, sites: Array) -> void:
+func start(gravity_model: GravityModel, ship: Node2D, pilot: Pilot, station: Node2D, station_design: StationDesign, station_index: int, sites: Array, bodies: Dictionary = {}) -> void:
+	_bodies = bodies
 	_gravity_model = gravity_model
 	_station_index = station_index
 	_ship = ship
@@ -80,7 +89,7 @@ func requirements(gig: Gig) -> Array:
 	if gig.type.kind == "cargo":
 		rows.append(["CARGO ROOM %s/%s KG" % [Units.grouped(roundi(gig.cargo_kg)), Units.grouped(roundi(_ship.cargo_room()))], _ship.cargo_room() >= gig.cargo_kg])
 		rows.append(["SHIP DOCKED HERE" if gig.origin["kind"] == "station" else "SHIP ON THE PAD", ship_at(gig.origin)])
-	var delta_v: float = _ship.delta_v_with(gig.cargo_kg)
+	var delta_v: float = _ship.delta_v_with(gig.cargo_kg if gig.type.kind == "cargo" else 0.0)
 	rows.append(["ΔV %s/%s M/S" % [Units.speed_number(gig.route_delta_v), Units.speed_number(delta_v)], delta_v >= gig.route_delta_v])
 	if active != null and active != gig:
 		rows.append(["ONE GIG AT A TIME", false])
@@ -98,6 +107,8 @@ func hazards(gig: Gig) -> Array:
 			rows.append(["Airless landing", ""])
 		"station":
 			rows.append(["Docking", ""])
+	if gig.type.kind == "survey":
+		rows.append(["No pad: rough ground", ""])
 	return rows
 
 
@@ -119,6 +130,8 @@ func accept(gig: Gig) -> bool:
 		_ship.load_cargo(gig.cargo_kg)
 		gig.step = 1
 		message_raised.emit("CARGO LOADED: %s KG" % Units.grouped(roundi(gig.cargo_kg)), true)
+	if gig.type.kind == "survey":
+		message_raised.emit("SURVEY SITE MARKED: %s" % place_name(gig.destination).to_upper(), true)
 	gig_changed.emit(gig)
 	return true
 
@@ -130,6 +143,8 @@ func options() -> Array:
 		return []
 	if active.type.kind == "cargo" and active.step == 2:
 		return [{"label": "UNLOAD CARGO", "target": _place_box(active.destination), "run": _deliver}]
+	if active.type.kind == "survey" and active.step == 1 and not active.scanning:
+		return [{"label": "SCAN SITE", "target": _place_box(active.destination), "run": _start_scan}]
 	return []
 
 
@@ -142,6 +157,8 @@ func place_point(place: Dictionary) -> PackedFloat64Array:
 			return PackedFloat64Array([frame["x"], frame["y"]])
 		"site":
 			return _sites[place["index"]].point_at(time, _sites[place["index"]].data.pad_offset)
+		"survey":
+			return _survey_point(place, time, 0.0)
 	return PackedFloat64Array()
 
 
@@ -169,6 +186,8 @@ func place_name(place: Dictionary) -> String:
 			return _station_design.display_name
 		"site":
 			return _sites[place["index"]].data.display_name
+		"survey":
+			return "%s on %s" % [place["name"], _world_name(place["world"])]
 	return ""
 
 
@@ -179,6 +198,8 @@ func place_tag(place: Dictionary) -> String:
 			return _station_design.callsign
 		"site":
 			return _sites[place["index"]].data.chip
+		"survey":
+			return _world_name(place["world"]).to_upper()
 	return ""
 
 
@@ -202,7 +223,7 @@ func ship_at(place: Dictionary) -> bool:
 	return false
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if active == null or _ship == null:
 		return
 	if active.type.kind == "cargo":
@@ -213,6 +234,8 @@ func _physics_process(_delta: float) -> void:
 		elif active.step == 2 and not there:
 			active.step = 1
 			gig_changed.emit(active)
+	if active.type.kind == "survey":
+		_track_survey(delta)
 	# F on the Mac picks the agency's choice when the pilot has nothing of their own to do.
 	if _pilot.mode == Pilot.ABOARD and _pilot._action == "" and Input.is_action_just_pressed("interact"):
 		var offered: Array = options()
@@ -242,9 +265,10 @@ func _pay(gig: Gig, what: String) -> void:
 func _on_ship_lost() -> void:
 	if active == null:
 		return
+	var what: String = "CARGO LOST" if active.type.kind == "cargo" else "DATA LOST"
 	active.state = "failed"
 	active = null
-	message_raised.emit("GIG FAILED: CARGO LOST", false)
+	message_raised.emit("GIG FAILED: %s" % what, false)
 	gig_changed.emit(null)
 
 
@@ -267,13 +291,26 @@ func _place_box(place: Dictionary) -> Callable:
 					corners.append(at[0])
 					corners.append(at[1])
 				return corners
+		"survey":
+			return func() -> PackedFloat64Array:
+				var time: float = _ship.state.time
+				var corners := PackedFloat64Array()
+				for corner: Vector2 in [Vector2(-1.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, 0.0), Vector2(-1.0, 0.0)]:
+					var at: PackedFloat64Array = _survey_point(place, time, corner.y * 40.0, corner.x * 40.0)
+					corners.append(at[0])
+					corners.append(at[1])
+				return corners
 	return Callable()
 
 
 # The kind of place, for the route's delta-v: the station's orbit, a planet, or a moon.
 func _route_kind(place: Dictionary) -> String:
+	var world: int = -1
 	if place.get("kind", "") == "site":
-		var world: int = _sites[place["index"]].world
+		world = _sites[place["index"]].world
+	elif place.get("kind", "") == "survey":
+		world = place["world"]
+	if world >= 0:
 		return "planet" if _gravity_model.get_body_parent(world) == 0 else "moon"
 	return "station"
 
@@ -289,12 +326,14 @@ func _places() -> Array:
 func _make_gig(place: Dictionary, slot: int, round_number: int) -> Gig:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = ("%d|%s|%d|%d" % [world_seed, place_key(place), slot, round_number]).hash()
+	# Surveys need worlds to put their spots on.
+	var kinds: Array[GigType] = gig_types.filter(func(candidate: GigType) -> bool: return candidate.kind != "survey" or not _bodies.is_empty())
 	var total: float = 0.0
-	for type: GigType in gig_types:
+	for type: GigType in kinds:
 		total += type.weight
 	var pick: float = rng.randf() * total
-	var type: GigType = gig_types[0]
-	for candidate: GigType in gig_types:
+	var type: GigType = kinds[0]
+	for candidate: GigType in kinds:
 		pick -= candidate.weight
 		if pick <= 0.0:
 			type = candidate
@@ -304,7 +343,10 @@ func _make_gig(place: Dictionary, slot: int, round_number: int) -> Gig:
 	_next_id += 1
 	gig.type = type
 	gig.origin = place
-	_make_cargo(gig, rng)
+	if type.kind == "survey":
+		_make_survey(gig, rng)
+	else:
+		_make_cargo(gig, rng)
 	return gig
 
 
@@ -322,3 +364,122 @@ func _make_cargo(gig: Gig, rng: RandomNumberGenerator) -> void:
 	gig.description = "Carry %s kg of %s from %s to %s, in the cockpit. Paid once it's unloaded there; lose the ship and it's lost with it." % [Units.grouped(roundi(gig.cargo_kg)), gig.thing.to_lower(), place_name(gig.origin), to]
 	var arrive: String = "DOCK AT %s" % place_tag(gig.destination) if gig.destination["kind"] == "station" else "LAND ON THE %s PAD" % place_tag(gig.destination)
 	gig.objectives = PackedStringArray(["LOAD %s KG OF %s" % [Units.grouped(roundi(gig.cargo_kg)), gig.thing.to_upper()], arrive, "UNLOAD THE CARGO"])
+
+
+func _make_survey(gig: Gig, rng: RandomNumberGenerator) -> void:
+	var type: GigType = gig.type
+	var worlds: Array = _bodies.keys()
+	worlds.sort()
+	var world: int = worlds[rng.randi() % worlds.size()]
+	gig.thing = type.things[rng.randi() % type.things.size()]
+	var columns: int = roundi(TAU * _gravity_model.get_body_radius(world) / 2.0)
+	var column: int = rng.randi() % columns
+	# Dry land only on a world with seas.
+	var data: BodyData = _bodies[world]
+	if data.body_kind != "AIRLESS":
+		for attempt in range(40):
+			var strip: PackedFloat32Array = _gravity_model.get_ground_strip(world, column, 1, 1)
+			if strip[1] >= SEA_BAND:
+				break
+			column = rng.randi() % columns
+	gig.destination = {"kind": "survey", "world": world, "column": column, "name": gig.thing}
+	var route: float = UP_DELTA_V[_route_kind(gig.origin)] + DOWN_DELTA_V[_route_kind(gig.destination)]
+	gig.route_delta_v = route / Units.METERS_PER_UNIT
+	gig.payout = roundi((type.base_pay + route * type.pay_per_delta_v) / 100.0) * 100
+	gig.title = "%s: %s" % [type.label, gig.thing]
+	gig.description = "Land within %s of the %s on %s, scan it, and send the data home. Paid once it reaches the agency, which takes a relay in sight: Kapteyn-3 or a base. Lose the ship before then and the data's lost." % [Units.distance_text(type.site_reach).to_lower(), gig.thing.to_lower(), _world_name(world)]
+	gig.objectives = PackedStringArray(["LAND WITHIN %s OF THE SITE" % Units.distance_text(type.site_reach), "SCAN THE SITE", "UPLINK THE DATA"])
+
+
+# A survey's steps: landed near the spot, a scan running there, then the data sent once a relay's in
+# sight.
+func _track_survey(delta: float) -> void:
+	var near: bool = _ship_near_survey(active)
+	if active.step == 0 and near:
+		active.step = 1
+		gig_changed.emit(active)
+	elif active.step == 1:
+		if not near:
+			active.scanning = false
+			active.step = 0
+			gig_changed.emit(active)
+		elif active.scanning:
+			active.scan_share = minf(active.scan_share + delta / active.type.scan_seconds, 1.0)
+			if active.scan_share >= 1.0:
+				active.scanning = false
+				active.step = 2
+				message_raised.emit("SCAN COMPLETE: DATA STORED", true)
+				gig_changed.emit(active)
+	elif active.step == 2:
+		_relay_wait -= delta
+		if _relay_wait <= 0.0:
+			_relay_wait = RELAY_CHECK_SECONDS
+			relay_in_sight = _relay_in_sight()
+			if relay_in_sight:
+				_pay(active, "DATA UPLINKED")
+
+
+func _start_scan() -> void:
+	if active != null and active.type.kind == "survey" and active.step == 1:
+		active.scanning = true
+		message_raised.emit("SCANNING", true)
+		gig_changed.emit(active)
+
+
+# Landed within reach of the survey spot, measured along the ground.
+func _ship_near_survey(gig: Gig) -> bool:
+	var state: ShipState = _ship.state
+	var world: int = gig.destination["world"]
+	if not state.is_on_surface() or _gravity_model.get_dominant_body(state.x, state.y, state.time) != world:
+		return false
+	var center: PackedFloat64Array = _gravity_model.get_body_position(world, state.time)
+	var radius: float = _gravity_model.get_body_radius(world)
+	var ship_angle: float = atan2(state.x - center[0], center[1] - state.y)
+	return absf(angle_difference(ship_angle, _survey_angle(gig.destination, state.time))) * radius <= gig.type.site_reach
+
+
+# Whether the ship can see Kapteyn-3 or a base, with no world in the way.
+func _relay_in_sight() -> bool:
+	var state: ShipState = _ship.state
+	var from := Vector2(state.x, state.y)
+	var relays: Array = [place_point({"kind": "station"})]
+	for site: SiteView in _sites:
+		relays.append(site.middle(state.time))
+	for relay: PackedFloat64Array in relays:
+		if _clear_line(from, Vector2(relay[0], relay[1]), state.time):
+			return true
+	return false
+
+
+func _clear_line(from: Vector2, to: Vector2, time: float) -> bool:
+	for world: int in _bodies.keys():
+		var center: PackedFloat64Array = _gravity_model.get_body_position(world, time)
+		var middle := Vector2(center[0], center[1])
+		var along: Vector2 = to - from
+		var share: float = clampf((middle - from).dot(along) / maxf(along.length_squared(), 1.0), 0.0, 1.0)
+		if (from + along * share).distance_to(middle) < _gravity_model.get_body_radius(world) - 1.0:
+			return false
+	return true
+
+
+func _survey_angle(place: Dictionary, time: float) -> float:
+	var world: int = place["world"]
+	var data: BodyData = _bodies[world]
+	return (place["column"] + 0.5) * 2.0 / _gravity_model.get_body_radius(world) + data.spin_rate * time
+
+
+# The survey spot on the ground, or up from it, or along the ground from it, in world units.
+func _survey_point(place: Dictionary, time: float, up: float = 0.0, along: float = 0.0) -> PackedFloat64Array:
+	var world: int = place["world"]
+	var radius: float = _gravity_model.get_body_radius(world)
+	var center: PackedFloat64Array = _gravity_model.get_body_position(world, time)
+	var angle: float = _survey_angle(place, time) + along / radius
+	var way := Vector2(sin(angle), -cos(angle))
+	var ground: float = _gravity_model.get_ground_height(center[0] + way.x * radius, center[1] + way.y * radius, time)
+	var reach: float = radius + ground + up
+	return PackedFloat64Array([center[0] + way.x * reach, center[1] + way.y * reach])
+
+
+func _world_name(world: int) -> String:
+	var data: BodyData = _bodies.get(world)
+	return data.display_name if data != null else ""

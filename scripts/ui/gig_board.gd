@@ -222,8 +222,11 @@ func _draw_detail(gig: Gig) -> void:
 	var rows: Array = [
 		["PAYOUT:", "%s Cr" % Units.grouped(gig.payout)],
 		["TO:", _agency.place_name(gig.destination)],
-		["CARGO:", "%s kg of %s" % [Units.grouped(roundi(gig.cargo_kg)), gig.thing.to_lower()]],
 	]
+	if gig.type.kind == "cargo":
+		rows.append(["CARGO:", "%s kg of %s" % [Units.grouped(roundi(gig.cargo_kg)), gig.thing.to_lower()]])
+	else:
+		rows.append(["SCAN:", "%d s, within %s" % [roundi(gig.type.scan_seconds), Units.distance_text(gig.type.site_reach).to_lower()]])
 	for row: Array in rows:
 		UiStyle.draw_text(self, row[0], Vector2(area.position.x, y + 4.0), palette.hull_lighter, 1)
 		UiStyle.draw_text(self, row[1], Vector2(value_x, y), palette.hull_lightest)

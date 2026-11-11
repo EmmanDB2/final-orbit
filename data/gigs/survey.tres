@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="GigType" format=3]
+
+[ext_resource type="Script" path="res://scripts/gig/gig_type.gd" id="1_type"]
+
+[resource]
+script = ExtResource("1_type")
+kind = "survey"
+label = "SURVEY"
+category = "EXPLORE & SURVEY"
+things = PackedStringArray("Crater rim", "Ridge line", "Basalt plain", "Highland", "Old lava flow", "Impact site", "Dry valley", "Rock field")
+weight = 0.8
+base_pay = 3000
+pay_per_delta_v = 14.0
+pay_per_tonne = 0.0
+site_reach = 1600.0
+scan_seconds = 8.0

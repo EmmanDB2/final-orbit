@@ -23,3 +23,7 @@ extends Resource
 @export var lightest: float = 100.0
 @export var heaviest: float = 500.0
 @export var mass_step: float = 50.0
+## Surveys: how close to the spot the ship has to land, in world units, and how long a scan takes
+## there, in seconds.
+@export var site_reach: float = 1600.0
+@export var scan_seconds: float = 8.0

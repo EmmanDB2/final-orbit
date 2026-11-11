@@ -21,3 +21,6 @@ var state: String = "offered"
 ## The steps, each as its text, in order; the step being worked on is step.
 var objectives: PackedStringArray = PackedStringArray()
 var step: int = 0
+## Surveys: how far the scan's got, from 0 to 1, and whether it's running.
+var scan_share: float = 0.0
+var scanning: bool = false

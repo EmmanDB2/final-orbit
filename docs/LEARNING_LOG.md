@@ -642,3 +642,11 @@ Files: `scripts/ui/gig_tracker.gd`, `scripts/ui/flight_hud.gd`, `scripts/gig/age
 - one widget with two looks (open panel, folded tab) and a state flag
 - reacting to a signal (gig_changed) to set the target marker once per gig
 - touch priority: which widget gets a finger when two overlap
+
+## 2026-11-10: Gigs, ticket 5: survey gigs
+
+Files: `scripts/gig/agency.gd`, `scripts/gig/gig.gd`, `scripts/gig/gig_type.gd`, `data/gigs/survey.tres`, `scripts/ui/survey_marker.gd`, `scripts/ui/gig_board.gd`, `scripts/ui/flight_hud.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- line of sight: the closest point on a segment to a circle's center
+- angles around a turning world (a spot's angle grows with the world's spin)
+- progress over time that pauses when its condition breaks

@@ -75,7 +75,7 @@ func _ready() -> void:
 	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide, catalog, $Hud/SafeArea/TargetMarkers, $Hud/SafeArea/CommsLine, $Pilot)
 	agency = Agency.new()
 	add_child(agency)
-	agency.start(gravity_model, $Ship, $Pilot, $Station, station, station_index, _site_views)
+	agency.start(gravity_model, $Ship, $Pilot, $Station, station, station_index, _site_views, {planet_index: planet, moon_index: moon})
 	var warp := TimeWarp.new()
 	add_child(warp)
 	warp.start(gravity_model, $Ship, $Pilot)
