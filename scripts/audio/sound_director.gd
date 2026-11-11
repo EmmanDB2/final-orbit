@@ -46,6 +46,11 @@ var _pilot: Pilot
 var _engine_share: float = 0.0
 var _legs_moving: bool = false
 var _buzz_wait: float = 0.0
+## Every sound slot, made ahead on another thread at start so none is made mid-flight.
+const SLOTS: Array[String] = ["click", "tick", "clunk", "cover", "blip", "warning", "alarm", "chime", "thud", "crunch", "rumble", "hiss", "servo", "wind", "roar", "breath"]
+var _made: Dictionary = {}
+var _making: int = -1
+var _making_lock := Mutex.new()
 
 
 func _ready() -> void:
@@ -69,6 +74,7 @@ func _ready() -> void:
 		_loops[slot] = loop
 		_loop_wanted[slot] = 0.0
 		_loop_level[slot] = 0.0
+	_making = WorkerThreadPool.add_task(_make_all, false, "Make sounds")
 
 
 ## Listens to the HUD, the comms line, the ship, and the pilot.
@@ -100,8 +106,25 @@ func play(slot: String, channel: String, volume_db: float = 0.0, pitch: float = 
 
 func _stream(slot: String) -> AudioStream:
 	if not _streams.has(slot):
-		_streams[slot] = sounds.stream(slot)
+		_making_lock.lock()
+		var ready: AudioStream = _made.get(slot)
+		_making_lock.unlock()
+		_streams[slot] = ready if ready != null else sounds.stream(slot)
 	return _streams[slot]
+
+
+# On another thread: every sound made once, so the first engine burn doesn't wait for its rumble.
+func _make_all() -> void:
+	for slot: String in SLOTS:
+		var made: AudioStream = sounds.stream(slot)
+		_making_lock.lock()
+		_made[slot] = made
+		_making_lock.unlock()
+
+
+func _exit_tree() -> void:
+	if _making >= 0:
+		WorkerThreadPool.wait_for_task_completion(_making)
 
 
 func _process(delta: float) -> void:

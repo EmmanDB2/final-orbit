@@ -680,6 +680,7 @@ Decided 2026-11-10, on Manny's call. \[Leaning\]
 - One sound director plays everything by listening to what happens, through signals, so no other system knows sound exists. Four channels, each with its own volume for a settings screen later: Effects for the ship and the world, UI for the cockpit, Radio for the comms, and Music.
 - Sounds are data: `data/sound_set.tres` names a sound for each event, and any it leaves empty is made by the game itself (`scripts/audio/sound_synth.gd`), from shaped noise and tones, so the game has sound before it has recordings. Recordings can replace them one at a time.
 - How it's built: the Effects channel's filter sits at 650 Hz through the hull and 3,500 Hz through the suit's microphone, and opens toward 9,000 Hz with the square root of the air's density. Wind grows with how fast the ship or pilot moves through the air, a full gale at about 20 m/s at the ground's density; standing outside in air there's a light breeze. The re-entry roar follows the heat. Outside, the ship's engine, RCS, and legs carry across air only, fading out by 100 m. \[Leaning\]
+- Every sound the game makes itself is made at start on another thread, so nothing waits for one mid-flight.
 - Time warp doesn't change sounds' pitch.
 
 ## Art direction
