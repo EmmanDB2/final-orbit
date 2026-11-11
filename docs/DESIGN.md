@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Gig board built from Manny's mockup: USE TERMINAL at Kapteyn-3's gig board or a base's mission computer opens it over the flight, with gigs on the left and the picked one's pay, destination, cargo, hazards, description, and requirements on the right, and ACCEPT GIG \[Leaning\] |
 | 2026-11-10 | Gigs begun, on Manny's call from his mockups: cargo and survey gigs first, picked at gig boards; cargo rides in the cockpit and weighs; credits start at 0 and pay on delivery; one active gig at a time; the station is renamed Kapteyn-3. Ticket 1 built: gig types as data, boards filled the same way for the same seed, requirements and hazards, loading, and payout \[Leaning\] |
 | 2026-11-10 | Context menu labels move to stay out of the way, on Manny's call: they keep off the ship, the pilot, and where the pilot's heading, going above when beside won't do, and the line to the thing runs straight or diagonal like the hold card's \[Leaning\] |
 | 2026-11-10 | In-world context menus replace the action button, from Manny's mockup: corner brackets on the thing itself (the cockpit for BOARD SHIP, a hatch, a door, a console), a dotted line out to a label with a diamond, and a tap on the label. The same menu serves ships, stations, doors, and boards, a row per choice \[Leaning\] |
@@ -204,6 +205,8 @@ Boards: \[Leaning\]
 - Pay is a flat part, more for the route's delta-v, and more per tonne carried, rounded to 100 Cr. A route's delta-v is a rough sum, one leg up to the station's orbit and one down: from the planet's surface 400 m/s up and 120 down, from the moon 250 up and 260 down, and 30 to dock. So a run from the launch base to the moon base pays most.
 - Each gig lists its requirements, met in green and unmet in red, and a gig can only be taken with all of them met: cargo room, the ship at the place it starts (docked at the station, or landed on the base's pad), and the delta-v the route takes with the cargo aboard.
 - Hazards come from the route: the delta-v margin, low, medium, or high risk, and what arriving takes (docking, a landing in air, or an airless landing).
+- The board, from Manny's mockup: USE TERMINAL at the gig board or a mission computer opens it over the flight, which keeps running. AGENCY GIG BOARD between warning signs heads it, with where it is and CLOSE [×]. Down the left, the gigs, each with its title, pay, and kind and destination; the one picked is filled orange. On the right, the picked gig: its title, payout, destination, cargo, hazards (high in red, medium in amber, low in green), what it is in a sentence, and MIN. REQS, each [x] in green or [ ] in red. [ ACCEPT GIG ] lights once they're all met, and taking a gig closes the board. The balance shows at the bottom. \[Leaning\]
+- While it's up, the pilot doesn't move or use anything. A tap off the panel closes it. On the Mac, up and down pick a gig, F takes it, and Escape closes it.
 
 Cargo gigs: \[Leaning\]
 

@@ -92,6 +92,8 @@ var _tap_started: int = 0
 var _legs_button: UiButton
 var _eva_button: UiButton
 var _context_menu: ContextMenu
+var _gig_board: GigBoard
+var _agency: Agency
 # Where the pilot was on screen against the context menu's target, and how fast that's changing, to
 # keep the label out of where they're walking.
 var _menu_pilot_from := Vector2.ZERO
@@ -135,6 +137,26 @@ func _ready() -> void:
 	_hidden = false
 	_idle_seconds = 0.0
 	_place_panels()
+
+
+## Connects the agency, for its gig boards.
+func connect_agency(agency: Agency) -> void:
+	_agency = agency
+	_pilot.terminal_used.connect(_open_gig_board)
+	agency.credits_changed.connect(func(_credits: int) -> void: _gig_board.refresh())
+
+
+func _open_gig_board(place: Dictionary) -> void:
+	if _agency == null:
+		return
+	_card.visible = false
+	_release_everything()
+	_pilot.input_blocked = true
+	_gig_board.open(_agency, place)
+
+
+func _on_gig_board_closed() -> void:
+	_pilot.input_blocked = false
 
 
 ## Connects the time warp control to the warp.
@@ -272,6 +294,11 @@ func _build() -> void:
 	_flight_menu.pause_pressed.connect(_toggle_pause)
 	_flight_menu.restart_pressed.connect(_restart)
 	add_child(_flight_menu)
+	# Last, so it covers everything while it's up.
+	_gig_board = GigBoard.new()
+	_gig_board.visible = false
+	_gig_board.closed.connect(_on_gig_board_closed)
+	add_child(_gig_board)
 
 
 func _side_panel() -> SidePanel:
@@ -355,6 +382,8 @@ func _layout() -> void:
 	_flight_menu.place(Vector2(view.x - EDGE, BAR_HEIGHT + 2.0))
 	_context_menu.position = Vector2.ZERO
 	_context_menu.size = view
+	_gig_board.position = Vector2.ZERO
+	_gig_board.size = view
 	_place_panels()
 
 
@@ -407,6 +436,9 @@ func _process(frame_delta: float) -> void:
 		_place_panels()
 	_check_for_hold()
 	_keep_card_current(delta)
+	# What a board asks for can change while it's up, such as the ship docking.
+	if _gig_board.visible:
+		_gig_board.queue_redraw()
 	_place_context_menu(delta)
 
 
@@ -694,8 +726,12 @@ func _on_pilot_mode_changed(mode: String) -> void:
 
 
 func _widgets_in_reach() -> Array[UiWidget]:
-	# Whatever's on top gets first say. While paused, only the way out works.
+	# Whatever's on top gets first say. While paused, only the way out works. A gig board takes
+	# every touch while it's up.
 	var widgets: Array[UiWidget] = []
+	if _gig_board.visible:
+		widgets.append(_gig_board)
+		return widgets
 	if _flight_menu.visible:
 		widgets.append_array(_flight_menu.buttons())
 	widgets.append(_flight_button)

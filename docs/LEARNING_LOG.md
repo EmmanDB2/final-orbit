@@ -619,3 +619,11 @@ Files: `scripts/gig/gig_type.gd`, `scripts/gig/gig.gd`, `scripts/gig/agency.gd`,
 - seeded random numbers: the same seed and inputs give the same results
 - Resources as data (GigType) versus plain objects (Gig, RefCounted)
 - the rocket equation with cargo as dry mass
+
+## 2026-11-10: Gigs, ticket 2: the gig board screen
+
+Files: `scripts/ui/gig_board.gd`, `scripts/ui/flight_hud.gd`, `scripts/ui/comms_line.gd`, `scripts/pilot.gd`, `scripts/site/site_building.gd`, `data/launch_base.tres`, `data/moon_base.tres`, `scripts/main.gd`, `tools/make_hud_font.gd`, `art/hud_font.png`, `scripts/ui/ui_style.gd`, `docs/DESIGN.md`
+
+- a modal screen: one widget that takes every touch while it's up
+- hit-testing named regions (rows, buttons) from one finger position
+- word wrapping text to a width

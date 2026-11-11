@@ -81,6 +81,11 @@ func _on_ship_lifted_off() -> void:
 	queue_redraw()
 
 
+## The agency's news: good news in green, trouble in amber.
+func on_agency_message(text: String, good: bool) -> void:
+	_show_message(text, UiStyle.palette().telemetry_green if good else UiStyle.palette().telemetry_amber)
+
+
 func _on_ship_warning_raised(text: String) -> void:
 	_show_message(text, UiStyle.palette().telemetry_amber)
 

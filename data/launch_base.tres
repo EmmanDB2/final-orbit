@@ -42,6 +42,7 @@ ladders = PackedVector3Array(205, 122, 172)
 door = Vector2(33, 172)
 terminals = PackedVector2Array(120, 122)
 terminal_messages = PackedStringArray("NO MISSIONS POSTED YET")
+board_terminals = PackedInt32Array(0)
 
 [resource]
 script = ExtResource("1_site")

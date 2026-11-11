@@ -80,6 +80,8 @@ func _ready() -> void:
 	add_child(warp)
 	warp.start(gravity_model, $Ship, $Pilot)
 	$Hud/SafeArea/FlightHud.connect_warp(warp)
+	$Hud/SafeArea/FlightHud.connect_agency(agency)
+	agency.message_raised.connect($Hud/SafeArea/CommsLine.on_agency_message)
 	warp.message_raised.connect($Hud/SafeArea/CommsLine._on_ship_warning_raised)
 	_start_landing_forecast()
 	$Ship.start_flight(gravity_model, state, PI / 2.0)

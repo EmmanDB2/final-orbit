@@ -25,6 +25,9 @@ signal can_leave_changed(can_leave: bool)
 signal stranded_changed(stranded: bool)
 ## Emitted when the pilot should hear something.
 signal message_raised(text: String)
+## Emitted when the pilot uses a gig board: the station's, or a base's mission computer. The place is
+## {"kind": "station"} or {"kind": "site", "index": i}.
+signal terminal_used(place: Dictionary)
 
 const ABOARD: String = "aboard"
 const EVA: String = "eva"
@@ -69,6 +72,8 @@ var _local := Vector2.ZERO
 var _walking := Vector2.ZERO
 var _local_facing: float = 0.0
 var _action: String = ""
+## True while a screen like the gig board is up: the pilot doesn't walk or use things then.
+var input_blocked: bool = false
 # Says where what the action's about is, as box corners in the world.
 var _action_target: Callable = Callable()
 var _can_leave: bool = false
@@ -339,7 +344,7 @@ func _tick_inside(delta: float) -> void:
 	if _action != "" and _interact_pressed():
 		match _action:
 			"USE TERMINAL":
-				message_raised.emit("NO GIGS POSTED YET")
+				terminal_used.emit({"kind": "station", "index": 0})
 			"BOARD SHIP":
 				_board_ship()
 			"EXIT STATION":
@@ -626,7 +631,11 @@ func _tick_indoors(delta: float) -> void:
 		if _action == "EXIT":
 			_leave_building()
 			return
-		message_raised.emit(building.terminal_messages[_terminal_at(building, _spot)])
+		var terminal: int = _terminal_at(building, _spot)
+		if building.board_terminals.has(terminal):
+			terminal_used.emit({"kind": "site", "index": _sites.find(_site)})
+		else:
+			message_raised.emit(building.terminal_messages[terminal])
 	_place_indoors()
 	if Engine.get_physics_frames() % telemetry_interval_ticks == 0:
 		_report()
@@ -698,7 +707,7 @@ func _show_pose(frame: int, seconds: float) -> void:
 
 # One press does one thing, even when doing it opens up something else to do.
 func _interact_pressed() -> bool:
-	if not Input.is_action_just_pressed("interact") or _last_interact_frame == Engine.get_physics_frames():
+	if input_blocked or not Input.is_action_just_pressed("interact") or _last_interact_frame == Engine.get_physics_frames():
 		return false
 	_last_interact_frame = Engine.get_physics_frames()
 	return true
@@ -717,6 +726,8 @@ func _wanted_move() -> Vector2:
 ## Which way the player's pushing the pilot, on screen, from the arrows or a drag: nothing if
 ## they're not. The context menu uses it to keep out of the way.
 func wanted_on_screen() -> Vector2:
+	if input_blocked:
+		return Vector2.ZERO
 	var on_screen := Vector2(
 			Input.get_axis("translate_left", "translate_right") + Input.get_axis("turn_left", "turn_right"),
 			-Input.get_axis("translate_back", "translate_forward") - (1.0 if Input.is_action_pressed("thrust") else 0.0))

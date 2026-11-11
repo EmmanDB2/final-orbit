@@ -28,3 +28,6 @@ extends Resource
 ## Terminals, each as (x, floor height), and what each says when used.
 @export var terminals: PackedVector2Array = PackedVector2Array()
 @export var terminal_messages: PackedStringArray = PackedStringArray()
+## Which terminals are gig boards, by their place in terminals. Using one opens the board of gigs
+## that start at this site, instead of showing its message.
+@export var board_terminals: PackedInt32Array = PackedInt32Array()
