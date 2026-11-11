@@ -91,8 +91,8 @@ own_port = 0
 
 [resource]
 script = ExtResource("1_design")
-display_name = "Home Station"
-callsign = "HOME"
+display_name = "Kapteyn-3"
+callsign = "KAPTEYN-3"
 rooms = Array[ExtResource("2_room")]([SubResource("Room_0"), SubResource("Room_1"), SubResource("Room_2"), SubResource("Room_3"), SubResource("Room_4"), SubResource("Room_5")])
 art_pixel_size = 2.0
 orbit_altitude = 30000.0

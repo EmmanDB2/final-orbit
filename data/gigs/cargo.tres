@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GigType" format=3]
+
+[ext_resource type="Script" path="res://scripts/gig/gig_type.gd" id="1_type"]
+
+[resource]
+script = ExtResource("1_type")
+kind = "cargo"
+label = "CARGO"
+category = "CARGO & DELIVERY"
+things = PackedStringArray("Water ice", "Medical supplies", "Seed stock", "Spare valves", "Survey drones", "Ore samples", "Fuel cells", "Mail")
+weight = 1.0
+base_pay = 2000
+pay_per_delta_v = 12.0
+pay_per_tonne = 1500.0
+lightest = 400.0
+heaviest = 2500.0
+mass_step = 100.0

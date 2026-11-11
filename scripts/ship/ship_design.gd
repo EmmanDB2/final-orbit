@@ -68,3 +68,5 @@ extends Resource
 ## How much propellant the RCS's own tank holds, in kilograms, apart from the engine's fuel. The
 ## lander's lasts two minutes firing flat out.
 @export var rcs_capacity: float = 2400.0
+## How much cargo the ship can carry, in kilograms. The lander carries it in the cockpit.
+@export var cargo_capacity: float = 3000.0

@@ -153,6 +153,8 @@ var body: ShipBody
 var fuel: float = 0.0
 ## RCS propellant aboard, in kilograms, in its own tank. Turning and translating use it.
 var rcs_fuel: float = 0.0
+## Cargo aboard, in kilograms, for a gig. It's mass like anything else.
+var cargo_kg: float = 0.0
 ## Main engine acceleration right now, in world units per second squared.
 var thrust_acceleration: float = 0.0
 ## How quickly the RCS changes the spin right now, in radians per second squared.
@@ -423,6 +425,8 @@ func status() -> Dictionary:
 		"mass": _mass_now,
 		"fuel_share": fuel / body.original_fuel_capacity,
 		"rcs_share": rcs_fuel / design.rcs_capacity if design.rcs_capacity > 0.0 else 0.0,
+		"cargo_kg": cargo_kg,
+		"cargo_capacity": design.cargo_capacity,
 		"delta_v": delta_v(),
 		"hull_share": float(body.pixel_count) / body.original_pixel_count,
 		"engine_share": _engine_share,
@@ -634,7 +638,7 @@ func _push_through_air(delta: float) -> bool:
 	var along_nose: float = absf(through_x * sin(heading) - through_y * cos(heading)) / speed
 	var across_nose: float = sqrt(maxf(1.0 - along_nose * along_nose, 0.0))
 	var catching: float = body.width * along_nose + body.length * across_nose
-	var mass_now: float = body.mass + fuel + rcs_fuel
+	var mass_now: float = body.mass + fuel + rcs_fuel + cargo_kg
 	var slowing: float = 0.5 * density * speed * speed * design.drag_coefficient * catching / mass_now
 	var change: float = minf(slowing * delta, speed)
 	state.velocity_x -= through_x / speed * change
@@ -1255,7 +1259,7 @@ func _check_stranded() -> void:
 func _update_performance() -> void:
 	var now: Dictionary = body.with_fuel(fuel)
 	# The RCS tank is small and near the middle, so it adds mass but barely any spin resistance.
-	_mass_now = now["mass"] + rcs_fuel
+	_mass_now = now["mass"] + rcs_fuel + cargo_kg
 	_spin_resistance_now = now["spin_resistance"]
 	thrust_acceleration = design.engine_force * _engine_share / _mass_now
 	turn_acceleration = design.rcs_torque / now["spin_resistance"]
@@ -1268,7 +1272,34 @@ func _update_performance() -> void:
 
 ## How much more speed the fuel aboard can give, from the rocket equation.
 func delta_v() -> float:
-	return design.exhaust_velocity * log((body.mass + rcs_fuel + fuel) / (body.mass + rcs_fuel))
+	return delta_v_with(0.0)
+
+
+## The same with this much more cargo aboard, in kilograms, for checking a gig before taking it.
+func delta_v_with(extra_kg: float) -> float:
+	var dry: float = body.mass + rcs_fuel + cargo_kg + extra_kg
+	return design.exhaust_velocity * log((dry + fuel) / dry)
+
+
+## How much more cargo fits, in kilograms.
+func cargo_room() -> float:
+	return maxf(design.cargo_capacity - cargo_kg, 0.0)
+
+
+## Takes cargo aboard, in kilograms.
+func load_cargo(kg: float) -> void:
+	cargo_kg += kg
+	_update_performance()
+	orbit_changed.emit()
+
+
+## Takes all the cargo off, and says how much there was.
+func unload_cargo() -> float:
+	var had: float = cargo_kg
+	cargo_kg = 0.0
+	_update_performance()
+	orbit_changed.emit()
+	return had
 
 
 ## The cockpit's box in the world, for pointing at it: its four corners as x, y pairs, turning

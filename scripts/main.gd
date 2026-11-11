@@ -16,6 +16,10 @@ extends Node2D
 ## Places built on worlds.
 @export var sites: Array[SiteData] = [preload("res://data/launch_base.tres"), preload("res://data/moon_base.tres")]
 
+## The agency: gig boards, the gig taken, and credits.
+var agency: Agency
+var _site_views: Array = []
+
 
 func _ready() -> void:
 	var gravity_model := PatchedConicsModel.new()
@@ -69,6 +73,9 @@ func _ready() -> void:
 	$Camera2D.set_pilot($Pilot)
 	catalog.set_pilot($Pilot)
 	$Hud/SafeArea/FlightHud.connect_flight($Ship, $Camera2D, $TurnGuide, catalog, $Hud/SafeArea/TargetMarkers, $Hud/SafeArea/CommsLine, $Pilot)
+	agency = Agency.new()
+	add_child(agency)
+	agency.start(gravity_model, $Ship, $Pilot, $Station, station, _site_views)
 	var warp := TimeWarp.new()
 	add_child(warp)
 	warp.start(gravity_model, $Ship, $Pilot)
@@ -96,6 +103,7 @@ func _start_landing_forecast() -> void:
 # A site draws behind the station, ship, and pilot, and in front of the ground.
 func _start_site(gravity_model: GravityModel, state: ShipState, site: SiteData, world: int, level_height: float, catalog: WorldCatalog) -> void:
 	var view := SiteView.new()
+	_site_views.append(view)
 	add_child(view)
 	move_child(view, $Station.get_index())
 	view.start_site(gravity_model, state, site, world, level_height, $Ship)

@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Gigs begun, on Manny's call from his mockups: cargo and survey gigs first, picked at gig boards; cargo rides in the cockpit and weighs; credits start at 0 and pay on delivery; one active gig at a time; the station is renamed Kapteyn-3. Ticket 1 built: gig types as data, boards filled the same way for the same seed, requirements and hazards, loading, and payout \[Leaning\] |
 | 2026-11-10 | Context menu labels move to stay out of the way, on Manny's call: they keep off the ship, the pilot, and where the pilot's heading, going above when beside won't do, and the line to the thing runs straight or diagonal like the hold card's \[Leaning\] |
 | 2026-11-10 | In-world context menus replace the action button, from Manny's mockup: corner brackets on the thing itself (the cockpit for BOARD SHIP, a hatch, a door, a console), a dotted line out to a label with a diamond, and a tap on the label. The same menu serves ships, stations, doors, and boards, a row per choice \[Leaning\] |
 | 2026-11-10 | Nose fins for the lander cut, on Manny's call after seeing them drawn in the asset editor: he didn't like how they look. The lander's tilt in air stays as piloting \[Cut\] |
@@ -183,6 +184,32 @@ Risk and pacing: \[Leaning\]
 Zen Mode: no gigs, no pay, unlimited fuel, free time warp, ambient music. It doubles as the physics test bed. \[Locked\]
 
 Single player only. Pure sandbox for now, no story. \[Locked\]
+
+## Gigs
+
+Decided 2026-11-10, on Manny's call, from his mockups of the gig board and the active-gig tracker. \[Leaning\]
+
+- Tier 1 starts with cargo and survey gigs. Destroy or disable gigs wait on the open question about combat, and salvage (detaching parts from wrecks) is Tier 2.
+- Gigs only go to places that exist: the station Kapteyn-3, the launch base, the moon base, and survey spots on the planet and moon. Lagrange points wait on n-body physics.
+- The station is named Kapteyn-3, callsign KAPTEYN-3, from Manny's mockup, replacing Home Station.
+- Cargo rides in the lander's cockpit, up to 3 tonnes, and weighs what it says: a 2-tonne load costs about 40 m/s of delta-v and some thrust. A cargo module can come later with its own art.
+- Pay is in credits, Cr. A run starts at 0 Cr, and a gig pays when its deliverable arrives, as the payment rules say. Docking stays free until Manny sets prices; economy numbers are still open.
+- One active gig at a time to start; chaining several, as the core loop has it, comes once the first gig plays well.
+- There's no saving yet, so credits and finished gigs last one flight.
+
+Boards: \[Leaning\]
+
+- Each place with a gig board shows four gigs that start there: the station's gig board, and the mission computer at each base. A gig taken off a board is replaced by a new one.
+- Gigs are made from gig types in data files (`data/gigs/`), each slot from the seed, the place, the slot, and how many times it's been filled, so the same seed always gives the same gigs.
+- Pay is a flat part, more for the route's delta-v, and more per tonne carried, rounded to 100 Cr. A route's delta-v is a rough sum, one leg up to the station's orbit and one down: from the planet's surface 400 m/s up and 120 down, from the moon 250 up and 260 down, and 30 to dock. So a run from the launch base to the moon base pays most.
+- Each gig lists its requirements, met in green and unmet in red, and a gig can only be taken with all of them met: cargo room, the ship at the place it starts (docked at the station, or landed on the base's pad), and the delta-v the route takes with the cargo aboard.
+- Hazards come from the route: the delta-v margin, low, medium, or high risk, and what arriving takes (docking, a landing in air, or an airless landing).
+
+Cargo gigs: \[Leaning\]
+
+- Taking one loads the cargo then and there. The steps are LOAD, then DOCK AT the station or LAND ON the base's PAD, then UNLOAD THE CARGO.
+- Arriving offers UNLOAD CARGO on the context menu, from the cockpit, pointing at the pad or the docking port. Unloading pays.
+- Losing the ship loses the cargo, and the gig pays nothing.
 
 ## Player
 
@@ -579,7 +606,7 @@ Turning and RCS controls: \[Leaning\]
 
 Edge markers: \[Leaning\]
 
-- Off-screen targets (gig destinations, stations, bodies) show at the screen edge as small agency-orange arrows with a callsign and distance (for example "HOME 236 km").
+- Off-screen targets (gig destinations, stations, bodies) show at the screen edge as small agency-orange arrows with a callsign and distance (for example "KAPTEYN-3 236 km").
 - There's one target at a time, set from a card. The first station starts as the target. The marker stays inside the part of the view the panels leave clear, and it goes away once part of the target could be in view. Zoomed out until it's small, the callsign and distance show beside it instead. \[Leaning\]
 
 Control reference: the old mobile game Space Agency (rotate and translate button pads, off-screen target markers).

@@ -174,6 +174,7 @@ func _ship_info() -> Dictionary:
 		["MASS", "%s kg" % _grouped(int(status["mass"])), true],
 		["FUEL", "%d%%" % roundi(status["fuel_share"] * 100.0), true],
 		["RCS", "%d%%" % roundi(status["rcs_share"] * 100.0), true],
+		["CARGO", "%s / %s kg" % [_grouped(roundi(status["cargo_kg"])), _grouped(roundi(status["cargo_capacity"]))], true],
 		["ΔV", _speed(status["delta_v"]), true],
 		["HULL", "%d%%" % roundi(status["hull_share"] * 100.0), true],
 		["ENGINE", "%d%%" % roundi(status["engine_share"] * 100.0), true],

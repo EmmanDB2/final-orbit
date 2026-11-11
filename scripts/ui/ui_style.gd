@@ -2,7 +2,7 @@
 # cyan for whatever's on. From DESIGN.md, "UI" (agency palette only).
 class_name UiStyle
 
-const FONT_CHARACTERS: String = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz:+-.,()/%?'!×Δ°⁰¹²³⁴⁵⁶⁷⁸⁹"
+const FONT_CHARACTERS: String = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz:+-.,()/%?'!×Δ°⁰¹²³⁴⁵⁶⁷⁸⁹[]&_<>#"
 ## Raised digits are thinner than the rest, so these advance less.
 const NARROW_CHARACTERS: String = "⁰¹²³⁴⁵⁶⁷⁸⁹"
 const PALETTE: AgencyPalette = preload("res://data/agency_palette.tres")

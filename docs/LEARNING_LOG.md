@@ -611,3 +611,11 @@ Files: `scripts/ui/context_menu.gd`, `scripts/ui/flight_hud.gd`, `scripts/pilot.
 - scoring candidate positions and picking the cheapest (overlap areas as cost)
 - hysteresis: only switching when the new choice is clearly better
 - easing toward a target each frame with an exponential (frame-rate independent)
+
+## 2026-11-10: Gigs, ticket 1: data, boards, credits, and cargo mass
+
+Files: `scripts/gig/gig_type.gd`, `scripts/gig/gig.gd`, `scripts/gig/agency.gd`, `data/gigs/cargo.tres`, `scripts/ship.gd`, `scripts/ship/ship_design.gd`, `scripts/world_catalog.gd`, `scripts/main.gd`, `scripts/ui/ui_style.gd`, `tools/make_hud_font.gd`, `art/hud_font.png`, `data/station_1.tres` (name only), `docs/DESIGN.md`
+
+- seeded random numbers: the same seed and inputs give the same results
+- Resources as data (GigType) versus plain objects (Gig, RefCounted)
+- the rocket equation with cargo as dry mass
