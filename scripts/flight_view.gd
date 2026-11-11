@@ -16,6 +16,9 @@
 # on the world's own canvas turns with the Camera2D. The background draws in screen space, so it's
 # told the angle. Farther out than ORBIT, or with a body in focus, nothing is down, and it settles
 # back to a fixed map.
+#
+# The title screen can hold the view instead: a body framed in a corner with the ship on its path. Let
+# go, the view eases from there into the ship, as the SHIP button does.
 extends Camera2D
 
 ## Emitted every physics tick with the world point at the middle of the screen, and
@@ -84,6 +87,14 @@ var _center_x: float = 0.0
 var _center_y: float = 0.0
 var _roll: float = 0.0
 var _roll_started: bool = false
+## How much farther out the title's view starts, when it eases in, or goes, when it pulls out.
+const TITLE_FAR: float = 40.0
+# The title screen's hold: the body it frames, where the body and the ship go on screen, and whether
+# it's pulling out. Empty when there's no title.
+var _title: Dictionary = {}
+# Once let go, where the title had the middle of the screen, from the body it framed.
+var _title_body: int = 0
+var _title_offset := Vector2.ZERO
 
 
 ## Starts following a flight, with something in focus at the SYS zoom.
@@ -142,7 +153,85 @@ func _on_zoom_scaled(factor: float) -> void:
 	_zoom = minf(_zoom * factor, closest)
 
 
+## Frames a body for the title screen: its middle at body_at on screen, and the ship at ship_at, the
+## view turned and zoomed to fit. From far, it eases in from a long way out; otherwise it's there at
+## once. It holds until it's let go.
+func hold_title_frame(body: int, ship_at: Vector2, body_at: Vector2, from_far: bool = false) -> void:
+	_title = {"body": body, "ship_at": ship_at, "body_at": body_at, "out": false}
+	var fit: float = _title_zoom(_state.x, _state.y)
+	_target_zoom = fit
+	_zoom = fit / TITLE_FAR if from_far else fit
+	_hold_title(_state.x, _state.y, 0.0)
+
+
+## Moves where the title puts things, as when the screen changes shape, and shows it at once.
+func move_title_frame(ship_at: Vector2, body_at: Vector2) -> void:
+	if _title.is_empty():
+		return
+	_title["ship_at"] = ship_at
+	_title["body_at"] = body_at
+	_hold_title(_state.x, _state.y, 0.0)
+
+
+## Pulls the title's view far out, ahead of a change of world.
+func pull_title_out() -> void:
+	_title["out"] = true
+
+
+## Whether the title's view has got where it's easing to.
+func title_settled() -> bool:
+	return not _title.is_empty() and absf(_zoom / _target_zoom - 1.0) < 0.01
+
+
+## Lets go of the title's hold. The view eases from there into the ship, close up.
+func release_title_frame() -> void:
+	if _title.is_empty():
+		return
+	var body: PackedFloat64Array = _gravity_model.get_body_position(_title["body"], _state.time)
+	_title_body = _title["body"]
+	_title_offset = Vector2(_center_x - body[0], _center_y - body[1])
+	_title = {}
+	_previous_focus = {"kind": "title"}
+	_focus = _avatar
+	_focus_blend = 0.0
+	_target_zoom = zoom_stops[0]
+	_roll_started = true
+
+
+# The zoom that puts the ship where the title wants it, from the body.
+func _title_zoom(x: float, y: float) -> float:
+	var body: PackedFloat64Array = _gravity_model.get_body_position(_title["body"], _state.time)
+	var to_ship := Vector2(x - body[0], y - body[1])
+	var on_screen: Vector2 = _title["ship_at"] - _title["body_at"]
+	return minf(on_screen.length() / maxf(to_ship.length(), 1.0), zoom_stops[0])
+
+
+# Eases the zoom, then turns and moves the view so the body sits where the title wants it and the
+# ship lies the way the title wants it from there.
+func _hold_title(x: float, y: float, delta: float) -> void:
+	var fit: float = _title_zoom(x, y)
+	_target_zoom = fit / TITLE_FAR if _title["out"] else fit
+	if delta > 0.0:
+		var log_zoom: float = log(_zoom)
+		var eased: float = lerpf(log_zoom, log(_target_zoom), 1.0 - exp(-zoom_speed * 0.4 * delta))
+		_zoom = exp(move_toward(log_zoom, eased, zoom_max_rate * delta))
+	var body: PackedFloat64Array = _gravity_model.get_body_position(_title["body"], _state.time)
+	var to_ship := Vector2(x - body[0], y - body[1])
+	var on_screen: Vector2 = _title["ship_at"] - _title["body_at"]
+	_roll = to_ship.angle() - on_screen.angle()
+	_roll_started = true
+	var from_middle: Vector2 = (_title["body_at"] - _view_size / 2.0).rotated(_roll) / _zoom
+	_center_x = body[0] - from_middle.x
+	_center_y = body[1] - from_middle.y
+	rotation = _roll
+	view_rolled.emit(_roll)
+	view_changed.emit(_center_x, _center_y, _zoom)
+
+
 func _on_ship_world_position_changed(x: float, y: float) -> void:
+	if not _title.is_empty():
+		_hold_title(x, y, TimeWarp.real(get_physics_process_delta_time()))
+		return
 	if Input.is_action_just_pressed("zoom_in"):
 		_target_zoom = _next_stop_in()
 	if Input.is_action_just_pressed("zoom_out"):
@@ -227,6 +316,9 @@ func _point_of(focus: Dictionary, ship: PackedFloat64Array) -> PackedFloat64Arra
 			return PackedFloat64Array([_pilot.state.x, _pilot.state.y])
 		"site":
 			return _sites[focus["index"]].middle(_state.time)
+		"title":
+			var body: PackedFloat64Array = _gravity_model.get_body_position(_title_body, _state.time)
+			return PackedFloat64Array([body[0] + _title_offset.x, body[1] + _title_offset.y])
 	return ship
 
 

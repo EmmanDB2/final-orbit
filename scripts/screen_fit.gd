@@ -23,6 +23,11 @@ func _ready() -> void:
 	_fit_to_screen()
 
 
+## Fits again now, for something that starts listening after the first fit.
+func refit() -> void:
+	_fit_to_screen()
+
+
 func _process(_delta: float) -> void:
 	if get_window().size != _fitted_screen:
 		_fit_to_screen()

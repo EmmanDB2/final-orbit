@@ -174,10 +174,11 @@ func _process(delta: float) -> void:
 	var breeze: float = BREEZE_LEVEL * air if outside else 0.0
 	_loop_wanted["wind"] = maxf(clampf(sqrt(air) * through / GALE_SPEED, 0.0, 1.0) * GALE_LEVEL, breeze)
 	_loop_wanted["roar"] = clampf(_ship.heat_share * 1.2, 0.0, 1.0) if aboard else 0.0
-	# A lost ship goes silent at once, all but the radio.
+	# A lost ship goes silent at once, all but the radio, and so does a frozen or paused flight.
 	var lost: bool = _ship._lost and aboard
+	var silent: bool = lost or get_tree().paused
 	for slot: String in LOOPS:
-		if lost:
+		if silent:
 			_loop_wanted[slot] = 0.0
 			_loop_level[slot] = 0.0
 		var level: float = move_toward(_loop_level[slot], _loop_wanted[slot], LOOP_FOLLOW * real)
@@ -193,7 +194,7 @@ func _process(delta: float) -> void:
 	# The engine deepens and swells with the throttle.
 	_loops["rumble"].pitch_scale = 0.8 + 0.35 * _engine_share
 	# A faint purr in the hand while the engine burns.
-	if haptics and aboard and _engine_share > 0.0 and not lost:
+	if haptics and aboard and _engine_share > 0.0 and not silent:
 		_buzz_wait -= real
 		if _buzz_wait <= 0.0:
 			_buzz_wait = 0.12

@@ -1,6 +1,6 @@
-# make_hud_font.gd: adds lowercase, punctuation, brackets, and small raised digits to art/hud_font.png, on the
-# same 5 x 7 grid as its capitals and numbers, doubled to 10 x 14. From DESIGN.md, "UI". Only needs
-# running again if a glyph changes. Run with:
+# make_hud_font.gd: adds lowercase, punctuation, brackets, a middle dot, and small raised digits to
+# art/hud_font.png, on the same 5 x 7 grid as its capitals and numbers, doubled to 10 x 14. From
+# DESIGN.md, "UI". Only needs running again if a glyph changes. Run with:
 #   godot --headless --path . --script tools/make_hud_font.gd
 extends SceneTree
 
@@ -67,6 +67,7 @@ const GLYPHS: Array = [
 	[">", ".#...", "..#..", "...#.", "....#", "...#.", "..#..", ".#..."],
 	["#", ".#.#.", ".#.#.", "#####", ".#.#.", "#####", ".#.#.", ".#.#."],
 	[";", ".....", "..#..", "..#..", ".....", "..#..", "..#..", ".#..."],
+	["·", ".....", ".....", ".....", "..#..", ".....", ".....", "....."],
 ]
 
 

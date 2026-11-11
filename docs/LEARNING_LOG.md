@@ -732,3 +732,11 @@ Files: `scripts/save/save_game.gd`, `scripts/main.gd`, `scripts/ship.gd`, `scrip
 - versioned saves and migrations
 - atomic writes (write a spare file, then rename)
 - Android app lifecycle notifications (`NOTIFICATION_APPLICATION_PAUSED`)
+
+## 2026-11-11: Title screen
+
+Files: `scripts/ui/title_screen.gd`, `scripts/ui/title_lettering.gd`, `scripts/flight_view.gd`, `scripts/main.gd`, `scripts/ui/flight_hud.gd`, `scripts/ui/flight_menu.gd`, `scripts/audio/sound_director.gd`, `scripts/screen_fit.gd`, `scripts/ui/ui_style.gd`, `tools/make_hud_font.gd`, `art/hud_font.png`, `docs/DESIGN.md`
+
+- pausing the scene tree, and process modes that keep working while paused
+- static variables that last across a scene reload
+- solving for a camera's zoom, turn, and center from where two points should land on screen

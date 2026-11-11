@@ -19,8 +19,8 @@ signal clear_area_changed(area: Rect2)
 signal comms_area_changed(area: Rect2)
 ## Emitted when a finger lands on a control, for its click.
 signal widget_touched(widget: UiWidget)
-## Emitted when the pilot asks to start over, from RESTART.
-signal restart_requested
+## Emitted when the pilot asks for the title screen, from TITLE.
+signal title_requested
 
 const BAR_HEIGHT: float = 44.0
 const EDGE: float = 8.0
@@ -85,7 +85,7 @@ var _assist_button: UiButton
 var _stab_button: UiButton
 var _left_tab: SideTab
 var _zoom_buttons: Array[UiButton] = []
-var _restart_button: UiButton
+var _title_button: UiButton
 var _undock_button: UiButton
 var _chat_button: UiButton
 var _warp_control: WarpControl
@@ -127,6 +127,7 @@ var _markers: TargetMarkers
 var _idle_seconds: float = 0.0
 var _hidden: bool = false
 var _hide_amount: float = 0.0
+var _arriving: bool = false
 var _card_refresh: float = 0.0
 var _finger_widgets: Dictionary = {}
 var _space_fingers: Dictionary = {}
@@ -267,11 +268,11 @@ func _build() -> void:
 	_zoom_row = _child_control(self)
 	_top_bar = TopBar.new()
 	add_child(_top_bar)
-	_restart_button = UiButton.new().setup("RESTART", palette.telemetry_amber)
-	_restart_button.lamp_on = true
-	_restart_button.visible = false
-	_restart_button.tapped.connect(_restart)
-	add_child(_restart_button)
+	_title_button = UiButton.new().setup("TITLE", palette.telemetry_amber)
+	_title_button.lamp_on = true
+	_title_button.visible = false
+	_title_button.tapped.connect(_to_title)
+	add_child(_title_button)
 	_undock_button = UiButton.new().setup("UNDOCK", palette.telemetry_cyan)
 	_undock_button.lamp_on = true
 	_undock_button.visible = false
@@ -348,7 +349,7 @@ func _build() -> void:
 	_flight_menu = FlightMenu.new()
 	_flight_menu.visible = false
 	_flight_menu.pause_pressed.connect(_toggle_pause)
-	_flight_menu.restart_pressed.connect(_restart)
+	_flight_menu.title_pressed.connect(_to_title)
 	add_child(_flight_menu)
 	_survey_marker = SurveyMarker.new()
 	_survey_marker.visible = false
@@ -455,7 +456,7 @@ func _layout() -> void:
 # Whichever of these are up sit side by side, under the top bar.
 func _place_center_buttons() -> void:
 	var showing: Array[UiButton] = []
-	for button: UiButton in [_restart_button, _undock_button]:
+	for button: UiButton in [_title_button, _undock_button]:
 		if button.visible:
 			showing.append(button)
 	var total: float = showing.size() * CENTER_BUTTON_WIDTH + maxi(showing.size() - 1, 0) * ROW_GAP
@@ -495,6 +496,9 @@ func _process(frame_delta: float) -> void:
 			_idle_seconds += delta
 		if auto_hide and _idle_seconds >= auto_hide_seconds:
 			_hidden = true
+	if _arriving:
+		modulate.a = minf(modulate.a + delta * 3.0, 1.0)
+		_arriving = modulate.a < 1.0
 	var target: float = 1.0 if _hidden else 0.0
 	if _hide_amount != target:
 		_hide_amount = move_toward(_hide_amount, target, delta * 4.0)
@@ -571,9 +575,20 @@ func _toggle_pause() -> void:
 	_flight_menu.show_paused(get_tree().paused)
 
 
-func _restart() -> void:
+func _to_title() -> void:
 	get_tree().paused = false
-	restart_requested.emit()
+	title_requested.emit()
+
+
+## Brings the HUD in as a flight starts from the title: the panels slide in from their sides while
+## everything fades up.
+func arrive() -> void:
+	_hide_amount = 1.0
+	_hidden = false
+	_idle_seconds = 0.0
+	_place_panels()
+	modulate.a = 0.0
+	_arriving = true
 
 
 ## Moves the throttle lever to where the ship's throttle is, as when a saved flight's loaded.
@@ -765,7 +780,7 @@ func _place_context_menu(delta: float) -> void:
 			avoid.append([pilot_box.merge(ahead), 2.0])
 	# Below UNDOCK and RESTART when they're up, so the label never lands under them.
 	var clear: Rect2 = _clear_area()
-	if _undock_button.visible or _restart_button.visible:
+	if _undock_button.visible or _title_button.visible:
 		var below: float = BAR_HEIGHT + CENTER_BUTTON_DROP + ROW_HEIGHT + 6.0
 		clear = clear.grow_individual(0.0, -maxf(below - clear.position.y, 0.0), 0.0, 0.0)
 	_context_menu.place(box, corners.size() >= 8, clear, avoid, delta)
@@ -787,7 +802,7 @@ func _on_can_leave_changed(can_leave: bool) -> void:
 
 func _update_center_buttons() -> void:
 	var aboard: bool = _mode == Pilot.ABOARD
-	_restart_button.visible = _pilot_stranded or (_ship_stranded and aboard)
+	_title_button.visible = _pilot_stranded or (_ship_stranded and aboard)
 	_undock_button.visible = _docked and aboard
 	_place_center_buttons()
 
@@ -848,7 +863,7 @@ func _widgets_in_reach() -> Array[UiWidget]:
 		widgets.append(_comms_log)
 	if _card.visible:
 		widgets.append_array(_card.buttons())
-	widgets.append_array([_restart_button, _undock_button, _context_menu])
+	widgets.append_array([_title_button, _undock_button, _context_menu])
 	# After the context menu, which keeps off it anyway, so a choice is never lost under it.
 	if _gig_tracker.gig != null:
 		widgets.append(_gig_tracker)

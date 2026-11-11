@@ -1,4 +1,5 @@
-# main.gd: sets up a flight and hands each system what it needs.
+# main.gd: sets up a flight and hands each system what it needs, opens the title screen over it, and
+# starts keeping it once the player goes in.
 # From DESIGN.md, "Physics" and "Scope ladder". This is the only place that knows which
 # gravity model is running; everything else uses the GravityModel interface.
 extends Node2D
@@ -23,6 +24,9 @@ extends Node2D
 var agency: Agency
 var _site_views: Array = []
 var _saves: SaveGame
+var _saved: Dictionary = {}
+var _catalog: WorldCatalog
+var _title: TitleScreen
 
 
 func _ready() -> void:
@@ -48,8 +52,14 @@ func _ready() -> void:
 	state.y = planet_at[1] - start_radius
 	state.velocity_x = planet_velocity[0] + sqrt(planet.get_mu() / start_radius)
 	state.velocity_y = planet_velocity[1]
-	# A saved flight picks up where it was, before anything starts reading where the ship is.
-	var saved: Dictionary = SaveGame.read(save_slot)
+	# A saved flight picks up where it was, before anything starts reading where the ship is. Behind the
+	# title's NEW FLIGHT, it's the fresh start instead.
+	var opening: bool = TitleScreen.opening and TitleScreen.allowed()
+	var has_save: bool = SaveGame.enabled() and FileAccess.file_exists(SaveGame.path_of(save_slot))
+	if opening and not has_save:
+		TitleScreen.world = "new"
+	var fresh: bool = opening and TitleScreen.world == "new"
+	var saved: Dictionary = {} if fresh else SaveGame.read(save_slot)
 	var saved_ship: Dictionary = saved.get("flight", {}).get("ship", {})
 	if not saved_ship.is_empty():
 		state.x = saved_ship["x"]
@@ -105,11 +115,94 @@ func _ready() -> void:
 	var sound := SoundDirector.new()
 	add_child(sound)
 	sound.start($Hud/SafeArea/FlightHud, $Hud/SafeArea/CommsLine, $Ship, $Pilot)
+	_saved = saved
+	_catalog = catalog
+	$Hud/SafeArea/FlightHud.title_requested.connect(_to_title)
+	if opening:
+		_open_title(home, has_save)
+	else:
+		_begin()
+
+
+# Starts keeping the world: it saves from here on.
+func _begin() -> void:
 	_saves = SaveGame.new()
 	_saves.slot = save_slot
 	add_child(_saves)
-	_saves.start($Ship, $Pilot, agency, catalog, $Station, saved)
-	$Hud/SafeArea/FlightHud.restart_requested.connect(_start_over)
+	_saves.start($Ship, $Pilot, agency, _catalog, $Station, _saved)
+
+
+# The title screen over the world, which it frames and freezes. The HUD stays hidden and deaf until
+# the player goes in.
+func _open_title(home: int, has_save: bool) -> void:
+	$Hud.visible = false
+	$Hud/SafeArea/FlightHud.process_mode = Node.PROCESS_MODE_DISABLED
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	add_child(layer)
+	_title = TitleScreen.new()
+	_title.info = _title_info(home, has_save)
+	layer.add_child(_title)
+	$ScreenFit.screen_fitted.connect(_title._on_screen_fitted)
+	$ScreenFit.refit()
+	_title.entered.connect(_on_title_entered)
+	_title.world_wanted.connect(_on_title_world_wanted)
+	_title.start($Camera2D, home)
+
+
+# What the title says about the world behind it: where the ship is, the credits, and the clock.
+func _title_info(home: int, has_save: bool) -> Dictionary:
+	var ship: Node2D = $Ship
+	var where: String = "%s · IN FLIGHT" % _catalog.callsign_of({"kind": "body", "index": home}).to_upper()
+	if ship.docked:
+		where = "%s · DOCKED" % station.callsign
+	elif ship.state.is_on_surface():
+		where = "%s · LANDED" % _catalog.callsign_of({"kind": "body", "index": home}).to_upper()
+		for i in range(_site_views.size()):
+			if agency.ship_at({"kind": "site", "index": i}):
+				where = "%s · LANDED" % _catalog.callsign_of({"kind": "site", "index": i})
+	var lost: bool = ship._lost
+	var version: String = ProjectSettings.get_setting("application/config/version", "")
+	var comms: String = "COMMS: ALL SYSTEMS NOMINAL"
+	if TitleScreen.world == "new":
+		comms = "COMMS: READY FOR A NEW FLIGHT"
+	elif lost:
+		comms = "COMMS: SHIP LOST"
+	return {
+		"has_save": has_save,
+		"where": where,
+		"credits": agency.credits,
+		"lost": lost,
+		"time": ship.state.time,
+		"comms": comms,
+		"comms_red": lost and TitleScreen.world != "new",
+		"version": "v" + version if version != "" else "v0.1",
+	}
+
+
+# Into the world behind the title. A new flight replaces the save. The view eases into the ship, the
+# world starts, and the HUD comes in once the view's close.
+func _on_title_entered(item: String) -> void:
+	if item == "NEW FLIGHT":
+		SaveGame.erase(save_slot)
+	TitleScreen.selected_item = ""
+	get_tree().paused = false
+	$Camera2D.release_title_frame()
+	$Hud/SafeArea/FlightHud.process_mode = Node.PROCESS_MODE_ALWAYS
+	_title.get_parent().queue_free()
+	_title = null
+	get_tree().create_timer(0.9).timeout.connect(func() -> void:
+		$Hud.visible = true
+		$Hud/SafeArea/FlightHud.arrive())
+	_begin()
+
+
+# Another world behind the title: the game loads again with it, arriving from far out.
+func _on_title_world_wanted(next: String) -> void:
+	TitleScreen.world = next
+	TitleScreen.arriving = true
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 
 # Puts a saved world back: the flight as it was when the pilot was last aboard, then the agency's
@@ -124,10 +217,16 @@ func _restore(saved: Dictionary, catalog: WorldCatalog) -> void:
 	catalog.restore_state(saved.get("worlds", {}))
 
 
-# RESTART: a new flight, replacing the save. The title screen's NEW FLIGHT takes this over.
-func _start_over() -> void:
-	_saves.stop()
-	SaveGame.erase(save_slot)
+# TITLE: saves, and goes back to the title screen over this flight.
+func _to_title() -> void:
+	if _saves != null:
+		_saves.save_now()
+		_saves.stop()
+	TitleScreen.opening = true
+	TitleScreen.world = "continue"
+	TitleScreen.selected_item = "CONTINUE"
+	TitleScreen.arriving = false
+	get_tree().paused = false
 	get_tree().reload_current_scene()
 
 
