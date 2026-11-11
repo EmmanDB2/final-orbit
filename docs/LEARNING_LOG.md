@@ -708,3 +708,10 @@ Files: `scripts/audio/sound_synth.gd`, `scripts/audio/sound_director.gd`
 Files: `scripts/audio/sound_synth.gd`, `scripts/audio/sound_set.gd`, `scripts/audio/sound_director.gd`, `docs/DESIGN.md`
 
 - removing a feature cleanly: every place it's named, not just turning it to zero
+
+## 2026-11-11: Silent buttons, and a softer wind
+
+Files: `scripts/audio/sound_director.gd`, `scripts/audio/sound_synth.gd`, `docs/DESIGN.md`
+
+- a filter whose cutoff moves over time (gusts)
+- keeping a loop seamless: every change repeats with the loop's length

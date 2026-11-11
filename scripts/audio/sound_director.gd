@@ -19,6 +19,10 @@ const SUIT_CUTOFF: float = 3500.0
 const OPEN_CUTOFF: float = 9000.0
 ## How fast through the air reads as a full gale, in world units a second, at the ground's density.
 const GALE_SPEED: float = 400.0
+## How loud the wind is in a full gale, and standing in still air at the ground, from 0 to 1. Turned
+## down on 2026-11-11, when Manny found it too loud.
+const GALE_LEVEL: float = 0.45
+const BREEZE_LEVEL: float = 0.05
 ## How far the ship's engine carries across the air to a pilot outside, in world units.
 const ENGINE_CARRY: float = 2000.0
 ## How quickly a loop's loudness follows what it's following, per second.
@@ -153,8 +157,8 @@ func _process(delta: float) -> void:
 	# Wind from moving through the air, and a light breeze standing in it; a roar from re-entry heat.
 	var ground: PackedFloat64Array = gravity_model.get_surface_velocity(where.x, where.y, where.time)
 	var through: float = Vector2(where.velocity_x - ground[0], where.velocity_y - ground[1]).length()
-	var breeze: float = 0.12 * air if outside else 0.0
-	_loop_wanted["wind"] = maxf(clampf(sqrt(air) * through / GALE_SPEED, 0.0, 1.0) * 0.8, breeze)
+	var breeze: float = BREEZE_LEVEL * air if outside else 0.0
+	_loop_wanted["wind"] = maxf(clampf(sqrt(air) * through / GALE_SPEED, 0.0, 1.0) * GALE_LEVEL, breeze)
 	_loop_wanted["roar"] = clampf(_ship.heat_share * 1.2, 0.0, 1.0) if aboard else 0.0
 	for slot: String in LOOPS:
 		var level: float = move_toward(_loop_level[slot], _loop_wanted[slot], LOOP_FOLLOW * real)
@@ -222,16 +226,11 @@ func _make_channels() -> void:
 		_hull_filter = AudioServer.get_bus_effect(effects, 0)
 
 
-# A finger on a control: a switch click, a cover flipping up, or the engine switch's clunk.
+# A finger on a control: only ENGINE makes a sound, its cover flipping up and then its switch's clunk.
+# The other buttons are silent, on Manny's call (2026-11-11).
 func _on_widget_touched(widget: UiWidget) -> void:
 	if widget is EngineButton:
 		play("clunk" if widget.cover_open else "cover", "UI")
-	elif widget is ThrottleLever:
-		pass
-	elif widget is GigBoard or widget is HeadingDial:
-		play("click", "UI", -4.0)
-	else:
-		play("click", "UI")
 
 
 # The comms line: good news with money in it chimes, trouble in red sounds the alarm, cautions in amber

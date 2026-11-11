@@ -103,12 +103,18 @@ static func hiss() -> AudioStreamWAV:
 		return low.run(rng.randf_range(-1.0, 1.0)) * 0.45)
 
 
-## Air rushing past, gusting.
+## Air rushing past: a soft, dark whoosh that swells and eases in gusts. Three filters in a row leave
+## nothing bright in it, so it never sounds like static, and each gust opens them a little.
 static func wind() -> AudioStreamWAV:
-	var low := _LowPass.new(700.0)
-	return _loop(4.0, func(t: float, rng: RandomNumberGenerator) -> float:
-		var gust: float = 0.75 + 0.25 * sin(TAU * t / 4.0) * sin(TAU * t / 2.0)
-		return low.run(rng.randf_range(-1.0, 1.0)) * 1.6 * gust)
+	var stages: Array[_LowPass] = [_LowPass.new(400.0), _LowPass.new(400.0), _LowPass.new(400.0)]
+	return _loop(8.0, func(t: float, rng: RandomNumberGenerator) -> float:
+		# Slow swells that repeat with the loop, so it stays seamless, from 0 to 1.
+		var gust: float = 0.5 + 0.5 * (0.6 * sin(TAU * t / 8.0) + 0.4 * sin(TAU * t / 2.0 + 1.3) * sin(TAU * t / 4.0))
+		var value: float = rng.randf_range(-1.0, 1.0)
+		for stage: _LowPass in stages:
+			stage.set_cutoff(lerpf(220.0, 520.0, gust))
+			value = stage.run(value)
+		return value * 2.2 * lerpf(0.55, 1.0, gust))
 
 
 ## Re-entry: a heavy, crackling roar.
@@ -195,6 +201,9 @@ class _LowPass:
 	var _value: float = 0.0
 
 	func _init(cutoff: float) -> void:
+		set_cutoff(cutoff)
+
+	func set_cutoff(cutoff: float) -> void:
 		_share = 1.0 - exp(-TAU * cutoff / RATE)
 
 	func run(input: float) -> float:

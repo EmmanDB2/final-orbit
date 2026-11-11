@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-11 | The cockpit's buttons are silent except ENGINE, on Manny's call; the wind is a darker, softer whoosh at about half its old loudness \[Leaning\] |
 | 2026-11-11 | No breathing in the suit, on Manny's call: on foot it played nonstop and sounded like the RCS \[Cut\] |
 | 2026-11-10 | Sound tickets 3 and 4 built: air opens the muffled sound up with its density, with wind from moving through it, a breeze standing in it, a roar growing with re-entry heat, and the ship's engine heard across it from outside; on EVA or on foot, the pilot breathes, the jetpack hisses, and the suit's microphone is clearer than the hull \[Leaning\] |
 | 2026-11-10 | Sound ticket 2 built: the ship through its hull, muffled, with the engine's rumble deepening and swelling with the throttle, RCS hiss, leg motors, touchdown thuds, crunches, and docking clunks, all silent once the pilot's out in vacuum; the phone buzzes on touchdowns and hits and purrs faintly while the engine burns \[Leaning\] |
@@ -674,7 +675,7 @@ Knowledge and ties to other systems: \[Locked for design, Tier 1\]
 Decided 2026-11-10, on Manny's call. \[Leaning\]
 
 - Space is silent, so you hear what the pilot hears. Aboard, the ship sounds through its hull, muffled and low: the engine's rumble following the throttle, the RCS thrusters, docking, touchdowns, and parts breaking. On EVA, the suit: the jetpack's hiss and the radio. No breathing \[Cut\]. In air, real sound opens up with the air's density: wind, the engine's roar, and re-entry. The moon stays quiet all the way down.
-- The cockpit sounds like NASApunk hardware: switch clicks on every control, a cover flipping up and a heavy clunk for ENGINE, and ticks as the throttle lever moves notch to notch.
+- The cockpit's buttons are silent, except ENGINE: its cover flips up with a snap and its switch clunks. The throttle lever ticks as it moves notch to notch.
 - The comms line has a radio: a burst of static and a blip with each message, two falling tones for a caution in amber, an alarm for a loss in red, and a chime when a gig pays.
 - Music is ambient, in Zen Mode. Normal flight stays mostly silent, so the engine and alarms land.
 - The phone buzzes too: touchdowns, impacts, and the engine burning.
