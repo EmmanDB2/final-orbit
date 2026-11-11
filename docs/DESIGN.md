@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-11 | Saving built: one file per world, written every 10 seconds aboard, when docking, landing, stepping out, or losing the ship, and when the app goes to the background; credits and gigs save the moment they change. A flight comes back where it was: in orbit, landed without touching down again, docked, or lost. Until the title screen, RESTART starts a new flight and throws the save away \[Leaning\] |
 | 2026-11-11 | Saving and the title screen decided, on Manny's call, from his title screen mockup: the game saves only while the pilot's aboard, with credits and gigs saved whenever they change; a lost ship is saved as it is and left to the player; normal play and Zen Mode are separate worlds; the title screen is the saved moment frozen behind a menu that takes two taps, and going in zooms into the ship \[Leaning\] |
 | 2026-11-11 | Crash sounds built, building with how bad the hit is: a knock for a bump, a thud and grinding then the frame groaning for damage, a crack for each part lost with debris rattling after, and for a lost ship one huge impact, then silence but for radio static. Outside, crashes are heard only across air. Sound is done for now; the wind waits for planets to get their real environments \[Leaning\] |
 | 2026-11-11 | The cockpit's buttons are silent except ENGINE, on Manny's call; the wind is a darker, softer whoosh at about half its old loudness \[Leaning\] |
@@ -208,7 +209,7 @@ Decided 2026-11-10, on Manny's call, from his mockups of the gig board and the a
 - Cargo rides in the lander's cockpit, up to 3 tonnes, and weighs what it says: a 2-tonne load costs about 40 m/s of delta-v and some thrust. A cargo module can come later with its own art.
 - Pay is in credits, Cr. A run starts at 0 Cr, and a gig pays when its deliverable arrives, as the payment rules say. Docking stays free until Manny sets prices; economy numbers are still open.
 - One active gig at a time to start; chaining several, as the core loop has it, comes once the first gig plays well.
-- There's no saving yet, so credits and finished gigs last one flight.
+- Credits, the gig taken, and which gigs are gone from each board are saved (see Saving and the title screen).
 
 Boards: \[Leaning\]
 
@@ -667,7 +668,7 @@ What the card shows depends on how the player has studied the body: \[Locked for
 
 Knowledge and ties to other systems: \[Locked for design, Tier 1\]
 
-- Knowledge is saved permanently once gathered. There's no saving yet, so for now it lasts one flight.
+- Knowledge is saved permanently once gathered. For now that's which worlds have been visited.
 - First to chart pays the discovery bonus.
 - Survey gigs are scanning jobs.
 - Landing somewhere unscanned means flying in without knowing its surface temperature or atmosphere.
@@ -702,6 +703,7 @@ Saving:
 - Normal play and Zen Mode are separate worlds, with a save each. NEW FLIGHT replaces the normal save.
 - Every save carries a version number, and an older save is upgraded, never wiped (see Tech).
 - Time warp always comes back at 1x.
+- How it's built: `scripts/save/save_game.gd` writes `user://saves/normal.save`, Godot's own binary format, to a spare file first and then swaps it in, so a phone closing the app mid-save keeps the last whole one. Each system says what it needs saved and puts it back itself. Detached parts drifting away aren't saved. Until the title screen, RESTART starts a new flight and throws the save away.
 
 Title screen:
 

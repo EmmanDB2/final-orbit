@@ -19,6 +19,8 @@ signal clear_area_changed(area: Rect2)
 signal comms_area_changed(area: Rect2)
 ## Emitted when a finger lands on a control, for its click.
 signal widget_touched(widget: UiWidget)
+## Emitted when the pilot asks to start over, from RESTART.
+signal restart_requested
 
 const BAR_HEIGHT: float = 44.0
 const EDGE: float = 8.0
@@ -571,7 +573,13 @@ func _toggle_pause() -> void:
 
 func _restart() -> void:
 	get_tree().paused = false
-	get_tree().reload_current_scene()
+	restart_requested.emit()
+
+
+## Moves the throttle lever to where the ship's throttle is, as when a saved flight's loaded.
+func show_throttle(value: float) -> void:
+	_lever.value = value
+	_lever.queue_redraw()
 
 
 # A finger held still on something opens its card. It's used up then, so lifting it isn't a tap, and

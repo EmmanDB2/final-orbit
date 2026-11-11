@@ -44,6 +44,16 @@ func add_station(index: int, design: StationDesign, reach: float, free_ports: in
 	_stations[index] = {"design": design, "reach": reach, "free_ports": free_ports}
 
 
+## What a save needs: the worlds that have been visited, which the cards know more about.
+func save_state() -> Dictionary:
+	return {"visited": _visited.keys()}
+
+
+func restore_state(saved: Dictionary) -> void:
+	for index: int in saved.get("visited", []):
+		_visited[index] = true
+
+
 func on_flight_data(_data: Dictionary) -> void:
 	_visited[_gravity_model.get_dominant_body(_state.x, _state.y, _state.time)] = true
 

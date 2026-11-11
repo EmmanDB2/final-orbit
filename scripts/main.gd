@@ -16,9 +16,13 @@ extends Node2D
 ## Places built on worlds.
 @export var sites: Array[SiteData] = [preload("res://data/launch_base.tres"), preload("res://data/moon_base.tres")]
 
+## Which world's save this flight keeps: "normal", or "zen" once Zen Mode is built.
+@export var save_slot: String = "normal"
+
 ## The agency: gig boards, the gig taken, and credits.
 var agency: Agency
 var _site_views: Array = []
+var _saves: SaveGame
 
 
 func _ready() -> void:
@@ -44,12 +48,22 @@ func _ready() -> void:
 	state.y = planet_at[1] - start_radius
 	state.velocity_x = planet_velocity[0] + sqrt(planet.get_mu() / start_radius)
 	state.velocity_y = planet_velocity[1]
+	# A saved flight picks up where it was, before anything starts reading where the ship is.
+	var saved: Dictionary = SaveGame.read(save_slot)
+	var saved_ship: Dictionary = saved.get("flight", {}).get("ship", {})
+	if not saved_ship.is_empty():
+		state.x = saved_ship["x"]
+		state.y = saved_ship["y"]
+		state.velocity_x = saved_ship["velocity_x"]
+		state.velocity_y = saved_ship["velocity_y"]
+		state.time = saved_ship["time"]
+	var home: int = gravity_model.get_dominant_body(state.x, state.y, state.time)
 
 	$Background/Starfield.start_stars(gravity_model, state)
 	$Background/Star.show_star(star)
 	$Background/Planet.show_body(planet_index, planet, gravity_model, state, star)
 	$Background/Moon.show_body(moon_index, moon, gravity_model, state, star)
-	$Camera2D.start_view(gravity_model, state, {"kind": "body", "index": planet_index})
+	$Camera2D.start_view(gravity_model, state, {"kind": "body", "index": home if home > 0 else planet_index})
 	$Background/BodyGuides.start_guides(gravity_model, state)
 	$Trajectory.start_preview(gravity_model, state)
 	$Station.start_station(gravity_model, state, station, station_index, $Ship)
@@ -82,12 +96,39 @@ func _ready() -> void:
 	$Hud/SafeArea/FlightHud.connect_warp(warp)
 	$Hud/SafeArea/FlightHud.connect_agency(agency)
 	agency.message_raised.connect($Hud/SafeArea/CommsLine.on_agency_message)
+	warp.message_raised.connect($Hud/SafeArea/CommsLine._on_ship_warning_raised)
+	_start_landing_forecast()
+	$Ship.start_flight(gravity_model, state, saved_ship.get("heading", PI / 2.0))
+	if not saved.is_empty():
+		_restore(saved, catalog)
+	# Sound starts after the save's put back, so loading doesn't clunk or crunch.
 	var sound := SoundDirector.new()
 	add_child(sound)
 	sound.start($Hud/SafeArea/FlightHud, $Hud/SafeArea/CommsLine, $Ship, $Pilot)
-	warp.message_raised.connect($Hud/SafeArea/CommsLine._on_ship_warning_raised)
-	_start_landing_forecast()
-	$Ship.start_flight(gravity_model, state, PI / 2.0)
+	_saves = SaveGame.new()
+	_saves.slot = save_slot
+	add_child(_saves)
+	_saves.start($Ship, $Pilot, agency, catalog, $Station, saved)
+	$Hud/SafeArea/FlightHud.restart_requested.connect(_start_over)
+
+
+# Puts a saved world back: the flight as it was when the pilot was last aboard, then the agency's
+# credits and gig, and the worlds visited.
+func _restore(saved: Dictionary, catalog: WorldCatalog) -> void:
+	var flight: Dictionary = saved.get("flight", {})
+	if flight.has("ship"):
+		$Ship.restore_state(flight["ship"])
+		$Station.restore_state(flight.get("station", {}))
+		$Hud/SafeArea/FlightHud.show_throttle($Ship.throttle)
+	agency.restore_state(saved.get("agency", {}))
+	catalog.restore_state(saved.get("worlds", {}))
+
+
+# RESTART: a new flight, replacing the save. The title screen's NEW FLIGHT takes this over.
+func _start_over() -> void:
+	_saves.stop()
+	SaveGame.erase(save_slot)
+	get_tree().reload_current_scene()
 
 
 # The ship forecasts its own landing. The path line draws where that is, a label at the line's end

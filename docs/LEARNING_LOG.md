@@ -723,3 +723,12 @@ Files: `scripts/ship.gd`, `scripts/audio/sound_synth.gd`, `scripts/audio/sound_s
 - resonators (a two-pole filter that rings like struck metal)
 - layering sounds by severity from one event's numbers
 - scheduling things for later with a queue of callables
+
+## 2026-11-11: Saving
+
+Files: `scripts/save/save_game.gd`, `scripts/main.gd`, `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/station/station_view.gd`, `scripts/gig/agency.gd`, `scripts/world_catalog.gd`, `scripts/ui/flight_hud.gd`, `docs/DESIGN.md`
+
+- serializing state with `store_var` / `get_var`
+- versioned saves and migrations
+- atomic writes (write a spare file, then rename)
+- Android app lifecycle notifications (`NOTIFICATION_APPLICATION_PAUSED`)

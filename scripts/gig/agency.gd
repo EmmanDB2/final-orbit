@@ -70,6 +70,8 @@ func board(place: Dictionary) -> Array[Gig]:
 		var slots: Array = []
 		slots.resize(board_size)
 		_boards[key] = slots
+	# A saved board keeps its rounds, so gigs already taken don't come back.
+	if not _rounds.has(key):
 		var rounds: Array = []
 		rounds.resize(board_size)
 		rounds.fill(0)
@@ -81,6 +83,76 @@ func board(place: Dictionary) -> Array[Gig]:
 			slots[slot] = _make_gig(place, slot, _rounds[key][slot])
 		shown.append(slots[slot])
 	return shown
+
+
+## Everything a save needs from the agency: credits, how far each board has got, the gig taken and
+## how far along it is, and the cargo aboard for it. Boards themselves come back from the seed.
+func save_state() -> Dictionary:
+	return {
+		"credits": credits,
+		"next_id": _next_id,
+		"rounds": _rounds.duplicate(true),
+		"active": _gig_state(active) if active != null else {},
+		"cargo_kg": _ship.cargo_kg,
+	}
+
+
+## Puts the agency back as a save had it.
+func restore_state(saved: Dictionary) -> void:
+	credits = saved.get("credits", 0)
+	_next_id = saved.get("next_id", 1)
+	_rounds = saved.get("rounds", {}).duplicate(true)
+	_boards.clear()
+	active = _gig_from(saved.get("active", {}))
+	_ship.unload_cargo()
+	var cargo: float = saved.get("cargo_kg", 0.0)
+	if cargo > 0.0:
+		_ship.load_cargo(cargo)
+	credits_changed.emit(credits)
+	gig_changed.emit(active)
+
+
+func _gig_state(gig: Gig) -> Dictionary:
+	return {
+		"id": gig.id,
+		"type": gig.type.resource_path,
+		"title": gig.title,
+		"thing": gig.thing,
+		"description": gig.description,
+		"origin": gig.origin.duplicate(true),
+		"destination": gig.destination.duplicate(true),
+		"payout": gig.payout,
+		"cargo_kg": gig.cargo_kg,
+		"route_delta_v": gig.route_delta_v,
+		"state": gig.state,
+		"objectives": gig.objectives,
+		"step": gig.step,
+		"scan_share": gig.scan_share,
+		"scanning": gig.scanning,
+	}
+
+
+# A saved gig back as a gig, or null for none or a gig type that's gone.
+func _gig_from(saved: Dictionary) -> Gig:
+	if saved.is_empty() or not ResourceLoader.exists(saved["type"]):
+		return null
+	var gig := Gig.new()
+	gig.id = saved["id"]
+	gig.type = load(saved["type"])
+	gig.title = saved["title"]
+	gig.thing = saved["thing"]
+	gig.description = saved["description"]
+	gig.origin = saved["origin"]
+	gig.destination = saved["destination"]
+	gig.payout = saved["payout"]
+	gig.cargo_kg = saved["cargo_kg"]
+	gig.route_delta_v = saved["route_delta_v"]
+	gig.state = saved["state"]
+	gig.objectives = saved["objectives"]
+	gig.step = saved["step"]
+	gig.scan_share = saved["scan_share"]
+	gig.scanning = saved["scanning"]
+	return gig
 
 
 ## What a gig needs that the ship and pilot have or haven't, as pairs of the text and whether it's met.

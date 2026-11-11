@@ -384,6 +384,28 @@ func _try_docking(frame: Dictionary, to_ship: Vector2) -> bool:
 	return true
 
 
+## What a save needs from the station: which port the ship's docked at, if any.
+func save_state() -> Dictionary:
+	return {"docked_port": docked_port if _ship.docked else -1}
+
+
+## Puts a saved ship back on its port, all the way in. Docking repairs and refuels it, as it did when
+## it first docked.
+func restore_state(saved: Dictionary) -> void:
+	var port_index: int = saved.get("docked_port", -1)
+	if port_index < 0 or port_index >= _ports.size():
+		return
+	var port: Dictionary = _ports[port_index]
+	docked_port = port_index
+	_dock_goal_heading = _heading_into(port)
+	_dock_goal = port["at"] - _ship.hatch_from_center().rotated(_dock_goal_heading)
+	_dock_place = _dock_goal
+	_dock_heading = _dock_goal_heading
+	_ship.dock(_docked_point)
+	_was_docked = true
+	_guide_port = -1
+
+
 # Where a docked ship is held: [x, y, velocity x, velocity y, heading, spin].
 func _docked_point(time: float) -> PackedFloat64Array:
 	var frame: Dictionary = _frame_at(time)

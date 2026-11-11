@@ -563,6 +563,23 @@ func dent(point: Vector2, energy: float, damage_seed: int) -> Dictionary:
 	return _erase_in_order(order, ranks, energy)
 
 
+## How deep the damage goes at every pixel, for a save: how many of its depths are gone, up to all
+## of them for a pixel that's gone.
+func damage_depths() -> PackedByteArray:
+	return _depth.duplicate()
+
+
+## Puts saved damage back on a whole body, as measure makes it, by peeling each pixel down to the
+## depth it had. A save from a ship of another shape is ignored.
+func restore_damage(depths: PackedByteArray) -> void:
+	if depths.size() != _depth.size():
+		return
+	for index in range(depths.size()):
+		while _depth[index] < mini(depths[index], DEPTHS):
+			_peel(index)
+	_refresh()
+
+
 ## Removes every piece no longer attached and returns them, biggest first. The piece with the
 ## most cockpit in it stays as the ship, or the biggest one if the cockpit's gone. Each has an
 ## "image", its "center" from the middle of the grid, its "mass", its "pixel_count", and its

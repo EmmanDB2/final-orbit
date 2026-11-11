@@ -1019,6 +1019,89 @@ func _slide_out_on_ground(normal: Vector2, push: float) -> void:
 	state.y += shift.y
 
 
+## Everything a save needs to put the ship back as it is: where it is and how it's moving, its
+## damage, its tanks, and its switches. Cargo goes with the gig it belongs to.
+func save_state() -> Dictionary:
+	var tanks: Array[float] = []
+	for tank: Dictionary in body.tanks:
+		tanks.append(tank["capacity"])
+	return {
+		"x": state.x,
+		"y": state.y,
+		"velocity_x": state.velocity_x,
+		"velocity_y": state.velocity_y,
+		"time": state.time,
+		"on_surface": state.is_on_surface(),
+		"heading": heading,
+		"spin": angular_velocity,
+		"damage": body.damage_depths(),
+		"warned": _warned_modules.keys(),
+		"tanks": tanks,
+		"fuel": fuel,
+		"rcs_fuel": rcs_fuel,
+		"hull_temperature": hull_temperature,
+		"throttle": throttle,
+		"engine_on": engine_on,
+		"assist": assist_enabled,
+		"stab": stab_enabled,
+		"legs_down": legs_down,
+		"legs_out": _legs_out,
+	}
+
+
+## Puts the ship back as a save had it, once it's flying. A ship that was lost stays lost. Being
+## docked is the station's to put back.
+func restore_state(saved: Dictionary) -> void:
+	heading = saved["heading"]
+	rotation = heading
+	angular_velocity = saved["spin"]
+	legs_down = saved["legs_down"]
+	_legs_out = saved["legs_out"]
+	_legs_moving = false
+	body.set_parts_out(_legs_out)
+	# Modules already reported down aren't reported again.
+	for module_index: int in saved["warned"]:
+		_warned_modules[module_index] = true
+	body.restore_damage(saved["damage"])
+	_update_for_damage()
+	# Damage moves the ship's center, so where it is comes after, just as it was saved.
+	state.x = saved["x"]
+	state.y = saved["y"]
+	state.velocity_x = saved["velocity_x"]
+	state.velocity_y = saved["velocity_y"]
+	state.time = saved["time"]
+	_sink = Vector2.ZERO
+	var tanks: Array = saved["tanks"]
+	if tanks.size() == body.tanks.size():
+		body.fuel_capacity = 0.0
+		for i in range(tanks.size()):
+			body.tanks[i]["capacity"] = tanks[i]
+			body.fuel_capacity += tanks[i]
+	fuel = minf(saved["fuel"], body.fuel_capacity)
+	rcs_fuel = saved["rcs_fuel"]
+	hull_temperature = saved["hull_temperature"]
+	throttle = saved["throttle"]
+	_rest_height = body.reach(_pivot, Vector2.DOWN)
+	_rest_angle = body.rest_angle()
+	state.ground_clearance = _rest_height
+	# Landed, it's on the ground again without touching down a second time.
+	_was_on_surface = saved["on_surface"]
+	if _was_on_surface:
+		_gravity_model.propagate(state, 0.0)
+		_touch_terrain()
+	assist_enabled = saved["assist"]
+	assist_changed.emit(assist_enabled)
+	stab_enabled = saved["stab"]
+	_stab_needs_pick = true
+	stab_changed.emit(stab_enabled)
+	legs_changed.emit(legs_down, false)
+	_switch_engine(saved["engine_on"])
+	_aero_stale = true
+	_update_performance()
+	_place_art()
+	orbit_changed.emit()
+
+
 ## Puts every pixel back, as a station's repair bay will.
 func repair() -> void:
 	var moved: Vector2 = (-_pivot).rotated(heading)
