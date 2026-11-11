@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Context menus get smaller zoomed out, on Manny's call: full size at 1/2 and closer, a compact one with small text out to 1/32, and none past that \[Leaning\] |
 | 2026-11-10 | Auto-hide turned off on Manny's call: only the tab at the left hides and shows the controls. The gig tracker folds only when tapped, apart from the controls. Gig board rows keep one title size, with the pay on the second line when titles run long. The tap that opens a board can no longer take a gig \[Leaning\] |
 | 2026-11-10 | Survey gigs built: a spot on the planet's dry land or the moon; land within 80 m, SCAN SITE for 8 seconds while landed, and the data uplinks and pays once Kapteyn-3 or a base is in line of sight; losing the ship first loses the data \[Leaning\] |
 | 2026-11-10 | Active-gig tracker built from Manny's mockup, top left under the readouts, folding into an orange GIG tab; taking a gig makes its destination the target \[Leaning\] |
@@ -590,6 +591,7 @@ Context menus: \[Leaning\]
 - The label isn't fixed to one side, on Manny's call: each frame it tries spots all round the thing, near and farther out, and takes the one that covers least of the ship, the pilot, where the pilot's heading (the way they're being pushed, or else how they're drifting), and the thing itself. Walk toward it and it moves, usually above. Docked, it goes above or below the ship rather than over it. Beside the thing is first choice, the right before the left, then above, then below, which on a world is the dirt. \[Leaning\]
 - It only moves to a new spot when that's clearly better, and it slides there, so it doesn't flicker. It always stays inside the part of the view the panels leave clear, below UNDOCK and RESTART when they're up.
 - The line runs like the hold card's: straight out of the label's side that faces the thing, then straight to the brackets at whatever angle that takes. It's dotted gold with a dark edge, so it reads over a pale hull.
+- Zoomed out it gets smaller, like everything else, on Manny's call: full size at 1/2 and closer, then a compact one with small text, a tighter box, and shorter brackets and line, out to 1/32. Past that, at the orbit view and out, where the world's a few pixels, it isn't shown, though F still picks it on the Mac. It steps rather than shrinking smoothly, since the stencil text only comes in whole sizes. \[Leaning\]
 - The same menu serves ships, stations, doors, and boards. It can hold several choices, a row each, for when something offers more than one, like a gig board.
 - UNDOCK and RESTART stay as buttons under the top bar, since they aren't about a thing in the world.
 - ENGINE is orange, and hatched over while its safety cover is down. It's an on/off switch, lit solid while the engine's on, and the throttle lever sets how hard it pushes, with 0 idling. Manny's call (his brother's idea), 2026-11-10, replacing BURN, which fired while held: long burns are hands-free now, which time warp needs, and the RCS still makes small nudges. \[Leaning\]

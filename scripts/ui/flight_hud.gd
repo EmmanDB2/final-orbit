@@ -719,10 +719,11 @@ func _place_context_menu(delta: float) -> void:
 	var labels: PackedStringArray = gathered[0]
 	if labels != _context_menu.options:
 		_context_menu.options = labels
-		_context_menu.visible = not labels.is_empty()
 		_context_menu.reset()
 		_menu_tracking = false
 		_menu_pilot_speed = Vector2.ZERO
+	# Smaller zoomed out, and gone once the world's too small to point at; F still works then.
+	_context_menu.visible = not labels.is_empty() and _context_menu.fit_zoom(_view._zoom)
 	if not _context_menu.visible:
 		return
 	var corners: PackedFloat64Array = gathered[1]

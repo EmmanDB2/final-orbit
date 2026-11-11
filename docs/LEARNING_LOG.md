@@ -657,3 +657,10 @@ Files: `scripts/ui/gig_board.gd`, `scripts/ui/gig_tracker.gd`, `scripts/ui/fligh
 
 - one input event seen by two systems in the same frame, and arming a screen until keys are let go
 - keeping a list's look consistent by deciding the layout once for all rows
+
+## 2026-11-10: Context menus shrink zoomed out
+
+Files: `scripts/ui/context_menu.gd`, `scripts/ui/flight_hud.gd`, `docs/DESIGN.md`
+
+- sizes from functions instead of constants, so one switch changes them all
+- why pixel text steps between whole sizes instead of scaling smoothly
