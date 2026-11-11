@@ -59,6 +59,8 @@ const WORLD_PIXEL: float = 2.0
 const GROUND_CHECK_COLUMNS: int = 90
 ## How long a hit shakes the art, in ticks.
 const JOLT_TICKS: int = 18
+## How hard a bump has to be to be heard, as a share of the safe impact speed.
+const BUMP_SHARE: float = 0.1
 
 ## Emitted every physics tick with the ship's real position in the world.
 signal world_position_changed(x: float, y: float)
@@ -88,6 +90,9 @@ signal part_detached(piece: Dictionary, x: float, y: float, velocity_x: float, v
 signal pixels_scattered(offsets: PackedVector2Array, colors: PackedColorArray, size: int, x: float, y: float, velocity_x: float, velocity_y: float, kick: Vector2, hit_offset: Vector2, blast: float)
 ## Emitted with a short warning for the pilot, such as a module going down.
 signal warning_raised(text: String)
+## Emitted when something hits the ship: how hard, as a share of the speed it can take without harm
+## (so above 1 hurts), and how many pixels it destroyed. A gentle bump destroys none.
+signal hull_struck(strength: float, damage: int)
 ## Emitted when the cockpit is lost, and the ship with it.
 signal ship_lost
 ## Emitted when the ship can or can't fly any more, from damage or an empty tank.
@@ -957,7 +962,10 @@ func _hit_ground(speed: float, landed_on: int) -> void:
 	var up: Vector2 = Vector2.UP.rotated(_local_up_heading())
 	var down: Vector2 = _local_down()
 	var touching: Vector2 = _pivot + down * body.reach(_pivot, down)
-	_take_damage(body.crush(down, energy, int(state.time * 1000.0)), up * minf(speed * 0.4, 200.0), touching, clampf(speed * 0.7, 60.0, 320.0))
+	var damage: int = _take_damage(body.crush(down, energy, int(state.time * 1000.0)), up * minf(speed * 0.4, 200.0), touching, clampf(speed * 0.7, 60.0, 320.0))
+	# Touching down is heard already; only a landing that breaks something is a hit.
+	if damage > 0:
+		hull_struck.emit(speed / maxf(safe, 1.0), damage)
 
 
 ## Something solid stopped the ship, at this offset from it in the world. The normal points out of
@@ -985,12 +993,16 @@ func hit_solid(contact: Vector2, normal: Vector2, push: float, solid_x: float, s
 
 	var safe: float = design.safe_impact_speed
 	if into <= safe:
+		# A bump: heard, but too gentle to hurt. Barely touching is silent.
+		if into > safe * BUMP_SHARE:
+			hull_struck.emit(into / safe, 0)
 		return
 	var energy: float = 0.5 * _mass_now * (into * into - safe * safe)
 	var inward: Vector2 = (-normal).rotated(-heading)
 	var touching: Vector2 = contact.rotated(-heading) + _pivot
 	warning_raised.emit("%s COLLISION" % what)
-	_take_damage(body.crush(inward, energy, int(state.time * 1000.0)), normal * minf(into * 0.4, 200.0), touching, clampf(into * 0.7, 60.0, 320.0))
+	var damage: int = _take_damage(body.crush(inward, energy, int(state.time * 1000.0)), normal * minf(into * 0.4, 200.0), touching, clampf(into * 0.7, 60.0, 320.0))
+	hull_struck.emit(into / safe, damage)
 
 
 # Landed, the ship moves along the ground only, never up off it or down into it, as far as it takes
@@ -1058,14 +1070,17 @@ func current_mass() -> float:
 func take_hit(world_offset: Vector2, energy: float) -> void:
 	var point: Vector2 = world_offset.rotated(-heading) + _pivot
 	var erased: Dictionary = body.dent(point, energy, int(state.time * 1000.0))
-	_take_damage(erased, world_offset.normalized() * 40.0, point, clampf(sqrt(energy / 500000.0) * 6.0, 40.0, 200.0))
+	var damage: int = _take_damage(erased, world_offset.normalized() * 40.0, point, clampf(sqrt(energy / 500000.0) * 6.0, 40.0, 200.0))
+	# Above the safe speed by however much the energy says.
+	var safe: float = design.safe_impact_speed
+	hull_struck.emit(sqrt(1.0 + 2.0 * energy / (_mass_now * safe * safe)), damage)
 
 
 # Starts showing what a hit destroyed, sends off what broke loose, and updates everything
-# damage changes. The pieces fly away from where the hit landed.
-func _take_damage(erased: Dictionary, kick: Vector2, hit_point: Vector2, blast: float) -> void:
+# damage changes. The pieces fly away from where the hit landed. Returns how many pixels it destroyed.
+func _take_damage(erased: Dictionary, kick: Vector2, hit_point: Vector2, blast: float) -> int:
 	if erased["points"].is_empty():
-		return
+		return 0
 	_wave.add_hit(erased, hit_point, kick, blast)
 	_jolt_size = maxf(_jolt_size, clampf(erased["points"].size() / 120.0, 0.5, 5.0))
 	_jolt_ticks = JOLT_TICKS
@@ -1079,6 +1094,7 @@ func _take_damage(erased: Dictionary, kick: Vector2, hit_point: Vector2, blast: 
 		var thrown: Vector2 = kick + (at - hit_at).normalized() * blast * 0.4
 		part_detached.emit(piece, state.x + at.x, state.y + at.y, state.velocity_x, state.velocity_y, heading, angular_velocity, thrown)
 	_update_for_damage()
+	return erased["points"].size()
 
 
 # Plays out damage on the art one tick further: pixels come off as sparks, a crushed ship

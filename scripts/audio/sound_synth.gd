@@ -79,12 +79,111 @@ static func thud() -> AudioStreamWAV:
 		return sin(TAU * 55.0 * t) * exp(-t / 0.12) * 0.7 + low.run(rng.randf_range(-1.0, 1.0)) * exp(-t / 0.05) * 0.8)
 
 
-## Hitting something hard, or losing a part: grinding, crackling noise.
+## Damage being done: grinding, crackling noise.
 static func crunch() -> AudioStreamWAV:
 	var low := _LowPass.new(900.0)
 	return _make(0.55, func(t: float, rng: RandomNumberGenerator) -> float:
 		var crackle: float = rng.randf_range(-1.0, 1.0) if rng.randf() < 0.08 else 0.0
 		return (low.run(rng.randf_range(-1.0, 1.0)) * 1.4 + crackle * 0.5) * exp(-t / 0.18) * 0.8)
+
+
+## A gentle bump, heard through the hull: a hollow metal knock.
+static func knock() -> AudioStreamWAV:
+	var low := _LowPass.new(600.0)
+	var rings: Array[_Ring] = [_Ring.new(95.0, 0.1, 1.0), _Ring.new(180.0, 0.06, 0.5), _Ring.new(263.0, 0.05, 0.35), _Ring.new(410.0, 0.03, 0.2)]
+	return _peaked(0.45, 0.6, func(t: float, rng: RandomNumberGenerator) -> float:
+		var strike: float = low.run(rng.randf_range(-1.0, 1.0)) * exp(-t / 0.004) if t < 0.03 else 0.0
+		var total: float = sin(TAU * 70.0 * t) * exp(-t / 0.03) * 0.3
+		for ring: _Ring in rings:
+			total += ring.run(strike)
+		return total)
+
+
+## The frame straining after a hard hit: a low groan with creaks in it, as the metal slips and sticks.
+static func groan() -> AudioStreamWAV:
+	var low := _LowPass.new(300.0)
+	var creaks: Array[_Ring] = [_Ring.new(420.0, 0.025, 1.0), _Ring.new(610.0, 0.02, 0.7), _Ring.new(890.0, 0.015, 0.4)]
+	var state := {"slip": 0.0, "phase": 0.0}
+	return _peaked(1.6, 0.45, func(t: float, rng: RandomNumberGenerator) -> float:
+		var swell: float = minf(t / 0.25, 1.0) * clampf((1.6 - t) / 1.1, 0.0, 1.0)
+		# The groan: a rough tone sliding down as the frame gives.
+		state["phase"] += lerpf(58.0, 44.0, t / 1.6) / RATE
+		var rough: float = fmod(state["phase"], 1.0) * 2.0 - 1.0 + fmod(state["phase"] * 1.007, 1.0) - 0.5
+		var tone: float = low.run(rough) * 1.5
+		# The creaks: the metal catching and slipping, at a rate that wanders.
+		state["slip"] += (14.0 + 10.0 * sin(TAU * t * 0.9) + rng.randf_range(-6.0, 6.0)) / RATE
+		var pulse: float = 0.0
+		if state["slip"] >= 1.0:
+			state["slip"] -= 1.0
+			pulse = rng.randf_range(0.5, 1.0)
+		var creak: float = 0.0
+		for ring: _Ring in creaks:
+			creak += ring.run(pulse)
+		return (tone * 0.6 + creak * 0.5) * swell)
+
+
+## A part breaking off: a sharp metal crack, ringing like a struck plate, with a thump under it.
+static func crack() -> AudioStreamWAV:
+	var tear := _LowPass.new(2500.0)
+	var rings: Array[_Ring] = [_Ring.new(310.0, 0.18, 1.0), _Ring.new(742.0, 0.12, 0.7), _Ring.new(1210.0, 0.09, 0.5), _Ring.new(1873.0, 0.06, 0.35), _Ring.new(2650.0, 0.04, 0.25)]
+	return _peaked(0.6, 0.9, func(t: float, rng: RandomNumberGenerator) -> float:
+		var burst: float = rng.randf_range(-1.0, 1.0) * exp(-t / 0.002) if t < 0.02 else 0.0
+		var total: float = burst * 0.8 + sin(TAU * 60.0 * t) * exp(-t / 0.06) * 0.6
+		for ring: _Ring in rings:
+			total += ring.run(burst)
+		var tearing: float = tear.run(rng.randf_range(-1.0, 1.0)) if rng.randf() < 0.3 else 0.0
+		return total + tearing * exp(-t / 0.05) * 0.7)
+
+
+## Debris rattling against the hull after something breaks: small pieces tinking, fewer and softer.
+static func debris() -> AudioStreamWAV:
+	var plan := RandomNumberGenerator.new()
+	plan.seed = 5
+	var hits: Array[Dictionary] = []
+	for i in range(13):
+		var at: float = 0.9 * pow(plan.randf(), 1.8)
+		hits.append({"at": at, "loud": (1.0 - at) * plan.randf_range(0.4, 1.0), "pitch": plan.randf_range(900.0, 2600.0), "ring": plan.randf_range(0.02, 0.05)})
+	return _peaked(1.0, 0.5, func(t: float, rng: RandomNumberGenerator) -> float:
+		var total: float = 0.0
+		for hit: Dictionary in hits:
+			var u: float = t - hit["at"]
+			if u >= 0.0 and u < 0.15:
+				total += sin(TAU * hit["pitch"] * u) * exp(-u / hit["ring"]) * hit["loud"]
+				if u < 0.002:
+					total += rng.randf_range(-1.0, 1.0) * hit["loud"] * 0.5
+		return total)
+
+
+## The ship lost: the heaviest hit there is, a deep boom with the hull crushing and ringing in it.
+static func impact() -> AudioStreamWAV:
+	var body := _LowPass.new(250.0)
+	var crush := _LowPass.new(1200.0)
+	var settle := _LowPass.new(120.0)
+	var rings: Array[_Ring] = [_Ring.new(180.0, 0.4, 1.0), _Ring.new(433.0, 0.3, 0.6), _Ring.new(720.0, 0.2, 0.4)]
+	var state := {"phase": 0.0}
+	return _peaked(1.8, 1.0, func(t: float, rng: RandomNumberGenerator) -> float:
+		state["phase"] += lerpf(48.0, 28.0, minf(t / 0.8, 1.0)) / RATE
+		var boom: float = sin(TAU * state["phase"]) * exp(-t / 0.45) * 1.2
+		var noise: float = rng.randf_range(-1.0, 1.0)
+		var burst: float = noise * exp(-t / 0.003) if t < 0.02 else 0.0
+		var crackle: float = noise if rng.randf() < 0.06 else 0.0
+		var total: float = boom + body.run(noise) * exp(-t / 0.25) * 3.0
+		total += (crush.run(noise) * 1.5 + crackle * 0.4) * exp(-t / 0.3)
+		total += settle.run(noise) * exp(-t / 0.9) * 2.0
+		for ring: _Ring in rings:
+			total += ring.run(burst) * 0.5
+		return total)
+
+
+## The radio after the ship's lost: static, fading out.
+static func radio_static() -> AudioStreamWAV:
+	var high := _LowPass.new(3200.0)
+	var low := _LowPass.new(350.0)
+	return _peaked(2.6, 0.35, func(t: float, rng: RandomNumberGenerator) -> float:
+		var noise: float = rng.randf_range(-1.0, 1.0)
+		var band: float = high.run(noise) - low.run(noise)
+		var pop: float = rng.randf_range(-1.0, 1.0) if rng.randf() < 0.004 else 0.0
+		return (band + pop * 0.6) * clampf((2.6 - t) / 1.4, 0.0, 1.0))
 
 
 ## The engine through the hull: a deep, rolling rumble.
@@ -134,6 +233,22 @@ static func servo() -> AudioStreamWAV:
 
 # A one-shot this many seconds long, from a function of time.
 static func _make(seconds: float, sample: Callable) -> AudioStreamWAV:
+	return _wav(_samples(seconds, sample), false)
+
+
+# A one-shot scaled so its loudest moment is this loud, so a sound can be shaped first and leveled after.
+static func _peaked(seconds: float, peak: float, sample: Callable) -> AudioStreamWAV:
+	var samples: PackedFloat32Array = _samples(seconds, sample)
+	var loudest: float = 0.0
+	for value: float in samples:
+		loudest = maxf(loudest, absf(value))
+	if loudest > 0.0:
+		for i in range(samples.size()):
+			samples[i] *= peak / loudest
+	return _wav(samples, false)
+
+
+static func _samples(seconds: float, sample: Callable) -> PackedFloat32Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var count: int = ceili(seconds * RATE)
@@ -141,7 +256,7 @@ static func _make(seconds: float, sample: Callable) -> AudioStreamWAV:
 	samples.resize(count)
 	for i in range(count):
 		samples[i] = sample.call(float(i) / RATE, rng)
-	return _wav(samples, false)
+	return samples
 
 
 # A seamless loop: made a little long, with the end faded into the start so it doesn't click.
@@ -209,3 +324,26 @@ class _LowPass:
 	func run(input: float) -> float:
 		_value += _share * (input - _value)
 		return _value
+
+
+# A resonance, like a struck piece of metal ringing at one pitch: a kick sets it ringing, and it dies
+# away over about this many seconds. Each is weighted so high and low rings start equally loud.
+class _Ring:
+	var _a1: float = 0.0
+	var _a2: float = 0.0
+	var _scale: float = 0.0
+	var _y1: float = 0.0
+	var _y2: float = 0.0
+
+	func _init(frequency: float, ring_seconds: float, weight: float) -> void:
+		var r: float = exp(-1.0 / (ring_seconds * RATE))
+		var w: float = TAU * frequency / RATE
+		_a1 = 2.0 * r * cos(w)
+		_a2 = r * r
+		_scale = sin(w) * weight
+
+	func run(input: float) -> float:
+		var y: float = _a1 * _y1 - _a2 * _y2 + input * _scale
+		_y2 = _y1
+		_y1 = y
+		return y

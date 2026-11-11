@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-11 | Crash sounds built, building with how bad the hit is: a knock for a bump, a thud and grinding then the frame groaning for damage, a crack for each part lost with debris rattling after, and for a lost ship one huge impact, then silence but for radio static. Outside, crashes are heard only across air. Sound is done for now; the wind waits for planets to get their real environments \[Leaning\] |
 | 2026-11-11 | The cockpit's buttons are silent except ENGINE, on Manny's call; the wind is a darker, softer whoosh at about half its old loudness \[Leaning\] |
 | 2026-11-11 | No breathing in the suit, on Manny's call: on foot it played nonstop and sounded like the RCS \[Cut\] |
 | 2026-11-10 | Sound tickets 3 and 4 built: air opens the muffled sound up with its density, with wind from moving through it, a breeze standing in it, a roar growing with re-entry heat, and the ship's engine heard across it from outside; on EVA or on foot, the pilot breathes, the jetpack hisses, and the suit's microphone is clearer than the hull \[Leaning\] |
@@ -678,7 +679,9 @@ Decided 2026-11-10, on Manny's call. \[Leaning\]
 - The cockpit's buttons are silent, except ENGINE: its cover flips up with a snap and its switch clunks. The throttle lever ticks as it moves notch to notch.
 - The comms line has a radio: a burst of static and a blip with each message, two falling tones for a caution in amber, an alarm for a loss in red, and a chime when a gig pays.
 - Music is ambient, in Zen Mode. Normal flight stays mostly silent, so the engine and alarms land.
-- The phone buzzes too: touchdowns, impacts, and the engine burning.
+- Crashes build with how bad the hit is, heard as the pilot hears it: a gentle bump knocks through the hull, louder the harder it is; a hit that does damage thuds and grinds, and the frame groans after; each part that breaks off cracks, deeper for a bigger part, with debris rattling against the hull after. Losing the ship is one huge impact, then every ship sound cuts out at once, leaving the radio's static and the alarm. Outside, a crash is heard only across air, like the engine; on the moon it's silent. \[Leaning\]
+- The phone buzzes too: touchdowns, a jolt for each hit matched to how hard it was, a stutter of taps for debris, a long one for losing the ship, and a faint purr while the engine burns.
+- The wind is a placeholder until planets get their real environments; it's to be redone then, since each world's air will sound different. \[Open\]
 - One sound director plays everything by listening to what happens, through signals, so no other system knows sound exists. Four channels, each with its own volume for a settings screen later: Effects for the ship and the world, UI for the cockpit, Radio for the comms, and Music.
 - Sounds are data: `data/sound_set.tres` names a sound for each event, and any it leaves empty is made by the game itself (`scripts/audio/sound_synth.gd`), from shaped noise and tones, so the game has sound before it has recordings. Recordings can replace them one at a time.
 - How it's built: the Effects channel's filter sits at 650 Hz through the hull and 3,500 Hz through the suit's microphone, and opens toward 9,000 Hz with the square root of the air's density. Wind grows with how fast the ship or pilot moves through the air, a full gale at about 20 m/s at the ground's density; standing outside in air there's a light breeze. The re-entry roar follows the heat. Outside, the ship's engine, RCS, and legs carry across air only, fading out by 100 m. \[Leaning\]

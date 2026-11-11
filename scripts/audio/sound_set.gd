@@ -14,12 +14,19 @@ extends Resource
 @export var warning: AudioStream
 @export var alarm: AudioStream
 @export var chime: AudioStream
+@export var radio_static: AudioStream
 @export_group("Ship")
 @export var thud: AudioStream
-@export var crunch: AudioStream
 @export var rumble: AudioStream
 @export var hiss: AudioStream
 @export var servo: AudioStream
+@export_group("Crashes")
+@export var knock: AudioStream
+@export var crunch: AudioStream
+@export var groan: AudioStream
+@export var crack: AudioStream
+@export var debris: AudioStream
+@export var impact: AudioStream
 @export_group("Air")
 @export var wind: AudioStream
 @export var roar: AudioStream
@@ -46,8 +53,14 @@ func stream(slot: String) -> AudioStream:
 		"warning": return SoundSynth.warning()
 		"alarm": return SoundSynth.alarm()
 		"chime": return SoundSynth.chime()
+		"radio_static": return SoundSynth.radio_static()
 		"thud": return SoundSynth.thud()
+		"knock": return SoundSynth.knock()
 		"crunch": return SoundSynth.crunch()
+		"groan": return SoundSynth.groan()
+		"crack": return SoundSynth.crack()
+		"debris": return SoundSynth.debris()
+		"impact": return SoundSynth.impact()
 		"rumble": return SoundSynth.rumble()
 		"hiss": return SoundSynth.hiss()
 		"servo": return SoundSynth.servo()

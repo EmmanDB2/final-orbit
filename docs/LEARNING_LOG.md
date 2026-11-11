@@ -715,3 +715,11 @@ Files: `scripts/audio/sound_director.gd`, `scripts/audio/sound_synth.gd`, `docs/
 
 - a filter whose cutoff moves over time (gusts)
 - keeping a loop seamless: every change repeats with the loop's length
+
+## 2026-11-11: Crash sounds
+
+Files: `scripts/ship.gd`, `scripts/audio/sound_synth.gd`, `scripts/audio/sound_set.gd`, `scripts/audio/sound_director.gd`, `docs/DESIGN.md`
+
+- resonators (a two-pole filter that rings like struck metal)
+- layering sounds by severity from one event's numbers
+- scheduling things for later with a queue of callables
