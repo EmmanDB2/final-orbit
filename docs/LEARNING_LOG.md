@@ -680,3 +680,10 @@ Files: `scripts/audio/sound_director.gd`, `scripts/ship.gd`, `scripts/main.gd`
 - looping sounds whose loudness and pitch follow the game (linear_to_db)
 - an audio effect on a bus (a low-pass filter) standing in for hearing through a hull
 - haptics with Input.vibrate_handheld, only on phones
+
+## 2026-11-10: Sound, tickets 3 and 4: air and the suit
+
+Files: `scripts/audio/sound_director.gd`, `docs/DESIGN.md`
+
+- sound that depends on the medium: a filter's cutoff following the air's density
+- mixing several causes into one loop (RCS or jetpack into the same hiss)

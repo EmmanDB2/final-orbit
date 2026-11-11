@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-10 | Sound tickets 3 and 4 built: air opens the muffled sound up with its density, with wind from moving through it, a breeze standing in it, a roar growing with re-entry heat, and the ship's engine heard across it from outside; on EVA or on foot, the pilot breathes, the jetpack hisses, and the suit's microphone is clearer than the hull \[Leaning\] |
 | 2026-11-10 | Sound ticket 2 built: the ship through its hull, muffled, with the engine's rumble deepening and swelling with the throttle, RCS hiss, leg motors, touchdown thuds, crunches, and docking clunks, all silent once the pilot's out in vacuum; the phone buzzes on touchdowns and hits and purrs faintly while the engine burns \[Leaning\] |
 | 2026-11-10 | Sound planned and begun, on Manny's call: space is silent, so you hear what the pilot hears, through the hull, the suit, or real air; cockpit clicks and radio sounds; music in Zen Mode; haptics. Sounds are made by the game until recordings are dropped in. Ticket 1 built: the sound director, channels, clicks, and radio \[Leaning\] |
 | 2026-11-10 | Context menus get smaller zoomed out, on Manny's call: full size at 1/2 and closer, a compact one with small text out to 1/32, and none past that \[Leaning\] |
@@ -678,6 +679,7 @@ Decided 2026-11-10, on Manny's call. \[Leaning\]
 - The phone buzzes too: touchdowns, impacts, and the engine burning.
 - One sound director plays everything by listening to what happens, through signals, so no other system knows sound exists. Four channels, each with its own volume for a settings screen later: Effects for the ship and the world, UI for the cockpit, Radio for the comms, and Music.
 - Sounds are data: `data/sound_set.tres` names a sound for each event, and any it leaves empty is made by the game itself (`scripts/audio/sound_synth.gd`), from shaped noise and tones, so the game has sound before it has recordings. Recordings can replace them one at a time.
+- How it's built: the Effects channel's filter sits at 650 Hz through the hull and 3,500 Hz through the suit's microphone, and opens toward 9,000 Hz with the square root of the air's density. Wind grows with how fast the ship or pilot moves through the air, a full gale at about 20 m/s at the ground's density; standing outside in air there's a light breeze. The re-entry roar follows the heat. Outside, the ship's engine, RCS, and legs carry across air only, fading out by 100 m. \[Leaning\]
 - Time warp doesn't change sounds' pitch.
 
 ## Art direction

@@ -2,8 +2,9 @@
 # sound exists. It sets up the channels (Effects for the ship and the world, UI for the cockpit's
 # switches, Radio for the comms line, Music), keeps a few players for one-off sounds and one for each
 # loop, and plays the sound set's sounds for each event. Aboard, the ship's sounds come through the
-# hull, so the Effects channel runs through a low filter; out in vacuum they stop. It buzzes the phone
-# too. From DESIGN.md, "Sound".
+# hull, so the Effects channel runs through a low filter that opens as the air thickens; out in vacuum
+# they stop, and the pilot hears their suit: breathing, and the jetpack. In air there's wind, a roar on
+# re-entry, and the ship's engine across the air. It buzzes the phone too. From DESIGN.md, "Sound".
 class_name SoundDirector
 extends Node
 
@@ -11,14 +12,21 @@ extends Node
 ## sounds as it would through the hull.
 const CHANNELS: Array[String] = ["Effects", "UI", "Radio", "Music"]
 const PLAYERS_PER_CHANNEL: int = 6
-## The ship through its hull: how high the filter lets sound through, in hertz.
+## How high the Effects filter lets sound through, in hertz: through the hull, through the suit's
+## microphone, and in thick air, with everything between following the air's density.
 const HULL_CUTOFF: float = 650.0
+const SUIT_CUTOFF: float = 3500.0
+const OPEN_CUTOFF: float = 9000.0
+## How fast through the air reads as a full gale, in world units a second, at the ground's density.
+const GALE_SPEED: float = 400.0
+## How far the ship's engine carries across the air to a pilot outside, in world units.
+const ENGINE_CARRY: float = 2000.0
 ## How quickly a loop's loudness follows what it's following, per second.
 const LOOP_FOLLOW: float = 10.0
 ## Loudness that counts as silent, in decibels.
 const SILENT_DB: float = -60.0
 ## The loops, each on the Effects channel.
-const LOOPS: Array[String] = ["rumble", "hiss", "servo"]
+const LOOPS: Array[String] = ["rumble", "hiss", "servo", "wind", "roar", "breath"]
 
 ## Whether the phone buzzes.
 @export var haptics: bool = true
@@ -100,11 +108,31 @@ func _process(delta: float) -> void:
 	if _ship == null:
 		return
 	var real: float = TimeWarp.real(delta)
-	# Out in vacuum, nothing of the ship reaches the pilot.
-	var heard: bool = _pilot.mode == Pilot.ABOARD
-	_loop_wanted["rumble"] = _engine_share if heard else 0.0
-	_loop_wanted["hiss"] = _ship.rcs_activity() * 0.7 if heard else 0.0
-	_loop_wanted["servo"] = 0.6 if heard and _legs_moving else 0.0
+	var aboard: bool = _pilot.mode == Pilot.ABOARD
+	var gravity_model: GravityModel = _ship._gravity_model
+	var where: ShipState = _ship.state if aboard else _pilot.state
+	var air: float = clampf(gravity_model.get_air_density(where.x, where.y, where.time), 0.0, 1.0)
+	# Through the hull or the suit's microphone, opening up as the air thickens.
+	var cutoff: float = lerpf(HULL_CUTOFF if aboard else SUIT_CUTOFF, OPEN_CUTOFF, sqrt(air))
+	_hull_filter.cutoff_hz = lerpf(_hull_filter.cutoff_hz, cutoff, 1.0 - exp(-4.0 * real))
+	# The ship's own sounds: all of them aboard, and outside only across air, fading with distance.
+	var heard: float = 1.0
+	if not aboard:
+		var away: float = Vector2(_ship.state.x - where.x, _ship.state.y - where.y).length()
+		heard = air * clampf(1.0 - away / ENGINE_CARRY, 0.0, 1.0)
+	var outside: bool = _pilot.mode == Pilot.EVA or _pilot.mode == Pilot.SURFACE
+	var jetpack: float = 0.6 if outside and (_pilot._firing.length() > 0.01 or _pilot._jetting or absf(_pilot._turning) > 0.01) else 0.0
+	_loop_wanted["rumble"] = _engine_share * heard
+	_loop_wanted["hiss"] = maxf(_ship.rcs_activity() * 0.7 * heard, jetpack)
+	_loop_wanted["servo"] = 0.6 * heard if _legs_moving else 0.0
+	# Wind from moving through the air, and a light breeze standing in it; a roar from re-entry heat.
+	var ground: PackedFloat64Array = gravity_model.get_surface_velocity(where.x, where.y, where.time)
+	var through: float = Vector2(where.velocity_x - ground[0], where.velocity_y - ground[1]).length()
+	var breeze: float = 0.12 * air if outside else 0.0
+	_loop_wanted["wind"] = maxf(clampf(sqrt(air) * through / GALE_SPEED, 0.0, 1.0) * 0.8, breeze)
+	_loop_wanted["roar"] = clampf(_ship.heat_share * 1.2, 0.0, 1.0) if aboard else 0.0
+	# Breathing in the suit while the pilot's outside.
+	_loop_wanted["breath"] = 0.35 if outside else 0.0
 	for slot: String in LOOPS:
 		var level: float = move_toward(_loop_level[slot], _loop_wanted[slot], LOOP_FOLLOW * real)
 		_loop_level[slot] = level
@@ -119,7 +147,7 @@ func _process(delta: float) -> void:
 	# The engine deepens and swells with the throttle.
 	_loops["rumble"].pitch_scale = 0.8 + 0.35 * _engine_share
 	# A faint purr in the hand while the engine burns.
-	if haptics and heard and _engine_share > 0.0:
+	if haptics and aboard and _engine_share > 0.0:
 		_buzz_wait -= real
 		if _buzz_wait <= 0.0:
 			_buzz_wait = 0.12
