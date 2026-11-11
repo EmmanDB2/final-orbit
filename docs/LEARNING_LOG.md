@@ -702,3 +702,9 @@ Files: `scripts/audio/sound_synth.gd`, `scripts/audio/sound_director.gd`
 
 - cascading low-pass filters for a darker sound
 - measuring loudness with RMS
+
+## 2026-11-11: Cut the suit's breathing
+
+Files: `scripts/audio/sound_synth.gd`, `scripts/audio/sound_set.gd`, `scripts/audio/sound_director.gd`, `docs/DESIGN.md`
+
+- removing a feature cleanly: every place it's named, not just turning it to zero

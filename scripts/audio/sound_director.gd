@@ -3,7 +3,7 @@
 # switches, Radio for the comms line, Music), keeps a few players for one-off sounds and one for each
 # loop, and plays the sound set's sounds for each event. Aboard, the ship's sounds come through the
 # hull, so the Effects channel runs through a low filter that opens as the air thickens; out in vacuum
-# they stop, and the pilot hears their suit: breathing, and the jetpack. In air there's wind, a roar on
+# they stop, and the pilot hears their suit: the jetpack. In air there's wind, a roar on
 # re-entry, and the ship's engine across the air. It buzzes the phone too. From DESIGN.md, "Sound".
 class_name SoundDirector
 extends Node
@@ -27,11 +27,8 @@ const LOOP_FOLLOW: float = 10.0
 const SILENT_DB: float = -60.0
 ## How loud the RCS hiss is at full thrust, from 0 to 1. Manny halved it on 2026-11-10.
 const RCS_LEVEL: float = 0.35
-## How loud the suit's breathing is, from 0 to 1. Lowered on 2026-11-11, when on foot it sounded
-## like the RCS.
-const BREATH_LEVEL: float = 0.25
 ## The loops, each on the Effects channel.
-const LOOPS: Array[String] = ["rumble", "hiss", "servo", "wind", "roar", "breath"]
+const LOOPS: Array[String] = ["rumble", "hiss", "servo", "wind", "roar"]
 
 ## Whether the phone buzzes.
 @export var haptics: bool = true
@@ -52,7 +49,7 @@ var _engine_share: float = 0.0
 var _legs_moving: bool = false
 var _buzz_wait: float = 0.0
 ## Every sound slot, made ahead on another thread at start so none is made mid-flight.
-const SLOTS: Array[String] = ["click", "tick", "clunk", "cover", "blip", "warning", "alarm", "chime", "thud", "crunch", "rumble", "hiss", "servo", "wind", "roar", "breath"]
+const SLOTS: Array[String] = ["click", "tick", "clunk", "cover", "blip", "warning", "alarm", "chime", "thud", "crunch", "rumble", "hiss", "servo", "wind", "roar"]
 var _made: Dictionary = {}
 var _making: int = -1
 var _making_lock := Mutex.new()
@@ -159,8 +156,6 @@ func _process(delta: float) -> void:
 	var breeze: float = 0.12 * air if outside else 0.0
 	_loop_wanted["wind"] = maxf(clampf(sqrt(air) * through / GALE_SPEED, 0.0, 1.0) * 0.8, breeze)
 	_loop_wanted["roar"] = clampf(_ship.heat_share * 1.2, 0.0, 1.0) if aboard else 0.0
-	# Breathing in the suit while the pilot's outside.
-	_loop_wanted["breath"] = BREATH_LEVEL if outside else 0.0
 	for slot: String in LOOPS:
 		var level: float = move_toward(_loop_level[slot], _loop_wanted[slot], LOOP_FOLLOW * real)
 		_loop_level[slot] = level

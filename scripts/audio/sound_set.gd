@@ -20,10 +20,9 @@ extends Resource
 @export var rumble: AudioStream
 @export var hiss: AudioStream
 @export var servo: AudioStream
-@export_group("Air and suit")
+@export_group("Air")
 @export var wind: AudioStream
 @export var roar: AudioStream
-@export var breath: AudioStream
 
 @export_group("Volumes")
 ## Each channel's loudness, in decibels.
@@ -54,5 +53,4 @@ func stream(slot: String) -> AudioStream:
 		"servo": return SoundSynth.servo()
 		"wind": return SoundSynth.wind()
 		"roar": return SoundSynth.roar()
-		"breath": return SoundSynth.breath()
 	return null

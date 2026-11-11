@@ -1,8 +1,8 @@
 # sound_synth.gd: makes the game's sounds from code, so it has them with no sound files: clicks, ticks,
 # and clunks for the cockpit's switches, a radio blip, warning tones, an alarm, a chime for getting
 # paid, thuds and crunches for hitting things, and seamless loops of shaped noise for the engine, the
-# RCS, the wind, re-entry, the legs' motors, and breathing in a suit. Any of them can be swapped for a
-# recorded file in the sound set. From DESIGN.md, "Sound".
+# RCS, the wind, re-entry, and the legs' motors. Any of them can be swapped for a recorded file in the
+# sound set. From DESIGN.md, "Sound".
 class_name SoundSynth
 
 const RATE: int = 22050
@@ -124,20 +124,6 @@ static func servo() -> AudioStreamWAV:
 	return _loop(0.5, func(t: float, _rng: RandomNumberGenerator) -> float:
 		var wobble: float = 1.0 + 0.03 * sin(TAU * 8.0 * t)
 		return _soft_square(180.0 * wobble, t) * 0.1 + sin(TAU * 360.0 * t) * 0.04)
-
-
-## Breathing in a suit: a slow, soft in and out, close to the microphone. It's darker than the RCS's
-## hiss and swells gently, so it never sounds like gas escaping.
-static func breath() -> AudioStreamWAV:
-	var low := _LowPass.new(600.0)
-	var lower := _LowPass.new(600.0)
-	return _loop(4.8, func(t: float, rng: RandomNumberGenerator) -> float:
-		var level: float = 0.0
-		if t < 1.4:
-			level = pow(sin(PI * t / 1.4), 2.0)
-		elif t > 1.9 and t < 3.9:
-			level = pow(sin(PI * (t - 1.9) / 2.0), 2.0) * 0.75
-		return lower.run(low.run(rng.randf_range(-1.0, 1.0))) * 1.5 * level)
 
 
 # A one-shot this many seconds long, from a function of time.
