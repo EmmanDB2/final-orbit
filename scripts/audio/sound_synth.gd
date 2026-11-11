@@ -126,16 +126,18 @@ static func servo() -> AudioStreamWAV:
 		return _soft_square(180.0 * wobble, t) * 0.1 + sin(TAU * 360.0 * t) * 0.04)
 
 
-## Breathing in a suit: a slow in and out, close to the microphone.
+## Breathing in a suit: a slow, soft in and out, close to the microphone. It's darker than the RCS's
+## hiss and swells gently, so it never sounds like gas escaping.
 static func breath() -> AudioStreamWAV:
-	var low := _LowPass.new(1200.0)
-	return _loop(4.4, func(t: float, rng: RandomNumberGenerator) -> float:
+	var low := _LowPass.new(600.0)
+	var lower := _LowPass.new(600.0)
+	return _loop(4.8, func(t: float, rng: RandomNumberGenerator) -> float:
 		var level: float = 0.0
-		if t < 1.5:
-			level = sin(PI * t / 1.5) * 0.55
-		elif t > 1.9 and t < 3.7:
-			level = sin(PI * (t - 1.9) / 1.8) * 0.4
-		return low.run(rng.randf_range(-1.0, 1.0)) * 1.8 * level)
+		if t < 1.4:
+			level = pow(sin(PI * t / 1.4), 2.0)
+		elif t > 1.9 and t < 3.9:
+			level = pow(sin(PI * (t - 1.9) / 2.0), 2.0) * 0.75
+		return lower.run(low.run(rng.randf_range(-1.0, 1.0))) * 1.5 * level)
 
 
 # A one-shot this many seconds long, from a function of time.

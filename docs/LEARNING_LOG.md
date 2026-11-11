@@ -695,3 +695,10 @@ Files: `scripts/audio/sound_synth.gd`, `scripts/audio/sound_director.gd`
 - off-by-one: an inclusive loop end reading one sample past the buffer
 - reading a native crash log (tombstone) from `adb logcat -b crash`
 - why a bug can crash on the phone and not the Mac (the allocator's guard pages)
+
+## 2026-11-11: Suit breathing that doesn't sound like the RCS
+
+Files: `scripts/audio/sound_synth.gd`, `scripts/audio/sound_director.gd`
+
+- cascading low-pass filters for a darker sound
+- measuring loudness with RMS

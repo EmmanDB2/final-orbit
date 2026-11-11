@@ -27,6 +27,9 @@ const LOOP_FOLLOW: float = 10.0
 const SILENT_DB: float = -60.0
 ## How loud the RCS hiss is at full thrust, from 0 to 1. Manny halved it on 2026-11-10.
 const RCS_LEVEL: float = 0.35
+## How loud the suit's breathing is, from 0 to 1. Lowered on 2026-11-11, when on foot it sounded
+## like the RCS.
+const BREATH_LEVEL: float = 0.25
 ## The loops, each on the Effects channel.
 const LOOPS: Array[String] = ["rumble", "hiss", "servo", "wind", "roar", "breath"]
 
@@ -157,7 +160,7 @@ func _process(delta: float) -> void:
 	_loop_wanted["wind"] = maxf(clampf(sqrt(air) * through / GALE_SPEED, 0.0, 1.0) * 0.8, breeze)
 	_loop_wanted["roar"] = clampf(_ship.heat_share * 1.2, 0.0, 1.0) if aboard else 0.0
 	# Breathing in the suit while the pilot's outside.
-	_loop_wanted["breath"] = 0.35 if outside else 0.0
+	_loop_wanted["breath"] = BREATH_LEVEL if outside else 0.0
 	for slot: String in LOOPS:
 		var level: float = move_toward(_loop_level[slot], _loop_wanted[slot], LOOP_FOLLOW * real)
 		_loop_level[slot] = level
