@@ -21,6 +21,8 @@ extends Node2D
 var save_slot: String = "normal"
 ## Zen Mode's music.
 @export var music: MusicSet = preload("res://data/music_set.tres")
+## What the station charges for fuel and repairs.
+@export var service_prices: ServicePrices = preload("res://data/service_prices.tres")
 
 ## The agency: gig boards, the gig taken, and credits.
 var agency: Agency
@@ -116,6 +118,9 @@ func _ready() -> void:
 		_start_zen()
 	else:
 		$Hud/SafeArea/FlightHud.connect_agency(agency)
+	var services := ShipServices.new($Ship, agency, service_prices)
+	services.free = _zen
+	$Hud/SafeArea/FlightHud.connect_services(services)
 	agency.message_raised.connect($Hud/SafeArea/CommsLine.on_agency_message)
 	warp.message_raised.connect($Hud/SafeArea/CommsLine._on_ship_warning_raised)
 	_start_landing_forecast()
@@ -146,13 +151,14 @@ func _begin() -> void:
 		_music.play(music, music.zen_tracks)
 
 
-# Zen Mode's rules: the ship's fuel and the pilot's jetpack never run out, and with no gigs the
-# terminals have nothing to offer, which the comms line says.
+# Zen Mode's rules: the ship's fuel and the pilot's jetpack never run out, repairs are free, and with no
+# gigs the gig terminals have nothing to offer, which the comms line says.
 func _start_zen() -> void:
 	$Ship.endless_fuel = true
 	$Pilot.endless_gas = true
-	$Pilot.terminal_used.connect(func(_place: Dictionary) -> void:
-		$Hud/SafeArea/CommsLine.on_agency_message("NO GIGS IN ZEN MODE", true))
+	$Pilot.terminal_used.connect(func(place: Dictionary) -> void:
+		if place.get("kind", "") != "service":
+			$Hud/SafeArea/CommsLine.on_agency_message("NO GIGS IN ZEN MODE", true))
 	_music = MusicPlayer.new()
 	add_child(_music)
 

@@ -563,6 +563,44 @@ func dent(point: Vector2, energy: float, damage_seed: int) -> Dictionary:
 	return _erase_in_order(order, ranks, energy)
 
 
+## A picture of the ship as it is now, nose up, each pixel where it sits. With cutaway, it shows what's
+## under the skin: the systems where there are any, else the frame, and the bare skin dimmed. Returns
+## the "image", and where the grid's middle falls on it as "middle".
+func picture(cutaway: bool) -> Dictionary:
+	var low := Vector2i(1 << 20, 1 << 20)
+	var high := Vector2i(-(1 << 20), -(1 << 20))
+	for index in range(_density.size()):
+		if _density[index] > 0.0:
+			var at := Vector2i(position_of(index).floor())
+			low = Vector2i(mini(low.x, at.x), mini(low.y, at.y))
+			high = Vector2i(maxi(high.x, at.x), maxi(high.y, at.y))
+	if high.x < low.x:
+		return {"image": Image.create(1, 1, false, Image.FORMAT_RGBA8), "middle": Vector2.ZERO}
+	var image := Image.create(high.x - low.x + 1, high.y - low.y + 1, false, Image.FORMAT_RGBA8)
+	for index in range(_density.size()):
+		if _density[index] <= 0.0:
+			continue
+		var color: Color = _color[index]
+		if cutaway:
+			var inside: bool = false
+			for depth in [1, 2]:
+				var below: Color = _depth_color[index * DEPTHS + depth]
+				if _depth[index] <= depth and below.a >= 0.5:
+					color = below
+					inside = true
+					break
+			if not inside:
+				color = color.darkened(0.55)
+		image.set_pixelv(Vector2i(position_of(index).floor()) - low, color)
+	return {"image": image, "middle": -Vector2(low)}
+
+
+## How much of a module's mass is left, from 0 to 1, against how much it had whole.
+func module_mass_share(module_index: int, whole: ShipBody) -> float:
+	var had: float = whole.module_masses.get(module_index, 0.0)
+	return clampf(module_masses.get(module_index, 0.0) / had, 0.0, 1.0) if had > 0.0 else 1.0
+
+
 ## How deep the damage goes at every pixel, for a save: how many of its depths are gone, up to all
 ## of them for a pixel that's gone.
 func damage_depths() -> PackedByteArray:

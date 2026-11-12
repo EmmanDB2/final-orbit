@@ -126,7 +126,11 @@ func _test_walking() -> void:
 		var inner: Vector2i = port["point"] - port["face"] * 20
 		_check("a free port can be walked to", seen[inner.y * size.x + inner.x], 1.0, 0.0)
 	# Each thing to use can be reached from within arm's reach of it.
-	_check("the station has a gig board", layout.spots.size(), 1.0, 0.0)
+	var kinds: Array = []
+	for spot: Dictionary in layout.spots:
+		kinds.append(spot["kind"])
+	_check("the station has a gig board", 1.0 if kinds.has("gig_board") else 0.0, 1.0, 0.0)
+	_check("and a ship services terminal", 1.0 if kinds.has("service") else 0.0, 1.0, 0.0)
 	for spot: Dictionary in layout.spots:
 		var near: int = 0
 		for dy in range(-16, 17):

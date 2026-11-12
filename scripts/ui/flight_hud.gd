@@ -99,6 +99,8 @@ var _legs_button: UiButton
 var _eva_button: UiButton
 var _context_menu: ContextMenu
 var _gig_board: GigBoard
+var _service_board: ServiceBoard
+var _services: ShipServices
 var _gig_tracker: GigTracker
 var _survey_marker: SurveyMarker
 var _agency: Agency
@@ -154,8 +156,9 @@ func _ready() -> void:
 ## Connects the agency, for its gig boards.
 func connect_agency(agency: Agency) -> void:
 	_agency = agency
-	_pilot.terminal_used.connect(_open_gig_board)
-	agency.credits_changed.connect(func(_credits: int) -> void: _gig_board.refresh())
+	agency.credits_changed.connect(func(_credits: int) -> void:
+		_gig_board.refresh()
+		_service_board.refresh())
 	agency.gig_changed.connect(_on_gig_changed)
 
 
@@ -201,6 +204,29 @@ func _update_gig_tracker() -> void:
 		_survey_marker.at = _view.to_screen(at[0], at[1])
 		_survey_marker.queue_redraw()
 	_gig_tracker.queue_redraw()
+
+
+## Connects the station's ship services, for the docking room's terminal, and sends each terminal to
+## its screen.
+func connect_services(services: ShipServices) -> void:
+	_services = services
+	_pilot.terminal_used.connect(_on_terminal_used)
+
+
+func _on_terminal_used(place: Dictionary) -> void:
+	if place.get("kind", "") == "service":
+		_open_service_board()
+	else:
+		_open_gig_board(place)
+
+
+func _open_service_board() -> void:
+	if _services == null:
+		return
+	_card.visible = false
+	_release_everything()
+	_pilot.input_blocked = true
+	_service_board.open(_services)
 
 
 func _open_gig_board(place: Dictionary) -> void:
@@ -361,6 +387,10 @@ func _build() -> void:
 	_gig_board.visible = false
 	_gig_board.closed.connect(_on_gig_board_closed)
 	add_child(_gig_board)
+	_service_board = ServiceBoard.new()
+	_service_board.visible = false
+	_service_board.closed.connect(_on_gig_board_closed)
+	add_child(_service_board)
 
 
 func _side_panel() -> SidePanel:
@@ -446,6 +476,8 @@ func _layout() -> void:
 	_context_menu.size = view
 	_gig_board.position = Vector2.ZERO
 	_gig_board.size = view
+	_service_board.position = Vector2.ZERO
+	_service_board.size = view
 	_survey_marker.position = Vector2.ZERO
 	_survey_marker.size = view
 	_gig_tracker.position = Vector2(EDGE, BAR_HEIGHT + 8.0)
@@ -508,6 +540,8 @@ func _process(frame_delta: float) -> void:
 	# What a board asks for can change while it's up, such as the ship docking.
 	if _gig_board.visible:
 		_gig_board.queue_redraw()
+	if _service_board.visible:
+		_service_board.queue_redraw()
 	_update_gig_tracker()
 	_place_context_menu(delta)
 
@@ -851,6 +885,9 @@ func _widgets_in_reach() -> Array[UiWidget]:
 	var widgets: Array[UiWidget] = []
 	if _gig_board.visible:
 		widgets.append(_gig_board)
+		return widgets
+	if _service_board.visible:
+		widgets.append(_service_board)
 		return widgets
 	if _flight_menu.visible:
 		widgets.append_array(_flight_menu.buttons())

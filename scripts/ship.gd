@@ -480,19 +480,25 @@ func hatch_from_center() -> Vector2:
 
 
 ## Takes the ship onto a station's port. The holder is called each tick with the time, and says
-## where the ship is: [x, y, velocity x, velocity y, heading, spin]. A station fills the tanks and
-## repairs the hull, for free for now.
+## where the ship is: [x, y, velocity x, velocity y, heading, spin]. Refuelling and repairs are the
+## station's services, and cost credits.
 func dock(holder: Callable) -> void:
 	docked = true
 	_dock_holder = holder
 	_switch_engine(false)
-	repair()
-	fuel = body.fuel_capacity
-	rcs_fuel = design.rcs_capacity
 	hull_temperature = 0.0
 	heat_share = 0.0
 	_update_performance()
 	docked_changed.emit(true)
+	orbit_changed.emit()
+
+
+## Pumps fuel and RCS propellant in, as much as the tanks that are left will hold.
+func refuel(fuel_kg: float, rcs_kg: float) -> void:
+	fuel = minf(fuel + fuel_kg, body.fuel_capacity)
+	rcs_fuel = minf(rcs_fuel + rcs_kg, design.rcs_capacity)
+	_update_performance()
+	_check_stranded()
 	orbit_changed.emit()
 
 

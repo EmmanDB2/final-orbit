@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-12 | Prices built, on Manny's call, from his sketch of the service terminal: docking no longer refuels or repairs; a terminal in the docking room sells both, in REFUEL and REPAIRS tabs, with the ship drawn and a tooltip on each tank or damaged part. First numbers: fuel 0.15 Cr/kg, RCS propellant 0.5 Cr/kg, repairs by part, and a 5,000 Cr credit line so nobody is stranded at the station. Free in Zen Mode \[Leaning\] |
 | 2026-11-12 | Zen Mode built: its own world and save, swapped in behind the title; fuel, RCS propellant, and jetpack gas never run out; no gigs or pay; a lost ship isn't kept, so the next Zen flight starts fresh; and ambient music from a track list waiting for Manny's Suno tracks. Time warp works as in normal play \[Leaning\] |
 | 2026-11-12 | The title copied exactly from Manny's mockup, on his call: its letters and orbit measured off the mockup in its own pixels. Sharp stencil letters, cut where the mockup cuts them, with only the O and the bowls of R and B round; the orbit is the ellipse fitted to the mockup's, crossing over ORBIT and passing behind the word, showing only at its ends. The title and menu sit 48 px in, as in the mockup \[Leaning\] |
 | 2026-11-12 | The title's lettering and orbit redrawn as pixel art, on Manny's call: painted at a third of the game's resolution and drawn scaled up, with rounded bowls, one-pixel stencil gaps, shaded bottoms, and outlines, and an orbit with stepped edges, thicker in front, that weaves in front of the O and behind the other letters \[Leaning\] |
@@ -221,7 +222,7 @@ Decided 2026-11-10, on Manny's call, from his mockups of the gig board and the a
 - Gigs only go to places that exist: the station Kapteyn-3, the launch base, the moon base, and survey spots on the planet and moon. Lagrange points wait on n-body physics.
 - The station is named Kapteyn-3, callsign KAPTEYN-3, from Manny's mockup, replacing Home Station.
 - Cargo rides in the lander's cockpit, up to 3 tonnes, and weighs what it says: a 2-tonne load costs about 40 m/s of delta-v and some thrust. A cargo module can come later with its own art.
-- Pay is in credits, Cr. A run starts at 0 Cr, and a gig pays when its deliverable arrives, as the payment rules say. Docking stays free until Manny sets prices; economy numbers are still open.
+- Pay is in credits, Cr. A run starts at 0 Cr, and a gig pays when its deliverable arrives, as the payment rules say. Fuel and repairs cost credits at the station (see Prices).
 - One active gig at a time to start; chaining several, as the core loop has it, comes once the first gig plays well.
 - Credits, the gig taken, and which gigs are gone from each board are saved (see Saving and the title screen).
 
@@ -488,7 +489,7 @@ Terrain and biomes per body: \[Leaning\]
 - It rides rails around the home planet like a moon does, but with no gravity of its own, at the height the ship starts, 2,600 m ahead of it. It turns with its orbit so its bottom always faces the planet, the way a real station can be held, so two ships on the same orbit nearby stay put against it. Comms is on top, crew hab on the right, suit room then EVA hab on the left, and ship refueling on the bottom, leaving four ports free. \[Leaning\]
 - Its pixels are solid. The ship bounces off, keeping a quarter of its speed, and crushes on the side that hit above its safe speed of 50 m/s, the same as hitting the ground. The ship's outline is what touches, and the station can't be damaged for now. \[Leaning\]
 - Docking: the ship's nose is the hatch, and it docks at any free port. The hatch has to come within 14 m of the port's middle, slower than 6 m/s against it, with the nose within 10 degrees of straight in. A dashed line shows from the nearest free port once the hatch is within 700 m, amber until those are all met and then green. Otherwise it's only a bump, and the pilot is told TOO FAST TO DOCK or LINE UP TO DOCK. A ship with its nose gone can't dock. \[Leaning\]
-- Docking draws the ship the last bit into place, then fills the tanks and repairs the hull, for free until money exists. UNDOCK, or U on the Mac, lets it drift off backward at 3 m/s. \[Leaning\]
+- Docking draws the ship the last bit into place. Fuel and repairs are bought at the docking room's terminal (see Prices). UNDOCK, or U on the Mac, lets it drift off backward at 3 m/s. \[Leaning\]
 - Within 2,000 m of a station, the speed readout turns to REL and it and the dial's markers read against the station, including its turning. \[Leaning\]
 - Boarding: BOARD STATION takes the pilot in from a docked ship, or from outside within 90 m of a free port's hatch. Inside, at a free port's inner door it's EXIT STATION, and at the port the ship's docked to it's BOARD SHIP. Nothing's checked for speed at a station's hatch, since the jetpack's slow. \[Leaning\]
 - A station's terminals are spots set per room in the data. The first is the gig board, in the hub's console room on the upper right, which only says no gigs are posted until gigs exist. USE TERMINAL shows when the pilot's next to it. This is what gigs will be picked from. \[Leaning\]
@@ -652,7 +653,7 @@ Turning and RCS controls: \[Leaning\]
 - Heading dial at the top right, on every screen, drawn like a compass to Manny's mockup: ticks every 10 degrees inside the ring, a dim crosshair, the nose as a cyan arrowhead, prograde as a cyan ring and retrograde as an orange one with a cross, spin as an amber arc along the rim, and the spin rate in degrees a second underneath. The markers hide when landed or barely moving, since there's no direction of travel to show.
 - The right column is 132 game pixels wide. Buttons can be drawn smaller than 44 game pixels as long as what a finger can touch isn't.
 - Translation gives the lander about 30 m/s² when full. It's too weak to lift off from the planet or the moon, and ASS doesn't cancel it. \[Leaning\]
-- The RCS has its own propellant tank, apart from the engine's fuel, like Apollo's: 2,400 kg on the lander, two minutes of firing flat out. Turning, translating, STAB, ASSIST, and drag to point all use it, and with it empty the ship can't turn or translate, though the engine still burns. It refills with the fuel, at a station's port or landing at home. Manny's call, 2026-11-10. \[Leaning\]
+- The RCS has its own propellant tank, apart from the engine's fuel, like Apollo's: 2,400 kg on the lander, two minutes of firing flat out. Turning, translating, STAB, ASSIST, and drag to point all use it, and with it empty the ship can't turn or translate, though the engine still burns. It refills with the fuel: bought at the station, or for free landing at home. Manny's call, 2026-11-10. \[Leaning\]
 
 Edge markers: \[Leaning\]
 
@@ -704,6 +705,19 @@ Decided 2026-11-10, on Manny's call. \[Leaning\]
 - How it's built: the Effects channel's filter sits at 650 Hz through the hull and 3,500 Hz through the suit's microphone, and opens toward 9,000 Hz with the square root of the air's density. Wind grows with how fast the ship or pilot moves through the air, a full gale at about 20 m/s at the ground's density; standing outside in air there's a light breeze. The re-entry roar follows the heat. Outside, the ship's engine, RCS, and legs carry across air only, fading out by 100 m. \[Leaning\]
 - Every sound the game makes itself is made at start on another thread, so nothing waits for one mid-flight.
 - Time warp doesn't change sounds' pitch.
+
+## Prices
+
+Decided 2026-11-12, on Manny's call, from his sketch of the service terminal. \[Leaning\]
+
+- Docking doesn't refuel or repair any more. The docking room (Ship refueling) has a terminal for both, used like the gig board's.
+- Its screen has two tabs down the left, REFUEL and REPAIRS, with the tab's name as the title. It opens on REPAIRS if anything needs fixing.
+- REPAIRS draws the ship as it is, nose up, with a tooltip on each damaged part, joined by a line to where the damage is: the part, DAMAGED or NOT WORKING with how much of it is gone, and under that what fixing it costs. Down the left, the same list. At the bottom right, REPAIR ALL with the total fixes everything.
+- REFUEL draws the ship cut away to its systems layer, with a tooltip on each fuel tank and on the RCS propellant: what it holds, and how full it is or how much a hole has cost it. A fuel meter on the right shows engine fuel in orange and RCS propellant in cyan, what's aboard solid and what filling up would add in light, with a red mark where a holed tank stops. At the bottom right, REFUEL with the cost fills both.
+- First numbers, in `data/service_prices.tres`: engine fuel 0.15 Cr/kg (a full 40 t fill is 6,000 Cr, against gigs paying 5,000 to 10,000); RCS propellant 0.5 Cr/kg (1,200 Cr full). Rebuilding a whole part costs, per half: cockpit 6,000, engine 4,000, tank 2,500, RCS 1,500, leg 1,000 Cr, charged for the share of its mass that's gone, 50 Cr at least.
+- The agency extends a 5,000 Cr credit line, so the balance can go that far below zero. Without it, a pilot who docked broke with empty tanks could never fly again. Short of the full price, REFUEL fills as much as the credit left buys; REPAIR ALL needs the whole amount.
+- In Zen Mode it's all free.
+- Still open: whether landing at home should keep refilling the tanks for free, tows when a ship runs dry, and buying a replacement ship after one's lost. \[Open\]
 
 ## Saving and the title screen
 

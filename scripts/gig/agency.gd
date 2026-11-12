@@ -85,6 +85,18 @@ func board(place: Dictionary) -> Array[Gig]:
 	return shown
 
 
+## Takes credits for something, going as far below zero as the credit line allows. Says whether it
+## could.
+func spend(amount: int, credit_line: int) -> bool:
+	if amount <= 0:
+		return true
+	if credits - amount < -credit_line:
+		return false
+	credits -= amount
+	credits_changed.emit(credits)
+	return true
+
+
 ## Everything a save needs from the agency: credits, how far each board has got, the gig taken and
 ## how far along it is, and the cargo aboard for it. Boards themselves come back from the seed.
 func save_state() -> Dictionary:

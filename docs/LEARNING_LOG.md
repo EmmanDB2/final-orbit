@@ -764,3 +764,11 @@ Files: `scripts/main.gd`, `scripts/ui/title_screen.gd`, `scripts/save/save_game.
 - one scene, two rule sets: flags that switch systems on and off
 - a shuffle bag, so music never repeats back to back
 - fading audio in and out with `linear_to_db`
+
+## 2026-11-12: Prices and the service terminal
+
+Files: `scripts/station/service_prices.gd`, `data/service_prices.tres`, `scripts/station/ship_services.gd`, `scripts/ui/service_board.gd`, `scripts/ui/flight_hud.gd`, `scripts/main.gd`, `scripts/ship.gd`, `scripts/ship/ship_body.gd`, `scripts/gig/agency.gd`, `scripts/pilot.gd`, `data/station_1.tres`, `tests/test_station.gd`, `docs/DESIGN.md`
+
+- separating rules (ShipServices) from the screen that shows them (ServiceBoard)
+- drawing a picture from data: a ship's pixels into an `Image`
+- laying out labels with leader lines so they don't overlap

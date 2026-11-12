@@ -25,8 +25,9 @@ signal can_leave_changed(can_leave: bool)
 signal stranded_changed(stranded: bool)
 ## Emitted when the pilot should hear something.
 signal message_raised(text: String)
-## Emitted when the pilot uses a gig board: the station's, or a base's mission computer. The place is
-## {"kind": "station"} or {"kind": "site", "index": i}.
+## Emitted when the pilot uses a terminal: a gig board, the station's or a base's mission computer, as
+## {"kind": "station"} or {"kind": "site", "index": i}; or the docking room's ship services, as
+## {"kind": "service"}.
 signal terminal_used(place: Dictionary)
 
 const ABOARD: String = "aboard"
@@ -348,7 +349,8 @@ func _tick_inside(delta: float) -> void:
 	if _action != "" and _interact_pressed():
 		match _action:
 			"USE TERMINAL":
-				terminal_used.emit({"kind": "station", "index": 0})
+				# The docking room's terminal sells fuel and repairs; any other is the gig board.
+				terminal_used.emit({"kind": "service"} if spot.get("kind", "") == "service" else {"kind": "station", "index": 0})
 			"BOARD SHIP":
 				_board_ship()
 			"EXIT STATION":

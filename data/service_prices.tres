@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="ServicePrices" format=3]
+
+[ext_resource type="Script" path="res://scripts/station/service_prices.gd" id="1_prices"]
+
+[resource]
+script = ExtResource("1_prices")
