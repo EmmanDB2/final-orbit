@@ -779,3 +779,11 @@ Files: `scripts/site/site_building.gd`, `data/launch_base.tres`, `scripts/pilot.
 
 - reusing one screen in two places by passing where it is
 - a precondition (the ship has to be there) that disables actions
+
+## 2026-11-12: The Lander Mk II and the hangar
+
+Files: `art/lander_mk2/`, `data/lander_mk2_design.tres`, `data/ship_list.tres`, `scripts/station/ship_list.gd`, `scripts/station/hangar.gd`, `scripts/station/ship_services.gd`, `scripts/ui/service_board.gd`, `scripts/ship.gd`, `scripts/reentry_glow.gd`, `scripts/save/save_game.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- rebuilding a node from new data at runtime (tearing down and recreating its children)
+- keeping per-item state in a dictionary keyed by resource path
+- refactoring shared code into helpers both a save and the hangar use

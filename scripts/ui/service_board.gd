@@ -2,7 +2,8 @@
 # building, in two tabs down the left. REPAIRS draws the ship as it is, with a tooltip on each damaged
 # part saying what's wrong and, under it, what fixing it costs, and REPAIR ALL at the bottom right with
 # the total. REFUEL draws the ship cut away to its systems, with a tooltip on each tank saying what it
-# holds, a fuel meter at the right, and REFUEL with what filling up costs. It only works on a ship
+# holds, a fuel meter at the right, and REFUEL with what filling up costs. At the station a third tab,
+# SHIPS, is the hangar for now: the ships to fly, and FLY to trade for one. It only works on a ship
 # docked there, or on the base's pad. It covers the flight while it's up. From DESIGN.md, "Prices",
 # drawn to Manny's 2026-11-12 sketch.
 class_name ServiceBoard
@@ -20,7 +21,7 @@ const CLOSE_SIZE: Vector2 = Vector2(104.0, 30.0)
 const TIP_SIZE: Vector2 = Vector2(150.0, 44.0)
 const TIP_GAP: float = 6.0
 const METER_WIDTH: float = 76.0
-const TABS: Array[String] = ["REFUEL", "REPAIRS"]
+const SHIP_ROW: float = 30.0
 
 var _services: ShipServices
 # Where this terminal is: the station, or a base. The ship has to be docked there, or on its pad.
@@ -37,12 +38,15 @@ var _keys_ready: bool = false
 var _pictures: Dictionary = {}
 # What the last thing done came to, shown under the balance.
 var _note: String = ""
+# On SHIPS, which ship in the hangar is picked.
+var _picked_ship: int = 0
 
 
 ## Shows the terminal at a place, on REPAIRS if anything needs fixing and REFUEL if not.
 func open(services: ShipServices, at: Dictionary = {"kind": "station"}) -> void:
 	_services = services
 	_at = at
+	_picked_ship = maxi(_ships().find(services.ship().design), 0)
 	_tab = "REPAIRS" if not services.problems().is_empty() else "REFUEL"
 	_keys_ready = false
 	_note = ""
@@ -86,6 +90,8 @@ func finger_up() -> void:
 			_act()
 		elif part.begins_with("tab_"):
 			_tab = part.substr(4)
+		elif part.begins_with("ship_"):
+			_picked_ship = int(part.substr(5))
 	_pressed = ""
 	queue_redraw()
 
@@ -98,7 +104,13 @@ func _process(_delta: float) -> void:
 		return
 	# On the Mac: up and down switch tabs, F does it, and Escape closes.
 	if Input.is_action_just_pressed("translate_forward") or Input.is_action_just_pressed("translate_back"):
-		_tab = "REFUEL" if _tab == "REPAIRS" else "REPAIRS"
+		var tabs: Array[String] = _tabs()
+		var step: int = 1 if Input.is_action_just_pressed("translate_back") else -1
+		_tab = tabs[posmod(tabs.find(_tab) + step, tabs.size())]
+		queue_redraw()
+	if _tab == "SHIPS" and (Input.is_action_just_pressed("translate_left") or Input.is_action_just_pressed("translate_right")):
+		var step: int = 1 if Input.is_action_just_pressed("translate_right") else -1
+		_picked_ship = posmod(_picked_ship + step, maxi(_ships().size(), 1))
 		queue_redraw()
 	if Input.is_action_just_pressed("interact"):
 		_act()
@@ -110,7 +122,12 @@ func _process(_delta: float) -> void:
 func _act() -> void:
 	if not _services.ship_here(_at):
 		return
-	if _tab == "REPAIRS":
+	if _tab == "SHIPS":
+		var ships: Array[ShipDesign] = _ships()
+		if _picked_ship < ships.size() and _services.trade_for(ships[_picked_ship]):
+			_note = "NOW FLYING %s" % ships[_picked_ship].display_name.to_upper()
+			_pictures.clear()
+	elif _tab == "REPAIRS":
 		var cost: int = _services.repair_cost()
 		if _services.repair():
 			_note = "REPAIRED: -%s CR" % Units.grouped(cost) if cost > 0 else "REPAIRED"
@@ -154,10 +171,33 @@ func _part_at(point: Vector2) -> String:
 		return "close"
 	if _action_rect().has_point(point):
 		return "action"
-	for i in range(TABS.size()):
+	var tabs: Array[String] = _tabs()
+	for i in range(tabs.size()):
 		if _tab_rect(i).has_point(point):
-			return "tab_" + TABS[i]
+			return "tab_" + tabs[i]
+	if _tab == "SHIPS":
+		for i in range(_ships().size()):
+			if _ship_row(i).has_point(point):
+				return "ship_%d" % i
 	return ""
+
+
+# The tabs this terminal has: SHIPS only at the station, where the hangar is.
+func _tabs() -> Array[String]:
+	var tabs: Array[String] = ["REFUEL", "REPAIRS"]
+	if _services != null and _services.hangar != null and _at.get("kind", "") == "station":
+		tabs.append("SHIPS")
+	return tabs
+
+
+func _ships() -> Array[ShipDesign]:
+	if _services == null or _services.hangar == null:
+		return []
+	return _services.hangar.ships
+
+
+func _ship_row(i: int) -> Rect2:
+	return Rect2(_panel.position.x + MARGIN, _list_top() + 14.0 + i * (SHIP_ROW + 6.0), TAB_WIDTH, SHIP_ROW)
 
 
 func _draw() -> void:
@@ -187,26 +227,34 @@ func _draw() -> void:
 	var divider_x: float = _panel.position.x + MARGIN * 1.5 + TAB_WIDTH
 	draw_rect(Rect2(divider_x, _panel.position.y + HEADER + MARGIN, 1.0, _panel.size.y - HEADER - MARGIN * 2.0), palette.hull_mid)
 
-	for i in range(TABS.size()):
+	var tabs: Array[String] = _tabs()
+	if not tabs.has(_tab):
+		_tab = tabs[0]
+	for i in range(tabs.size()):
 		_draw_tab(i, palette)
 	if _tab == "REPAIRS":
 		_draw_repairs(palette)
+	elif _tab == "SHIPS":
+		_draw_ships(palette)
 	else:
 		_draw_refuel(palette)
 	_draw_balance(palette)
 
 
 func _draw_tab(i: int, palette: AgencyPalette) -> void:
+	var name: String = _tabs()[i]
 	var rect: Rect2 = _tab_rect(i)
-	var picked: bool = TABS[i] == _tab
-	var fill: Color = palette.agency_orange_dark if picked else (palette.hull_mid if _pressed == "tab_" + TABS[i] else UiStyle.box_fill())
+	var picked: bool = name == _tab
+	var fill: Color = palette.agency_orange_dark if picked else (palette.hull_mid if _pressed == "tab_" + name else UiStyle.box_fill())
 	UiStyle.draw_box(self, rect, palette.agency_orange_light if picked else palette.hull_lighter, fill)
-	UiStyle.draw_text(self, TABS[i], rect.position + Vector2(12.0, 15.0), palette.hull_lightest)
-	# A word on how things stand: how many problems, or how full the tanks are.
+	UiStyle.draw_text(self, name, rect.position + Vector2(12.0, 15.0), palette.hull_lightest)
+	# A word on how things stand: how many problems, how full the tanks are, or how many ships.
 	var badge: String = ""
-	if TABS[i] == "REPAIRS":
+	if name == "REPAIRS":
 		var count: int = _services.problems().size()
 		badge = "OK" if count == 0 else str(count)
+	elif name == "SHIPS":
+		badge = str(_ships().size())
 	else:
 		var ship: Node2D = _services.ship()
 		badge = "%d%%" % roundi(100.0 * ship.fuel / maxf(ship.body.original_fuel_capacity, 1.0))
@@ -302,16 +350,71 @@ func _draw_refuel(palette: AgencyPalette) -> void:
 		_draw_action("REFUEL · %s" % ("FREE" if _services.free else "%s CR" % Units.grouped(_services.refuel_cost())), true, palette)
 
 
+# SHIPS: the hangar's ships down the left, the picked one drawn with its numbers, and FLY to trade the
+# docked ship for it. The one being flown is the live ship, damage and all.
+func _draw_ships(palette: AgencyPalette) -> void:
+	var ships: Array[ShipDesign] = _ships()
+	if ships.is_empty():
+		return
+	_picked_ship = clampi(_picked_ship, 0, ships.size() - 1)
+	var current: ShipDesign = _services.ship().design
+	_draw_list_heading("HANGAR", palette)
+	for i in range(ships.size()):
+		var row: Rect2 = _ship_row(i)
+		var picked: bool = i == _picked_ship
+		var fill: Color = palette.agency_orange_dark if picked else (palette.hull_mid if _pressed == "ship_%d" % i else UiStyle.box_fill())
+		UiStyle.draw_box(self, row, palette.agency_orange_light if picked else palette.hull_light, fill)
+		UiStyle.draw_text(self, _fit(ships[i].display_name.to_upper(), TAB_WIDTH - 16.0, 1), row.position + Vector2(8.0, 6.0), palette.hull_lightest, 1)
+		var state: String = "IN USE" if ships[i] == current else ("LEFT HERE" if _services.hangar.has_kept(ships[i]) else "NEW")
+		UiStyle.draw_text(self, state, row.position + Vector2(8.0, 17.0), palette.telemetry_cyan if ships[i] == current else palette.gold_light, 1)
+
+	var design: ShipDesign = ships[_picked_ship]
+	var area: Rect2 = _main_rect()
+	var facts_width: float = 210.0
+	var picture_area := Rect2(area.position, Vector2(area.size.x - facts_width - 16.0, area.size.y))
+	if design == current:
+		_draw_ship(picture_area, false, null, "plain", false)
+	else:
+		_draw_ship(picture_area, false, _services.whole_of(design), "hangar_" + design.resource_path, false)
+	var numbers: Dictionary = _services.numbers_of(design)
+	var x: float = area.end.x - facts_width
+	var y: float = area.position.y + 20.0
+	UiStyle.draw_text(self, _fit(design.display_name.to_upper(), facts_width, 2), Vector2(x, y), palette.agency_orange_light, 2)
+	y += 28.0
+	var facts: Array = [
+		["DRY MASS", "%s KG" % Units.grouped(roundi(numbers["dry_kg"]))],
+		["FUEL", "%s KG" % Units.grouped(roundi(numbers["fuel_kg"]))],
+		["ΔV, FULL", "%s M/S" % Units.speed_number(numbers["delta_v"])],
+		["SAFE LANDING", "%s M/S ON LEGS" % Units.speed_number(numbers["safe_speed"])],
+		["CARGO", "%s KG" % Units.grouped(roundi(design.cargo_capacity))],
+	]
+	for fact: Array in facts:
+		UiStyle.draw_text(self, fact[0], Vector2(x, y), palette.hull_lighter, 1)
+		UiStyle.draw_text(self, fact[1], Vector2(x, y + 11.0), palette.hull_lightest, 1)
+		y += 30.0
+	var status: String = "THE SHIP YOU'RE FLYING" if design == current else ("AS YOU LEFT IT" if _services.hangar.has_kept(design) else "NEW: WHOLE, FULL TANKS")
+	UiStyle.draw_text(self, status, Vector2(x, y + 6.0), palette.telemetry_cyan, 1)
+	UiStyle.draw_text(self, "FREE FOR NOW", Vector2(x, y + 20.0), palette.gold_light, 1)
+
+	if not _services.ship_here(_at):
+		_draw_action("FLY", false, palette, _away_reason())
+	elif design == current:
+		_draw_action("IN USE", false, palette)
+	else:
+		_draw_action("FLY %s" % design.display_name.to_upper(), true, palette)
+
+
 # The ship's picture, as big as fits, in the middle of an area. Returns where it's drawn, and remembers
 # the scale on the rect's size, the picture's size times it.
-func _draw_ship(area: Rect2, cutaway: bool) -> Rect2:
-	var key: String = "cutaway" if cutaway else "plain"
+func _draw_ship(area: Rect2, cutaway: bool, body: ShipBody = null, key: String = "", tip_room: bool = true) -> Rect2:
+	if key == "":
+		key = "cutaway" if cutaway else "plain"
 	if not _pictures.has(key):
-		var made: Dictionary = _services.ship().body.picture(cutaway)
+		var made: Dictionary = (body if body != null else _services.ship().body).picture(cutaway)
 		_pictures[key] = [ImageTexture.create_from_image(made["image"]), made["middle"]]
 	var texture: ImageTexture = _pictures[key][0]
 	var picture_size := Vector2(texture.get_size())
-	var room := Vector2(area.size.x - (TIP_SIZE.x + 30.0) * 2.0, area.size.y)
+	var room := Vector2(area.size.x - ((TIP_SIZE.x + 30.0) * 2.0 if tip_room else 0.0), area.size.y)
 	var scale: int = clampi(floori(minf(room.x / picture_size.x, room.y / picture_size.y)), 1, 4)
 	var drawn: Vector2 = picture_size * scale
 	var rect := Rect2((area.get_center() - drawn / 2.0).floor(), drawn)
@@ -408,7 +511,7 @@ func _away_reason() -> String:
 
 
 func _list_top() -> float:
-	return _tab_rect(TABS.size() - 1).end.y + 18.0
+	return _tab_rect(_tabs().size() - 1).end.y + 18.0
 
 
 func _draw_list_heading(text: String, palette: AgencyPalette) -> void:

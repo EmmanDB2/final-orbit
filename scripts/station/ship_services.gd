@@ -8,18 +8,21 @@ extends RefCounted
 var prices: ServicePrices
 ## Zen Mode: everything's free.
 var free: bool = false
+## The station's hangar, where ships are traded. Only the station has one.
+var hangar: Hangar
+## Puts the ship back on its port after it's been traded, since the new one's hatch sits elsewhere.
+var redock: Callable
 
 var _ship: Node2D
 var _agency: Agency
-# The ship as it was built, to measure damage against.
-var _whole: ShipBody
+# Each ship as it was built, to measure damage against, by its design.
+var _whole: Dictionary = {}
 
 
 func _init(ship: Node2D, agency: Agency, service_prices: ServicePrices) -> void:
 	_ship = ship
 	_agency = agency
 	prices = service_prices
-	_whole = ShipBody.measure(ship.design)
 
 
 ## Whether the ship is where these services can reach it: docked at the station, or on a base's pad.
@@ -40,6 +43,36 @@ func ship() -> Node2D:
 	return _ship
 
 
+## A ship as it's built, new and whole.
+func whole_of(design: ShipDesign) -> ShipBody:
+	if not _whole.has(design):
+		_whole[design] = ShipBody.measure(design)
+	return _whole[design]
+
+
+## A ship's numbers for the hangar: its dry mass, its fuel, its delta-v full, and its safe landing speed
+## on its legs, in the game's units.
+func numbers_of(design: ShipDesign) -> Dictionary:
+	var body: ShipBody = whole_of(design)
+	var dry: float = body.mass + design.rcs_capacity
+	return {
+		"dry_kg": body.mass,
+		"fuel_kg": body.fuel_capacity,
+		"delta_v": design.exhaust_velocity * log((dry + body.fuel_capacity) / dry),
+		"safe_speed": design.legs_safe_impact_speed,
+	}
+
+
+## Trades the ship for another from the hangar, if it's docked here. Free, for now.
+func trade_for(design: ShipDesign) -> bool:
+	if hangar == null or not _ship.docked or design == _ship.design:
+		return false
+	hangar.swap(_ship, design)
+	if redock.is_valid():
+		redock.call()
+	return true
+
+
 ## Whether this much can be paid, credit line and all.
 func can_pay(cost: int) -> bool:
 	return free or _agency.credits - cost >= -prices.credit_line
@@ -51,8 +84,9 @@ func can_pay(cost: int) -> bool:
 func problems() -> Array[Dictionary]:
 	var found: Array[Dictionary] = []
 	var body: ShipBody = _ship.body
+	var whole: ShipBody = whole_of(_ship.design)
 	for i in range(body.modules.size()):
-		var gone: float = 1.0 - body.module_mass_share(i, _whole)
+		var gone: float = 1.0 - body.module_mass_share(i, whole)
 		if gone < 0.002:
 			continue
 		var module: ModuleData = body.modules[i]

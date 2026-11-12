@@ -23,6 +23,8 @@ var save_slot: String = "normal"
 @export var music: MusicSet = preload("res://data/music_set.tres")
 ## What the station charges for fuel and repairs.
 @export var service_prices: ServicePrices = preload("res://data/service_prices.tres")
+## The ships the station's hangar has to fly.
+@export var ship_list: ShipList = preload("res://data/ship_list.tres")
 
 ## The agency: gig boards, the gig taken, and credits.
 var agency: Agency
@@ -34,6 +36,7 @@ var _title: TitleScreen
 # Zen Mode: no gigs or pay, fuel and gas that never run out, and ambient music.
 var _zen: bool = false
 var _music: MusicPlayer
+var _hangar: Hangar
 
 
 func _ready() -> void:
@@ -120,6 +123,10 @@ func _ready() -> void:
 		$Hud/SafeArea/FlightHud.connect_agency(agency)
 	var services := ShipServices.new($Ship, agency, service_prices)
 	services.free = _zen
+	_hangar = Hangar.new(ship_list)
+	services.hangar = _hangar
+	# A traded ship's hatch sits somewhere else, so the station takes it onto the port again.
+	services.redock = func() -> void: $Station.restore_state({"docked_port": $Station.docked_port})
 	$Hud/SafeArea/FlightHud.connect_services(services)
 	agency.message_raised.connect($Hud/SafeArea/CommsLine.on_agency_message)
 	warp.message_raised.connect($Hud/SafeArea/CommsLine._on_ship_warning_raised)
@@ -144,6 +151,7 @@ func _ready() -> void:
 func _begin() -> void:
 	_saves = SaveGame.new()
 	_saves.slot = save_slot
+	_saves.hangar = _hangar
 	_saves.keep_lost_ship = not _zen
 	add_child(_saves)
 	_saves.start($Ship, $Pilot, agency, _catalog, $Station, _saved)
@@ -244,7 +252,12 @@ func _on_title_world_wanted(next: String) -> void:
 # credits and gig, and the worlds visited.
 func _restore(saved: Dictionary, catalog: WorldCatalog) -> void:
 	var flight: Dictionary = saved.get("flight", {})
+	_hangar.restore_state(saved.get("hangar", {}))
 	if flight.has("ship"):
+		# Flying another ship from the hangar: it becomes that one first.
+		var design_path: String = flight["ship"].get("design", "")
+		if design_path != "" and design_path != $Ship.design.resource_path and ResourceLoader.exists(design_path):
+			$Ship.change_design(load(design_path))
 		$Ship.restore_state(flight["ship"])
 		$Station.restore_state(flight.get("station", {}))
 		$Hud/SafeArea/FlightHud.show_throttle($Ship.throttle)

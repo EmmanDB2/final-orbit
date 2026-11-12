@@ -95,6 +95,8 @@ signal warning_raised(text: String)
 signal hull_struck(strength: float, damage: int)
 ## Emitted when the cockpit is lost, and the ship with it.
 signal ship_lost
+## Emitted when the ship becomes another, at the station's hangar.
+signal design_changed(design: ShipDesign)
 ## Emitted when the ship can or can't fly any more, from damage or an empty tank.
 ## Emitted when the ship docks at a station or leaves it.
 signal docked_changed(is_docked: bool)
@@ -265,6 +267,19 @@ var _translate_right: float = 0.0
 
 
 func _ready() -> void:
+	_build()
+	# Nothing flies until start_flight hands over gravity and a starting state.
+	set_physics_process(false)
+	assist_changed.emit(assist_enabled)
+
+
+# Builds the ship from its design: its pixels measured, its art, its flame, puffs, and heat glow, and
+# full tanks.
+func _build() -> void:
+	for part: Sprite2D in _part_sprites:
+		part.queue_free()
+	_part_sprites.clear()
+	_module_boxes.clear()
 	_flame.setup(design.flame_length)
 	body = ShipBody.measure(design)
 	_whole_center = body.center_of_mass
@@ -283,12 +298,68 @@ func _ready() -> void:
 	for i in range(body.modules.size()):
 		_module_boxes.append(body.module_art_rect(i))
 	_aero.pressure_coefficient = design.air_pressure_coefficient
+	_aero_stale = true
 	_update_performance()
 	_puffs.set_nozzles(body)
 	_aim_flame()
-	# Nothing flies until start_flight hands over gravity and a starting state.
-	set_physics_process(false)
-	assist_changed.emit(assist_enabled)
+
+
+## Becomes another ship, as at the station's hangar: built new from its design, in the same place,
+## whole, with full tanks, its legs stowed, and the cargo still aboard. The hangar puts back how it
+## was left if it's been flown before.
+func change_design(new_design: ShipDesign) -> void:
+	design = new_design
+	_pivot = Vector2.ZERO
+	_sink = Vector2.ZERO
+	_jolt_ticks = 0
+	_lost = false
+	_warned_modules.clear()
+	legs_down = false
+	_legs_out = 0.0
+	_legs_moving = false
+	_build()
+	_update_for_damage()
+	state.ground_clearance = _rest_height
+	legs_changed.emit(false, false)
+	design_changed.emit(design)
+	orbit_changed.emit()
+
+
+## What the hangar keeps of a ship while another's flown: its damage and its tanks.
+func hangar_state() -> Dictionary:
+	var tanks: Array[float] = []
+	for tank: Dictionary in body.tanks:
+		tanks.append(tank["capacity"])
+	return {"damage": body.damage_depths(), "warned": _warned_modules.keys(), "tanks": tanks, "fuel": fuel, "rcs_fuel": rcs_fuel}
+
+
+## Puts back how a ship was left in the hangar.
+func apply_hangar_state(saved: Dictionary) -> void:
+	_put_back_damage(saved)
+	_put_back_tanks(saved)
+	_update_performance()
+	_place_art()
+	orbit_changed.emit()
+
+
+# Damage from a save or the hangar: modules already reported down aren't reported again.
+func _put_back_damage(saved: Dictionary) -> void:
+	for module_index: int in saved["warned"]:
+		_warned_modules[module_index] = true
+	body.restore_damage(saved["damage"])
+	_update_for_damage()
+
+
+# Tanks from a save or the hangar: what holes have cost them, and what's in them.
+func _put_back_tanks(saved: Dictionary) -> void:
+	var tanks: Array = saved["tanks"]
+	if tanks.size() == body.tanks.size():
+		body.fuel_capacity = 0.0
+		for i in range(tanks.size()):
+			body.tanks[i]["capacity"] = tanks[i]
+			body.fuel_capacity += tanks[i]
+	fuel = minf(saved["fuel"], body.fuel_capacity)
+	rcs_fuel = saved["rcs_fuel"]
 
 
 ## Starts the ship flying.
@@ -1021,6 +1092,7 @@ func save_state() -> Dictionary:
 	for tank: Dictionary in body.tanks:
 		tanks.append(tank["capacity"])
 	return {
+		"design": design.resource_path,
 		"x": state.x,
 		"y": state.y,
 		"velocity_x": state.velocity_x,
@@ -1054,11 +1126,7 @@ func restore_state(saved: Dictionary) -> void:
 	_legs_out = saved["legs_out"]
 	_legs_moving = false
 	body.set_parts_out(_legs_out)
-	# Modules already reported down aren't reported again.
-	for module_index: int in saved["warned"]:
-		_warned_modules[module_index] = true
-	body.restore_damage(saved["damage"])
-	_update_for_damage()
+	_put_back_damage(saved)
 	# Damage moves the ship's center, so where it is comes after, just as it was saved.
 	state.x = saved["x"]
 	state.y = saved["y"]
@@ -1066,14 +1134,7 @@ func restore_state(saved: Dictionary) -> void:
 	state.velocity_y = saved["velocity_y"]
 	state.time = saved["time"]
 	_sink = Vector2.ZERO
-	var tanks: Array = saved["tanks"]
-	if tanks.size() == body.tanks.size():
-		body.fuel_capacity = 0.0
-		for i in range(tanks.size()):
-			body.tanks[i]["capacity"] = tanks[i]
-			body.fuel_capacity += tanks[i]
-	fuel = minf(saved["fuel"], body.fuel_capacity)
-	rcs_fuel = saved["rcs_fuel"]
+	_put_back_tanks(saved)
 	hull_temperature = saved["hull_temperature"]
 	throttle = saved["throttle"]
 	_rest_height = body.reach(_pivot, Vector2.DOWN)

@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-12 | The Lander Mk II added as a second ship, designed by Fable in the Asset Editor from a brief, with a stand-in hangar on Manny's call: a SHIPS tab on the station's terminal trades the docked ship for another, free for now. Each ship waits in the hangar as it was left. A ship mall where ships are bought, walked through like a dealership, is the plan for later \[Leaning\] |
 | 2026-11-12 | Landing at home no longer refills the tanks, on Manny's call: the launch base's Vehicle Assembly building has a paid service terminal instead, the same screen as the station's. Each terminal only serves a ship docked there or on its pad \[Leaning\] |
 | 2026-11-12 | Prices built, on Manny's call, from his sketch of the service terminal: docking no longer refuels or repairs; a terminal in the docking room sells both, in REFUEL and REPAIRS tabs, with the ship drawn and a tooltip on each tank or damaged part. First numbers: fuel 0.15 Cr/kg, RCS propellant 0.5 Cr/kg, repairs by part, and a 5,000 Cr credit line so nobody is stranded at the station. Free in Zen Mode \[Leaning\] |
 | 2026-11-12 | Zen Mode built: its own world and save, swapped in behind the title; fuel, RCS propellant, and jetpack gas never run out; no gigs or pay; a lost ship isn't kept, so the next Zen flight starts fresh; and ambient music from a track list waiting for Manny's Suno tracks. Time warp works as in normal play \[Leaning\] |
@@ -300,6 +301,13 @@ Construction:
 - The engine's flame is drawn by code in chunky pixels and the fire colors, from what the engine is doing: long with a white-hot core flat out, short and orange throttled back, spreading wide in a vacuum, held narrow by air with bright knots in it, and stopped by the ground. It comes out of what's left of the bell, so a lost engine moves it to one side, and a damaged one sputters. \[Leaning\]
 - RCS puffs show from the nozzles on the art. The nozzle opposite the push fires, so the left one turns the nose clockwise or moves the ship right. The two tail nozzles move it forward, and the side nozzles angled forward back it up. Puffs only show on the sprite, and tiny corrections while holding steady don't show. \[Leaning\]
 - The lander, as the all-rounder: about 19.5 t dry, 40 t of fuel, 300 m/s² of thrust when full and about 916 when empty, about 16,700 m/s of delta-v, and about 34 seconds of full-throttle burn. Engine and RCS strength are set so a full tank feels the same as it did with half the fuel. These live in `data/lander_design.tres`. \[Leaning\]
+- The Lander Mk II, the second ship: the Lander's shape cleaned up and made symmetric, with a capsule cockpit, RCS clusters standing clear of the hull, foil tank drums, and sturdier legs with broad foot pads that stand on about 32 to 36 degrees of slope. Same engine, RCS, fuel, and nearly the same mass (19,386 kg dry against 19,491) and center, so it flies the same, turning about 5% slower with its legs up and 12% with them down. Fable drew it pixel by pixel in Manny's Asset Editor from `docs/briefs/lander_mk2_in_asset_editor.md`. Its art is in `art/lander_mk2/` and its design in `data/lander_mk2_design.tres`. \[Leaning\]
+
+The hangar, a stand-in for now: \[Leaning\]
+
+- The station's service terminal has a third tab, SHIPS, listing the ships in `data/ship_list.tres` with each one's picture and numbers. FLY trades the docked ship for the picked one, free for now. The new ship docks on the same port, with the cargo moved aboard.
+- The hangar keeps each ship as it was left, its damage and fuel, so trading doesn't repair or refuel anything. A ship never flown comes new, whole, and full. The save keeps which ship is flown and how the others were left.
+- Later, on Manny's call, it becomes a ship mall: a place to walk through, buy a ship, and take it away, like a dealership. \[Open\]
 - Fuel is bought, at the station's docking room or the launch base's assembly building (see Prices). Landing at home doesn't refill the tanks any more. \[Leaning\]
 - Staging: drop empty tanks or used heat shields to save mass; dropped parts become debris. \[Leaning\]
 - Repairs and customization happen at the pixel level, so patched plating shows on the hull. Liveries and paint use the agency palette. \[Leaning\]

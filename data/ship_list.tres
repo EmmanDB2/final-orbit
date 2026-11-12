@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ShipList" format=3]
+
+[ext_resource type="Script" path="res://scripts/station/ship_list.gd" id="1_list"]
+[ext_resource type="Script" path="res://scripts/ship/ship_design.gd" id="2_design"]
+[ext_resource type="Resource" path="res://data/lander_design.tres" id="3_lander"]
+[ext_resource type="Resource" path="res://data/lander_mk2_design.tres" id="4_mk2"]
+
+[resource]
+script = ExtResource("1_list")
+ships = Array[ExtResource("2_design")]([ExtResource("3_lander"), ExtResource("4_mk2")])

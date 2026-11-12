@@ -19,6 +19,8 @@ const EVERY_SECONDS: float = 10.0
 var slot: String = "normal"
 ## Whether a lost ship is kept. Zen Mode lets it go, so the next Zen flight starts fresh.
 var keep_lost_ship: bool = true
+## The station's hangar, with the ships left there.
+var hangar: Hangar
 
 var _ship: Node2D
 var _pilot: Pilot
@@ -90,6 +92,10 @@ func start(ship: Node2D, pilot: Pilot, agency: Agency, catalog: WorldCatalog, st
 	ship.docked_changed.connect(func(_docked: bool) -> void: _soon = true)
 	ship.touched_down.connect(func(_speed: float, _upright: bool, _safe: float) -> void: _soon = true)
 	ship.ship_lost.connect(func() -> void: _soon = true)
+	# Trading ships happens from inside the station, so the flight takes the new ship there and then.
+	ship.design_changed.connect(func(_design: ShipDesign) -> void:
+		_take_flight()
+		_soon = true)
 
 
 ## Stops saving, for a new flight that's about to replace this one.
@@ -112,6 +118,7 @@ func save_now() -> void:
 		"flight": _flight,
 		"agency": _agency.save_state(),
 		"worlds": _catalog.save_state(),
+		"hangar": hangar.save_state() if hangar != null else {},
 	}
 	_write(data)
 	_wait = EVERY_SECONDS

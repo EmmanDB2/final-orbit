@@ -41,6 +41,11 @@ var _frame: int = 0
 
 ## Sets up one heat layer per layer of the ship's art.
 func setup(textures: Array[ImageTexture]) -> void:
+	# Set up again for another ship, it starts over.
+	for old: HeatLayer in _layers:
+		old.queue_free()
+	_layers.clear()
+	_sizes.clear()
 	var shader: Shader = load("res://shaders/reentry.gdshader")
 	var palette: AgencyPalette = UiStyle.palette()
 	for texture: ImageTexture in textures:
