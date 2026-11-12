@@ -49,6 +49,8 @@ const DOOR_BOX: Vector2 = Vector2(28.0, 44.0)
 var mode: String = ABOARD
 var state := ShipState.new()
 var gas: float = 0.0
+## Zen Mode: the jetpack never runs out.
+var endless_gas: bool = false
 ## Which way the pilot faces, in the world.
 var facing: float = 0.0
 
@@ -133,6 +135,8 @@ func start_pilot(gravity_model: GravityModel, ship: Node2D, station: StationView
 func _physics_process(delta: float) -> void:
 	if _gravity_model == null:
 		return
+	if endless_gas:
+		gas = data.jet_seconds
 	match mode:
 		ABOARD:
 			_tick_aboard(delta)

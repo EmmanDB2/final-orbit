@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-12 | Zen Mode built: its own world and save, swapped in behind the title; fuel, RCS propellant, and jetpack gas never run out; no gigs or pay; a lost ship isn't kept, so the next Zen flight starts fresh; and ambient music from a track list waiting for Manny's Suno tracks. Time warp works as in normal play \[Leaning\] |
 | 2026-11-12 | The title copied exactly from Manny's mockup, on his call: its letters and orbit measured off the mockup in its own pixels. Sharp stencil letters, cut where the mockup cuts them, with only the O and the bowls of R and B round; the orbit is the ellipse fitted to the mockup's, crossing over ORBIT and passing behind the word, showing only at its ends. The title and menu sit 48 px in, as in the mockup \[Leaning\] |
 | 2026-11-12 | The title's lettering and orbit redrawn as pixel art, on Manny's call: painted at a third of the game's resolution and drawn scaled up, with rounded bowls, one-pixel stencil gaps, shaded bottoms, and outlines, and an orbit with stepped edges, thicker in front, that weaves in front of the O and behind the other letters \[Leaning\] |
 | 2026-11-11 | Title screen built to Manny's mockup: FINAL ORBIT in stencil letters with an orange orbit, the menu with two taps, the saved moment frozen behind it framed on its body, NEW FLIGHT swapping a fresh start in behind the menu and back, and going in sliding everything off and zooming into the ship. RESTART is now TITLE. ZEN MODE and SETTINGS show dimmed, marked SOON. The HUD font gets a middle dot \[Leaning\] |
@@ -199,6 +200,16 @@ Risk and pacing: \[Leaning\]
 - Being first to chart a body or anomaly pays a bonus and stays on your map.
 
 Zen Mode: no gigs, no pay, unlimited fuel, free time warp, ambient music. It doubles as the physics test bed. \[Locked\]
+
+How Zen Mode works, built 2026-11-12: \[Leaning\]
+
+- It's its own world with its own save, picked on the title like NEW FLIGHT: the view pulls out, the Zen world comes in behind the menu, and the second tap goes in. The first Zen flight starts where a new flight does, in orbit near Kapteyn-3. TITLE from Zen comes back to the Zen world.
+- Fuel and RCS propellant never run out, and nor does the jetpack's gas. A holed tank still loses what's in it, since damage is physics.
+- No gigs and no pay: the terminals only say NO GIGS IN ZEN MODE, and there are no credits.
+- Time warp is the same as in normal play, which costs nothing already. The fast warps still only run while coasting, since that's what keeps the physics right.
+- A lost ship isn't kept: leaving it, the Zen save goes, and the next Zen flight starts fresh. Normal play keeps its wrecks.
+- Music plays only here (see Sound).
+- Hiding everything but a minimal top bar is still to come.
 
 Single player only. Pure sandbox for now, no story. \[Locked\]
 
@@ -684,6 +695,7 @@ Decided 2026-11-10, on Manny's call. \[Leaning\]
 - The cockpit's buttons are silent, except ENGINE: its cover flips up with a snap and its switch clunks. The throttle lever ticks as it moves notch to notch.
 - The comms line has a radio: a burst of static and a blip with each message, two falling tones for a caution in amber, an alarm for a loss in red, and a chime when a gig pays.
 - Music is ambient, in Zen Mode. Normal flight stays mostly silent, so the engine and alarms land.
+- How music is built: the tracks are listed in `data/music_set.tres` (Manny's Suno tracks, to come). They play shuffled, never the same twice in a row, each fading up and away, with 20 to 60 seconds of quiet between them so the music comes and goes. With none listed, Zen is silent but for the ship.
 - Crashes build with how bad the hit is, heard as the pilot hears it: a gentle bump knocks through the hull, louder the harder it is; a hit that does damage thuds and grinds, and the frame groans after; each part that breaks off cracks, deeper for a bigger part, with debris rattling against the hull after. Losing the ship is one huge impact, then every ship sound cuts out at once, leaving the radio's static and the alarm. Outside, a crash is heard only across air, like the engine; on the moon it's silent. \[Leaning\]
 - The phone buzzes too: touchdowns, a jolt for each hit matched to how hard it was, a stutter of taps for debris, a long one for losing the ship, and a faint purr while the engine burns.
 - The wind is a placeholder until planets get their real environments; it's to be redone then, since each world's air will sound different. \[Open\]
@@ -716,7 +728,7 @@ Title screen:
 - CONTINUE is selected when the screen opens, so a returning player is one tap from flying. With no save it's hidden, and NEW FLIGHT starts selected.
 - Going in, the menu, title, and clock slide off to their nearest side, left or right; the camera zooms into the ship, as the SHIP button does; the world starts moving; and the flight HUD slides in.
 - The FLIGHT menu's RESTART becomes TITLE, back to this screen. Starting over is NEW FLIGHT's job.
-- Zen Mode isn't built yet, so its button waits on it, dimmed and marked SOON, and so does SETTINGS until there's a settings screen. \[Open\]
+- SETTINGS waits on a settings screen, dimmed and marked SOON. \[Open\]
 - How it's built: `scripts/ui/title_screen.gd` draws the screen and `scripts/ui/title_lettering.gd` paints the letters and orbit as pixel art into a small image, 149 x 70 art pixels, which the screen draws scaled up by a whole number, 3 on both of the Fold's screens. The shapes are measured off Manny's mockup in its own pixels, 3.76 of them to an art pixel: flat cream stencil pieces with a dark outline, each cut back a pixel where it meets one laid before it. The orbit is the ellipse fitted to the mockup's (within about 1.6 of its pixels), a flat orange band whose near half crosses over the letters and whose far half shows only beyond the O and the L. The view holds the body with its middle just off the bottom-right corner and the ship about 60% of the way across, turned so the ship lies toward the menu. The world runs for a couple of ticks to place everything, then freezes. After a change of world it runs while the view arrives, about a second, before it freezes. Changing worlds loads the game again behind a moment of dark. Saving starts only once the player goes in, so nothing's saved from behind the title.
 
 ## Art direction

@@ -7,13 +7,14 @@
 class_name TitleScreen
 extends Control
 
-## Emitted once the menu's gone, to go into the world behind it: "CONTINUE" or "NEW FLIGHT".
+## Emitted once the menu's gone, to go into the world behind it: "CONTINUE", "NEW FLIGHT", or "ZEN
+## MODE".
 signal entered(item: String)
 ## Emitted once the view's pulled out and gone dark, for another world behind the menu.
 signal world_wanted(world: String)
 
 ## What the next load of the game does: whether the title opens, which world it builds behind it
-## ("continue" or "new"), what's selected, and whether the view arrives from far out, after a change
+## ("continue", "new", or "zen"), what's selected, and whether the view arrives from far out, after a change
 ## of world. They last across reloads.
 static var opening: bool = true
 static var world: String = "continue"
@@ -24,8 +25,8 @@ static var on_in_tests: bool = false
 
 const ITEMS: Array[String] = ["CONTINUE", "NEW FLIGHT", "ZEN MODE", "SETTINGS"]
 ## Not built yet, so shown dimmed and not selectable.
-const NOT_YET: Array[String] = ["ZEN MODE", "SETTINGS"]
-const WORLD_OF: Dictionary = {"CONTINUE": "continue", "NEW FLIGHT": "new"}
+const NOT_YET: Array[String] = ["SETTINGS"]
+const WORLD_OF: Dictionary = {"CONTINUE": "continue", "NEW FLIGHT": "new", "ZEN MODE": "zen"}
 const SUBTITLE: String = "KEPLA SYSTEM · AGENCY FLIGHT OPERATIONS"
 const EDGE: float = 24.0
 ## Where the title and the menu start from the left, and the title from the top, as in the mockup.

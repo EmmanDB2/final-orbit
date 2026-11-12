@@ -160,6 +160,8 @@ var fuel: float = 0.0
 var rcs_fuel: float = 0.0
 ## Cargo aboard, in kilograms, for a gig. It's mass like anything else.
 var cargo_kg: float = 0.0
+## Zen Mode: burning and turning use no fuel or RCS propellant. Holed tanks still lose what's in them.
+var endless_fuel: bool = false
 ## Main engine acceleration right now, in world units per second squared.
 var thrust_acceleration: float = 0.0
 ## How quickly the RCS changes the spin right now, in radians per second squared.
@@ -538,13 +540,13 @@ func _switch_engine(on: bool) -> void:
 
 
 func _burn_fuel(amount: float) -> void:
-	if amount > 0.0:
+	if amount > 0.0 and not endless_fuel:
 		fuel = maxf(fuel - amount, 0.0)
 		_update_performance()
 
 
 func _burn_rcs(amount: float) -> void:
-	if amount > 0.0:
+	if amount > 0.0 and not endless_fuel:
 		rcs_fuel = maxf(rcs_fuel - amount, 0.0)
 		_update_performance()
 

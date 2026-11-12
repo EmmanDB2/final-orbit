@@ -756,3 +756,11 @@ Files: `scripts/ui/title_lettering.gd`, `scripts/ui/title_screen.gd`, `docs/DESI
 - measuring a reference image's pixels from a script
 - fitting an ellipse to measured points by searching for the least error
 - defining shapes in a reference's own coordinates and sampling them at a lower resolution
+
+## 2026-11-12: Zen Mode
+
+Files: `scripts/main.gd`, `scripts/ui/title_screen.gd`, `scripts/save/save_game.gd`, `scripts/ship.gd`, `scripts/pilot.gd`, `scripts/audio/music_set.gd`, `scripts/audio/music_player.gd`, `data/music_set.tres`, `docs/DESIGN.md`
+
+- one scene, two rule sets: flags that switch systems on and off
+- a shuffle bag, so music never repeats back to back
+- fading audio in and out with `linear_to_db`

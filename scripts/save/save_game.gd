@@ -15,8 +15,10 @@ static var on_in_tests: bool = false
 ## How often it saves while flying, in real seconds.
 const EVERY_SECONDS: float = 10.0
 
-## Which world this is: "normal", or "zen" once Zen Mode is built.
+## Which world this is: "normal", or "zen".
 var slot: String = "normal"
+## Whether a lost ship is kept. Zen Mode lets it go, so the next Zen flight starts fresh.
+var keep_lost_ship: bool = true
 
 var _ship: Node2D
 var _pilot: Pilot
@@ -98,6 +100,9 @@ func stop() -> void:
 ## Saves now: the flight if the pilot's aboard, and everything else wherever they are.
 func save_now() -> void:
 	if _stopped or not enabled() or _ship == null:
+		return
+	if _ship._lost and not keep_lost_ship:
+		erase(slot)
 		return
 	if _pilot.mode == Pilot.ABOARD:
 		_take_flight()

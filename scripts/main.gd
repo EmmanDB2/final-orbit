@@ -17,8 +17,10 @@ extends Node2D
 ## Places built on worlds.
 @export var sites: Array[SiteData] = [preload("res://data/launch_base.tres"), preload("res://data/moon_base.tres")]
 
-## Which world's save this flight keeps: "normal", or "zen" once Zen Mode is built.
-@export var save_slot: String = "normal"
+## Which world's save this flight keeps: "normal", or "zen" in Zen Mode.
+var save_slot: String = "normal"
+## Zen Mode's music.
+@export var music: MusicSet = preload("res://data/music_set.tres")
 
 ## The agency: gig boards, the gig taken, and credits.
 var agency: Agency
@@ -27,6 +29,9 @@ var _saves: SaveGame
 var _saved: Dictionary = {}
 var _catalog: WorldCatalog
 var _title: TitleScreen
+# Zen Mode: no gigs or pay, fuel and gas that never run out, and ambient music.
+var _zen: bool = false
+var _music: MusicPlayer
 
 
 func _ready() -> void:
@@ -55,8 +60,11 @@ func _ready() -> void:
 	# A saved flight picks up where it was, before anything starts reading where the ship is. Behind the
 	# title's NEW FLIGHT, it's the fresh start instead.
 	var opening: bool = TitleScreen.opening and TitleScreen.allowed()
-	var has_save: bool = SaveGame.enabled() and FileAccess.file_exists(SaveGame.path_of(save_slot))
-	if opening and not has_save:
+	_zen = opening and TitleScreen.world == "zen"
+	save_slot = "zen" if _zen else "normal"
+	# CONTINUE is the normal world's save, whichever world is behind the title.
+	var has_save: bool = SaveGame.enabled() and FileAccess.file_exists(SaveGame.path_of("normal"))
+	if opening and not has_save and TitleScreen.world == "continue":
 		TitleScreen.world = "new"
 	var fresh: bool = opening and TitleScreen.world == "new"
 	var saved: Dictionary = {} if fresh else SaveGame.read(save_slot)
@@ -104,7 +112,10 @@ func _ready() -> void:
 	add_child(warp)
 	warp.start(gravity_model, $Ship, $Pilot)
 	$Hud/SafeArea/FlightHud.connect_warp(warp)
-	$Hud/SafeArea/FlightHud.connect_agency(agency)
+	if _zen:
+		_start_zen()
+	else:
+		$Hud/SafeArea/FlightHud.connect_agency(agency)
 	agency.message_raised.connect($Hud/SafeArea/CommsLine.on_agency_message)
 	warp.message_raised.connect($Hud/SafeArea/CommsLine._on_ship_warning_raised)
 	_start_landing_forecast()
@@ -124,12 +135,26 @@ func _ready() -> void:
 		_begin()
 
 
-# Starts keeping the world: it saves from here on.
+# Starts keeping the world: it saves from here on. In Zen Mode the music starts too.
 func _begin() -> void:
 	_saves = SaveGame.new()
 	_saves.slot = save_slot
+	_saves.keep_lost_ship = not _zen
 	add_child(_saves)
 	_saves.start($Ship, $Pilot, agency, _catalog, $Station, _saved)
+	if _zen:
+		_music.play(music, music.zen_tracks)
+
+
+# Zen Mode's rules: the ship's fuel and the pilot's jetpack never run out, and with no gigs the
+# terminals have nothing to offer, which the comms line says.
+func _start_zen() -> void:
+	$Ship.endless_fuel = true
+	$Pilot.endless_gas = true
+	$Pilot.terminal_used.connect(func(_place: Dictionary) -> void:
+		$Hud/SafeArea/CommsLine.on_agency_message("NO GIGS IN ZEN MODE", true))
+	_music = MusicPlayer.new()
+	add_child(_music)
 
 
 # The title screen over the world, which it frames and freezes. The HUD stays hidden and deaf until
@@ -164,7 +189,9 @@ func _title_info(home: int, has_save: bool) -> Dictionary:
 	var lost: bool = ship._lost
 	var version: String = ProjectSettings.get_setting("application/config/version", "")
 	var comms: String = "COMMS: ALL SYSTEMS NOMINAL"
-	if TitleScreen.world == "new":
+	if _zen:
+		comms = "COMMS: ZEN MODE · NO GIGS, NO LIMITS"
+	elif TitleScreen.world == "new":
 		comms = "COMMS: READY FOR A NEW FLIGHT"
 	elif lost:
 		comms = "COMMS: SHIP LOST"
@@ -175,7 +202,7 @@ func _title_info(home: int, has_save: bool) -> Dictionary:
 		"lost": lost,
 		"time": ship.state.time,
 		"comms": comms,
-		"comms_red": lost and TitleScreen.world != "new",
+		"comms_red": lost and TitleScreen.world == "continue",
 		"version": "v" + version if version != "" else "v0.1",
 	}
 
@@ -194,6 +221,8 @@ func _on_title_entered(item: String) -> void:
 	get_tree().create_timer(0.9).timeout.connect(func() -> void:
 		$Hud.visible = true
 		$Hud/SafeArea/FlightHud.arrive())
+	if _zen:
+		$Hud/SafeArea/CommsLine.on_agency_message("ZEN MODE: NO GIGS, NO LIMITS", true)
 	_begin()
 
 
@@ -217,14 +246,14 @@ func _restore(saved: Dictionary, catalog: WorldCatalog) -> void:
 	catalog.restore_state(saved.get("worlds", {}))
 
 
-# TITLE: saves, and goes back to the title screen over this flight.
+# TITLE: saves, and goes back to the title screen over this flight, Zen or not.
 func _to_title() -> void:
 	if _saves != null:
 		_saves.save_now()
 		_saves.stop()
 	TitleScreen.opening = true
-	TitleScreen.world = "continue"
-	TitleScreen.selected_item = "CONTINUE"
+	TitleScreen.world = "zen" if _zen else "continue"
+	TitleScreen.selected_item = "ZEN MODE" if _zen else "CONTINUE"
 	TitleScreen.arriving = false
 	get_tree().paused = false
 	get_tree().reload_current_scene()
