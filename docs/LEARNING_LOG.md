@@ -787,3 +787,11 @@ Files: `art/lander_mk2/`, `data/lander_mk2_design.tres`, `data/ship_list.tres`, 
 - rebuilding a node from new data at runtime (tearing down and recreating its children)
 - keeping per-item state in a dictionary keyed by resource path
 - refactoring shared code into helpers both a save and the hangar use
+
+## 2026-11-12: Shock-absorbing landing legs
+
+Files: `scripts/ship/module_data.gd`, `scripts/ship/ship_design.gd`, `scripts/ship/ship_body.gd`, `scripts/ship.gd`, `scripts/station/ship_services.gd`, `data/lander_mk2_design.tres`, `docs/DESIGN.md`
+
+- a damped spring stepped each tick (semi-implicit Euler), and choosing stiffness and damping
+- combining energies: safe speed as the square root of summed squares
+- measuring a shape (the stance) instead of hard-coding it

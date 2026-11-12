@@ -37,3 +37,13 @@ extends Resource
 @export var travel: Vector2i = Vector2i.ZERO
 ## True if the part also folds over its hinge on the way out, ending upside down.
 @export var folds: bool = false
+
+@export_group("Landing leg")
+## How far the leg's shock absorber squeezes up before it bottoms out, in pixels.
+@export var stroke: float = 6.0
+## How hard a landing the leg soaks up, in world units a second, on top of what the hull can take: a
+## ship's safe landing speed adds its working legs' share of this to its hull's, so two of these 62.5
+## with a 50 hull make 80.
+@export var soak_speed: float = 62.5
+## How far the leg sags under the ship standing with full tanks, as a share of its stroke.
+@export var sag_share: float = 0.35

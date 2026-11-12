@@ -27,19 +27,21 @@ class Layer:
 	var hinge_now: Vector2 = Vector2.ZERO
 	var travel: Vector2 = Vector2.ZERO
 	var fold: float = 1.0
+	## How far a leg's shock absorber has it squeezed up, in pixels.
+	var squash: float = 0.0
 
 	## Where a point on this layer's stowed art is right now.
 	func place(home: Vector2) -> Vector2:
 		if not moves:
 			return home
 		var from_hinge: Vector2 = home - hinge_home
-		return hinge_now + Vector2(from_hinge.x, from_hinge.y * fold)
+		return hinge_now + Vector2(from_hinge.x, from_hinge.y * fold - squash)
 
 	## Where on this layer's stowed art a point is right now. A part edge-on covers nothing.
 	func unplace(point: Vector2) -> Vector2:
 		if not moves:
 			return point
-		var from_hinge: Vector2 = point - hinge_now
+		var from_hinge: Vector2 = point - hinge_now + Vector2(0.0, squash)
 		if absf(fold) < 0.2:
 			return Vector2(INF, INF)
 		return hinge_home + Vector2(from_hinge.x, from_hinge.y / fold)
@@ -433,6 +435,43 @@ func set_parts_out(share: float) -> void:
 			if layer.folds:
 				layer.fold = cos(PI * minf(share * 2.0, 1.0))
 	_update_size()
+
+
+## The landing legs, as [layer number, module number] pairs.
+func legs() -> Array:
+	var found: Array = []
+	for i in range(_layers.size()):
+		var layer: Layer = _layers[i]
+		if layer.moves and layer.module >= 0 and modules[layer.module].kind == "leg":
+			found.append([i, layer.module])
+	return found
+
+
+## Squeezes a leg up by its shock absorber, in pixels. Call size_changed after setting them all.
+func set_squash(layer_index: int, pixels: float) -> void:
+	_layers[layer_index].squash = pixels
+
+
+## Measures the ship's size again, after its legs have squeezed or stretched.
+func size_changed() -> void:
+	_update_size()
+
+
+## Half the width of what the ship stands on: its lowest points, within a couple of pixels of the
+## bottom, measured out from its center of mass.
+func stance_half_width() -> float:
+	var lowest: float = -INF
+	var points := PackedVector2Array()
+	for layer: Layer in _layers:
+		for point: Vector2 in layer.outline:
+			var at: Vector2 = layer.place(point)
+			points.append(at)
+			lowest = maxf(lowest, at.y)
+	var widest: float = 0.0
+	for at: Vector2 in points:
+		if at.y >= lowest - 2.0:
+			widest = maxf(widest, absf(at.x - center_of_mass.x))
+	return widest
 
 
 ## What's holding each moving part out, as pairs of points from the middle of the grid: where

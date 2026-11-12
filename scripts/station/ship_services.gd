@@ -59,8 +59,18 @@ func numbers_of(design: ShipDesign) -> Dictionary:
 		"dry_kg": body.mass,
 		"fuel_kg": body.fuel_capacity,
 		"delta_v": design.exhaust_velocity * log((dry + body.fuel_capacity) / dry),
-		"safe_speed": design.legs_safe_impact_speed,
+		"safe_speed": _safe_speed_of(design, body),
 	}
+
+
+# How hard a ship can land with its legs down, all working: its hull's share and its legs'.
+func _safe_speed_of(design: ShipDesign, body: ShipBody) -> float:
+	var legs: Array = body.legs()
+	var soaked: float = 0.0
+	for pair: Array in legs:
+		var module: ModuleData = body.modules[pair[1]]
+		soaked += module.soak_speed * module.soak_speed / legs.size()
+	return sqrt(design.safe_impact_speed * design.safe_impact_speed + soaked)
 
 
 ## Trades the ship for another from the hangar, if it's docked here. Free, for now.

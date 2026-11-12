@@ -132,6 +132,8 @@ art_position = Vector2i(9, 139)
 hinge = Vector2i(27, 184)
 travel = Vector2i(-22, 16)
 folds = true
+stroke = 8.0
+soak_speed = 75.0
 
 [sub_resource type="Resource" id="Module_leg_right"]
 script = ExtResource("2_module")
@@ -143,6 +145,8 @@ art_position = Vector2i(80, 139)
 hinge = Vector2i(100, 184)
 travel = Vector2i(22, 16)
 folds = true
+stroke = 8.0
+soak_speed = 75.0
 
 [resource]
 script = ExtResource("1_design")

@@ -38,7 +38,8 @@ extends Resource
 @export var frame_thickness: float = 1.0
 ## The fastest a hit can be and do no damage, in meters per second.
 @export var safe_impact_speed: float = 50.0
-## The fastest a landing can be with the legs down and do no damage, in meters per second.
+## The fastest a landing can be with the legs down and do no damage, in meters per second. No longer
+## used: a ship's legs say how much they soak up, each in its own module data.
 @export var legs_safe_impact_speed: float = 80.0
 ## How long the legs take to go up or down, in seconds.
 @export var legs_seconds: float = 2.0

@@ -59,6 +59,14 @@ const WORLD_PIXEL: float = 2.0
 const GROUND_CHECK_COLUMNS: int = 90
 ## How long a hit shakes the art, in ticks.
 const JOLT_TICKS: int = 18
+## The legs' shock absorbers are damped springs this damped, short of stopping without bouncing, so
+## they settle with barely a wobble. A spring this damped peaks at this share of how far it would go
+## undamped, which sets how stiff each leg is so a landing at its soak speed just bottoms it out from
+## its sag.
+const SQUASH_DAMPING: float = 0.7
+const SQUASH_PEAK: float = 0.458
+## Which way a rise in the ground under the feet leans the ship onto its left legs.
+const LEVEL_SIGN: float = 1.0
 ## How hard a bump has to be to be heard, as a share of the safe impact speed.
 const BUMP_SHARE: float = 0.1
 
@@ -257,6 +265,14 @@ var _has_air: Dictionary = {}
 var _translate_forward: float = 0.0
 # Each module's drawn box on the art, for pointing at parts of the ship.
 var _module_boxes: Array[Rect2] = []
+# The landing legs: each its "layer" and "module", whether it's on the "left", and its shock absorber's
+# "squash" in pixels and "speed".
+var _legs: Array[Dictionary] = []
+# How wide the ship stands, legs down and up, from its middle, in pixels.
+var _stance_down: float = 62.0
+var _stance_up: float = 18.0
+# On uneven ground, how much more the left legs squeeze than the right ones, to sit nearer level.
+var _leg_level: float = 0.0
 var _translate_right: float = 0.0
 
 @onready var _flame: EngineFlame = $Flame
@@ -283,6 +299,14 @@ func _build() -> void:
 	_flame.setup(design.flame_length)
 	body = ShipBody.measure(design)
 	_whole_center = body.center_of_mass
+	_legs.clear()
+	for pair: Array in body.legs():
+		_legs.append({"layer": pair[0], "module": pair[1], "left": body.layer_center(pair[0]).x < 0.0, "squash": 0.0, "speed": 0.0})
+	body.set_parts_out(1.0)
+	_stance_down = body.stance_half_width()
+	body.set_parts_out(0.0)
+	_stance_up = body.stance_half_width()
+	body.set_parts_out(_legs_out)
 	_wave = DamageWave.new(body)
 	_sprite.texture = _wave.textures[0]
 	_glow.setup(_wave.textures)
@@ -430,6 +454,7 @@ func _physics_process(delta: float) -> void:
 	_heat_hull(delta)
 
 	_move_legs(delta)
+	_spring_legs(delta)
 	_touch_terrain()
 	_gravity_model.propagate(state, delta)
 	_find_flame_room()
@@ -441,6 +466,7 @@ func _physics_process(delta: float) -> void:
 		_switch_engine(false)
 		var tilt: float = absf(angle_difference(heading, _local_up_heading()))
 		touched_down.emit(state.get_touchdown_speed(), tilt <= upright_tolerance, _safe_impact_speed())
+		_kick_legs(state.get_touchdown_speed())
 		var landed_on: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
 		_hit_ground(state.get_touchdown_speed(), landed_on)
 	elif _was_on_surface and not on_surface:
@@ -807,19 +833,24 @@ func _art_to_world(point: Vector2) -> Vector2:
 
 
 # Legs fully down and all working take a harder landing.
+# How hard a landing can be and do no damage: what the hull takes, and with the legs fully down, each
+# working leg's share of what the legs soak up. Losing a leg lowers it.
 func _safe_impact_speed() -> float:
-	if _legs_out < 1.0:
-		return design.safe_impact_speed
-	for i in range(body.modules.size()):
-		if body.modules[i].kind == "leg" and body.working_share(i) < module_dead_share:
-			return design.safe_impact_speed
-	return design.legs_safe_impact_speed
+	var hull: float = design.safe_impact_speed
+	if _legs_out < 1.0 or _legs.is_empty():
+		return hull
+	var soaked: float = 0.0
+	for leg: Dictionary in _legs:
+		if body.working_share(leg["module"]) >= module_dead_share:
+			var module: ModuleData = body.modules[leg["module"]]
+			soaked += module.soak_speed * module.soak_speed / _legs.size()
+	return sqrt(hull * hull + soaked)
 
 
 # How far to each side of its middle the ship stands on the ground: its feet with the legs down, or
 # its engine bell.
 func _stance() -> float:
-	return 62.0 if legs_down else 18.0
+	return _stance_down if legs_down else _stance_up
 
 
 # Whether ground that rises this much across the ship's stance is too steep to stand on: its center
@@ -949,6 +980,92 @@ func _toggle_legs() -> void:
 	legs_changed.emit(legs_down, true)
 
 
+# The legs' shock absorbers, each a damped spring. A touchdown squeezes them, and they spring back to sag
+# under the ship's weight, each to the ground under its own foot, as far as its stroke goes. In the air
+# they stretch out again. A leg moving, or broken, doesn't spring.
+func _spring_legs(delta: float) -> void:
+	if _legs.is_empty():
+		return
+	var standing: bool = state.is_on_surface() and _legs_out >= 1.0 and not _lost
+	var weight_share: float = clampf(_mass_now / (body.mass + body.original_fuel_capacity + design.rcs_capacity), 0.0, 1.2)
+	var targets: Dictionary = _leg_targets(weight_share) if standing else {}
+	var changed: bool = false
+	for leg: Dictionary in _legs:
+		var module: ModuleData = body.modules[leg["module"]]
+		var working: bool = body.working_share(leg["module"]) >= module_dead_share
+		var squash: float = leg["squash"]
+		if _legs_out < 1.0 or not working:
+			squash = 0.0
+			leg["speed"] = 0.0
+		else:
+			var target: float = targets.get("left" if leg["left"] else "right", 0.0)
+			var room: float = maxf(module.stroke * (1.0 - module.sag_share), 0.5)
+			var omega: float = module.soak_speed * SQUASH_PEAK / room
+			leg["speed"] += (omega * omega * (target - squash) - 2.0 * SQUASH_DAMPING * omega * leg["speed"]) * delta
+			squash += leg["speed"] * delta
+			if squash >= module.stroke:
+				squash = module.stroke
+				leg["speed"] = minf(leg["speed"], 0.0)
+			elif squash <= 0.0:
+				squash = 0.0
+				leg["speed"] = maxf(leg["speed"], 0.0)
+		if absf(squash - leg["squash"]) > 0.001:
+			changed = true
+		leg["squash"] = squash
+	if changed:
+		for leg: Dictionary in _legs:
+			body.set_squash(leg["layer"], leg["squash"])
+		body.size_changed()
+		_rest_height = body.reach(_pivot, Vector2.DOWN)
+		_aero_stale = true
+		_place_art()
+
+
+# Where the left and right legs settle standing: sagging under the weight, the side on higher ground
+# squeezed more and the other less, and when one side reaches an end of its stroke, the other takes up
+# the rest.
+func _leg_targets(weight_share: float) -> Dictionary:
+	var stroke: float = INF
+	var sag: float = 0.0
+	for leg: Dictionary in _legs:
+		var module: ModuleData = body.modules[leg["module"]]
+		stroke = minf(stroke, module.stroke)
+		sag = maxf(sag, module.sag_share * module.stroke * weight_share)
+	sag = minf(sag, stroke)
+	var left: float = sag + _leg_level / 2.0
+	var right: float = sag - _leg_level / 2.0
+	if right < 0.0:
+		left -= right
+		right = 0.0
+	if left < 0.0:
+		right -= left
+		left = 0.0
+	if left > stroke:
+		right -= left - stroke
+		left = stroke
+	if right > stroke:
+		left -= right - stroke
+		right = stroke
+	return {"left": clampf(left, 0.0, stroke), "right": clampf(right, 0.0, stroke)}
+
+
+# A touchdown squeezes every leg that's fully down and working, as fast as the ship hit.
+func _kick_legs(speed: float) -> void:
+	if _legs_out < 1.0:
+		return
+	for leg: Dictionary in _legs:
+		if body.working_share(leg["module"]) >= module_dead_share:
+			leg["speed"] = maxf(leg["speed"], speed)
+
+
+## How far each leg's shock absorber is squeezed now, in pixels.
+func leg_squashes() -> Array[float]:
+	var squashes: Array[float] = []
+	for leg: Dictionary in _legs:
+		squashes.append(leg["squash"])
+	return squashes
+
+
 func _move_legs(delta: float) -> void:
 	if not _legs_moving:
 		return
@@ -985,6 +1102,7 @@ func _touch_terrain() -> void:
 	var flat_reach: float = body.reach(_pivot, down)
 	state.ground_clearance = flat_reach
 	_ground_lean = 0.0
+	_leg_level = 0.0
 	if _gravity_model.get_altitude(state.x, state.y, state.time) > flat_reach + terrain_check_height:
 		return
 	var dominant: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
@@ -1008,7 +1126,16 @@ func _touch_terrain() -> void:
 	var stance: int = mini(roundi(_stance() / WORLD_PIXEL), GROUND_CHECK_COLUMNS)
 	var left: float = strip[(GROUND_CHECK_COLUMNS - stance) * 2]
 	var right: float = strip[(GROUND_CHECK_COLUMNS + stance) * 2]
-	_ground_lean = clampf(atan2(left - right, stance * 2.0 * WORLD_PIXEL), -most_ground_lean, most_ground_lean)
+	var rise: float = left - right
+	# Legs down, each leg's shock absorber takes up what it can of the difference, so the ship sits
+	# nearer level than the ground under its feet.
+	if legs_down and _legs_out >= 1.0 and not _legs.is_empty():
+		var stroke: float = INF
+		for leg: Dictionary in _legs:
+			stroke = minf(stroke, body.modules[leg["module"]].stroke)
+		_leg_level = clampf(rise * LEVEL_SIGN, -stroke, stroke)
+		rise -= _leg_level * LEVEL_SIGN
+	_ground_lean = clampf(atan2(rise, stance * 2.0 * WORLD_PIXEL), -most_ground_lean, most_ground_lean)
 
 
 # A point on the art as it's drawn right now, which a crushed ship is still sinking toward.
