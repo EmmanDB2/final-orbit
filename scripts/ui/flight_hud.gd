@@ -215,18 +215,18 @@ func connect_services(services: ShipServices) -> void:
 
 func _on_terminal_used(place: Dictionary) -> void:
 	if place.get("kind", "") == "service":
-		_open_service_board()
+		_open_service_board(place.get("at", {"kind": "station"}))
 	else:
 		_open_gig_board(place)
 
 
-func _open_service_board() -> void:
+func _open_service_board(at: Dictionary) -> void:
 	if _services == null:
 		return
 	_card.visible = false
 	_release_everything()
 	_pilot.input_blocked = true
-	_service_board.open(_services)
+	_service_board.open(_services, at)
 
 
 func _open_gig_board(place: Dictionary) -> void:

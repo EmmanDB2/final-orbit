@@ -26,8 +26,8 @@ signal stranded_changed(stranded: bool)
 ## Emitted when the pilot should hear something.
 signal message_raised(text: String)
 ## Emitted when the pilot uses a terminal: a gig board, the station's or a base's mission computer, as
-## {"kind": "station"} or {"kind": "site", "index": i}; or the docking room's ship services, as
-## {"kind": "service"}.
+## {"kind": "station"} or {"kind": "site", "index": i}; or ship services, as {"kind": "service", "at":
+## place}, the place being the station or the site the terminal's at.
 signal terminal_used(place: Dictionary)
 
 const ABOARD: String = "aboard"
@@ -350,7 +350,7 @@ func _tick_inside(delta: float) -> void:
 		match _action:
 			"USE TERMINAL":
 				# The docking room's terminal sells fuel and repairs; any other is the gig board.
-				terminal_used.emit({"kind": "service"} if spot.get("kind", "") == "service" else {"kind": "station", "index": 0})
+				terminal_used.emit({"kind": "service", "at": {"kind": "station"}} if spot.get("kind", "") == "service" else {"kind": "station", "index": 0})
 			"BOARD SHIP":
 				_board_ship()
 			"EXIT STATION":
@@ -640,6 +640,8 @@ func _tick_indoors(delta: float) -> void:
 		var terminal: int = _terminal_at(building, _spot)
 		if building.board_terminals.has(terminal):
 			terminal_used.emit({"kind": "site", "index": _sites.find(_site)})
+		elif building.service_terminals.has(terminal):
+			terminal_used.emit({"kind": "service", "at": {"kind": "site", "index": _sites.find(_site)}})
 		else:
 			message_raised.emit(building.terminal_messages[terminal])
 	_place_indoors()

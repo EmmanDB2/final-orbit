@@ -22,6 +22,16 @@ func _init(ship: Node2D, agency: Agency, service_prices: ServicePrices) -> void:
 	_whole = ShipBody.measure(ship.design)
 
 
+## Whether the ship is where these services can reach it: docked at the station, or on a base's pad.
+func ship_here(at: Dictionary) -> bool:
+	return _agency.ship_at(at)
+
+
+## What a place is called, for the screen's header.
+func place_name(at: Dictionary) -> String:
+	return _agency.place_name(at).to_upper()
+
+
 func credits() -> int:
 	return _agency.credits
 

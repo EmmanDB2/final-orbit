@@ -21,6 +21,7 @@ ladders = PackedVector3Array(67, 136, 348)
 door = Vector2(27, 348)
 terminals = PackedVector2Array(30, 136)
 terminal_messages = PackedStringArray("ASSEMBLY BAY EMPTY")
+service_terminals = PackedInt32Array(0)
 
 [sub_resource type="Resource" id="Resource_tower"]
 script = ExtResource("2_building")

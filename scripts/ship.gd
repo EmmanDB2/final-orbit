@@ -372,8 +372,6 @@ func _physics_process(delta: float) -> void:
 		touched_down.emit(state.get_touchdown_speed(), tilt <= upright_tolerance, _safe_impact_speed())
 		var landed_on: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
 		_hit_ground(state.get_touchdown_speed(), landed_on)
-		if _gravity_model.get_body_parent(landed_on) == 0 and not _lost:
-			_refill_sound_tanks()
 	elif _was_on_surface and not on_surface:
 		lifted_off.emit()
 	_was_on_surface = on_surface
@@ -661,17 +659,6 @@ func _push_through_air(delta: float) -> bool:
 	_heat_heading = atan2(through_x, -through_y)
 	_hot_side = Vector2.UP.rotated(_heat_heading - heading)
 	return true
-
-
-# Fills whatever tanks have no holes. A holed one wouldn't hold it.
-func _refill_sound_tanks() -> void:
-	var sound: float = 0.0
-	for tank: Dictionary in body.tanks:
-		if body.module_share(tank["module"]) >= 1.0:
-			sound += tank["capacity"]
-	fuel = maxf(fuel, sound)
-	rcs_fuel = design.rcs_capacity
-	_update_performance()
 
 
 func _on_star_heat_changed(share: float) -> void:

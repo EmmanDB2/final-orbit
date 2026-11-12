@@ -31,3 +31,5 @@ extends Resource
 ## Which terminals are gig boards, by their place in terminals. Using one opens the board of gigs
 ## that start at this site, instead of showing its message.
 @export var board_terminals: PackedInt32Array = PackedInt32Array()
+## Which terminals sell fuel and repairs, by their place in terminals, for a ship on the site's pad.
+@export var service_terminals: PackedInt32Array = PackedInt32Array()

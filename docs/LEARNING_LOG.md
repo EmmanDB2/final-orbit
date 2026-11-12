@@ -772,3 +772,10 @@ Files: `scripts/station/service_prices.gd`, `data/service_prices.tres`, `scripts
 - separating rules (ShipServices) from the screen that shows them (ServiceBoard)
 - drawing a picture from data: a ship's pixels into an `Image`
 - laying out labels with leader lines so they don't overlap
+
+## 2026-11-12: Paid fuel at the launch base
+
+Files: `scripts/site/site_building.gd`, `data/launch_base.tres`, `scripts/pilot.gd`, `scripts/station/ship_services.gd`, `scripts/ui/service_board.gd`, `scripts/ui/flight_hud.gd`, `scripts/ship.gd`, `scripts/ui/comms_line.gd`, `docs/DESIGN.md`
+
+- reusing one screen in two places by passing where it is
+- a precondition (the ship has to be there) that disables actions

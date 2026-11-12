@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-12 | Landing at home no longer refills the tanks, on Manny's call: the launch base's Vehicle Assembly building has a paid service terminal instead, the same screen as the station's. Each terminal only serves a ship docked there or on its pad \[Leaning\] |
 | 2026-11-12 | Prices built, on Manny's call, from his sketch of the service terminal: docking no longer refuels or repairs; a terminal in the docking room sells both, in REFUEL and REPAIRS tabs, with the ship drawn and a tooltip on each tank or damaged part. First numbers: fuel 0.15 Cr/kg, RCS propellant 0.5 Cr/kg, repairs by part, and a 5,000 Cr credit line so nobody is stranded at the station. Free in Zen Mode \[Leaning\] |
 | 2026-11-12 | Zen Mode built: its own world and save, swapped in behind the title; fuel, RCS propellant, and jetpack gas never run out; no gigs or pay; a lost ship isn't kept, so the next Zen flight starts fresh; and ambient music from a track list waiting for Manny's Suno tracks. Time warp works as in normal play \[Leaning\] |
 | 2026-11-12 | The title copied exactly from Manny's mockup, on his call: its letters and orbit measured off the mockup in its own pixels. Sharp stencil letters, cut where the mockup cuts them, with only the O and the bowls of R and B round; the orbit is the ellipse fitted to the mockup's, crossing over ORBIT and passing behind the word, showing only at its ends. The title and menu sit 48 px in, as in the mockup \[Leaning\] |
@@ -299,7 +300,7 @@ Construction:
 - The engine's flame is drawn by code in chunky pixels and the fire colors, from what the engine is doing: long with a white-hot core flat out, short and orange throttled back, spreading wide in a vacuum, held narrow by air with bright knots in it, and stopped by the ground. It comes out of what's left of the bell, so a lost engine moves it to one side, and a damaged one sputters. \[Leaning\]
 - RCS puffs show from the nozzles on the art. The nozzle opposite the push fires, so the left one turns the nose clockwise or moves the ship right. The two tail nozzles move it forward, and the side nozzles angled forward back it up. Puffs only show on the sprite, and tiny corrections while holding steady don't show. \[Leaning\]
 - The lander, as the all-rounder: about 19.5 t dry, 40 t of fuel, 300 m/s² of thrust when full and about 916 when empty, about 16,700 m/s of delta-v, and about 34 seconds of full-throttle burn. Engine and RCS strength are set so a full tank feels the same as it did with half the fuel. These live in `data/lander_design.tres`. \[Leaning\]
-- Until stations exist, landing on the planet refills the tanks, and a ship stranded with no fuel means restarting. \[Leaning\]
+- Fuel is bought, at the station's docking room or the launch base's assembly building (see Prices). Landing at home doesn't refill the tanks any more. \[Leaning\]
 - Staging: drop empty tanks or used heat shields to save mass; dropped parts become debris. \[Leaning\]
 - Repairs and customization happen at the pixel level, so patched plating shows on the hull. Liveries and paint use the agency palette. \[Leaning\]
 
@@ -327,7 +328,7 @@ How it works in Tier 1: \[Leaning\]
 - Pieces under 30 pixels drop away as sparks, just after whatever cut them loose. There can be 12 chunks at once. Under 200 pixels, one crumbles into sparks after 30 seconds or burns up in the air. Any chunk crumbles after 60 seconds on the ground, or at once if it hits the ground faster than 120 units/s.
 - The ship turns around its new center of mass, which moves as pixels go.
 - A module under half its working pixels stops working, and the pilot gets a message. Left RCS gone means no clockwise turn or moving right, and right RCS gone means the reverse. An engine weakens as its bell goes and stops under a quarter of it. One engine module gone means half the thrust, off-center, so the ship spins. The tail nozzles work or fail on their own.
-- Fuel is shared across the tanks. A tank can only hold as much as is left of it, so losing pixels loses that share of its fuel at once. What remains leaks at up to 2,000 kg/s depending on the hole, and pushes the ship away from the hole. Lost capacity stays lost, and landing only refills tanks with no holes.
+- Fuel is shared across the tanks. A tank can only hold as much as is left of it, so losing pixels loses that share of its fuel at once. What remains leaks at up to 2,000 kg/s depending on the hole, and pushes the ship away from the hole. Lost capacity stays lost until the ship's repaired.
 - Cockpit under half its pixels means the ship is lost, until the escape pod in Tier 2. The ship stops responding and stays where it is as a wreck. Touching the star destroys everything.
 - TITLE appears when the ship is lost, has no engine, or has no fuel, and goes back to the title screen, where NEW FLIGHT starts over. It was RESTART, starting a new flight, until the title screen.
 - A hit stops the ship dead against the ground, with no bounce or slide yet. Venting can still hop a light wreck off the ground.
@@ -653,7 +654,7 @@ Turning and RCS controls: \[Leaning\]
 - Heading dial at the top right, on every screen, drawn like a compass to Manny's mockup: ticks every 10 degrees inside the ring, a dim crosshair, the nose as a cyan arrowhead, prograde as a cyan ring and retrograde as an orange one with a cross, spin as an amber arc along the rim, and the spin rate in degrees a second underneath. The markers hide when landed or barely moving, since there's no direction of travel to show.
 - The right column is 132 game pixels wide. Buttons can be drawn smaller than 44 game pixels as long as what a finger can touch isn't.
 - Translation gives the lander about 30 m/s² when full. It's too weak to lift off from the planet or the moon, and ASS doesn't cancel it. \[Leaning\]
-- The RCS has its own propellant tank, apart from the engine's fuel, like Apollo's: 2,400 kg on the lander, two minutes of firing flat out. Turning, translating, STAB, ASSIST, and drag to point all use it, and with it empty the ship can't turn or translate, though the engine still burns. It refills with the fuel: bought at the station, or for free landing at home. Manny's call, 2026-11-10. \[Leaning\]
+- The RCS has its own propellant tank, apart from the engine's fuel, like Apollo's: 2,400 kg on the lander, two minutes of firing flat out. Turning, translating, STAB, ASSIST, and drag to point all use it, and with it empty the ship can't turn or translate, though the engine still burns. It refills with the fuel, bought at the station or the launch base. Manny's call, 2026-11-10. \[Leaning\]
 
 Edge markers: \[Leaning\]
 
@@ -710,14 +711,14 @@ Decided 2026-11-10, on Manny's call. \[Leaning\]
 
 Decided 2026-11-12, on Manny's call, from his sketch of the service terminal. \[Leaning\]
 
-- Docking doesn't refuel or repair any more. The docking room (Ship refueling) has a terminal for both, used like the gig board's.
+- Docking doesn't refuel or repair any more, and nor does landing at home. The station's docking room (Ship refueling) has a terminal for both, used like the gig board's, and so does the launch base's Vehicle Assembly building, where the terminal used to say ASSEMBLY BAY EMPTY. Each only serves a ship docked there or standing on the base's pad; otherwise its buttons are dark and it says SHIP NOT DOCKED or SHIP NOT ON THE PAD.
 - Its screen has two tabs down the left, REFUEL and REPAIRS, with the tab's name as the title. It opens on REPAIRS if anything needs fixing.
 - REPAIRS draws the ship as it is, nose up, with a tooltip on each damaged part, joined by a line to where the damage is: the part, DAMAGED or NOT WORKING with how much of it is gone, and under that what fixing it costs. Down the left, the same list. At the bottom right, REPAIR ALL with the total fixes everything.
 - REFUEL draws the ship cut away to its systems layer, with a tooltip on each fuel tank and on the RCS propellant: what it holds, and how full it is or how much a hole has cost it. A fuel meter on the right shows engine fuel in orange and RCS propellant in cyan, what's aboard solid and what filling up would add in light, with a red mark where a holed tank stops. At the bottom right, REFUEL with the cost fills both.
 - First numbers, in `data/service_prices.tres`: engine fuel 0.15 Cr/kg (a full 40 t fill is 6,000 Cr, against gigs paying 5,000 to 10,000); RCS propellant 0.5 Cr/kg (1,200 Cr full). Rebuilding a whole part costs, per half: cockpit 6,000, engine 4,000, tank 2,500, RCS 1,500, leg 1,000 Cr, charged for the share of its mass that's gone, 50 Cr at least.
 - The agency extends a 5,000 Cr credit line, so the balance can go that far below zero. Without it, a pilot who docked broke with empty tanks could never fly again. Short of the full price, REFUEL fills as much as the credit left buys; REPAIR ALL needs the whole amount.
 - In Zen Mode it's all free.
-- Still open: whether landing at home should keep refilling the tanks for free, tows when a ship runs dry, and buying a replacement ship after one's lost. \[Open\]
+- Still open: tows when a ship runs dry, buying a replacement ship after one's lost, and whether the moon base sells fuel too. \[Open\]
 
 ## Saving and the title screen
 

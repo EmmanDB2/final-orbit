@@ -1,9 +1,10 @@
-# service_board.gd: the docking room's ship services terminal, in two tabs down the left. REPAIRS draws
-# the ship as it is, with a tooltip on each damaged part saying what's wrong and, under it, what fixing
-# it costs, and REPAIR ALL at the bottom right with the total. REFUEL draws the ship cut away to its
-# systems, with a tooltip on each tank saying what it holds, a fuel meter at the right, and REFUEL with
-# what filling up costs. It covers the flight while it's up. From DESIGN.md, "Prices", drawn to Manny's
-# 2026-11-12 sketch.
+# service_board.gd: a ship services terminal, at the station's docking room or a base's assembly
+# building, in two tabs down the left. REPAIRS draws the ship as it is, with a tooltip on each damaged
+# part saying what's wrong and, under it, what fixing it costs, and REPAIR ALL at the bottom right with
+# the total. REFUEL draws the ship cut away to its systems, with a tooltip on each tank saying what it
+# holds, a fuel meter at the right, and REFUEL with what filling up costs. It only works on a ship
+# docked there, or on the base's pad. It covers the flight while it's up. From DESIGN.md, "Prices",
+# drawn to Manny's 2026-11-12 sketch.
 class_name ServiceBoard
 extends UiWidget
 
@@ -22,6 +23,8 @@ const METER_WIDTH: float = 76.0
 const TABS: Array[String] = ["REFUEL", "REPAIRS"]
 
 var _services: ShipServices
+# Where this terminal is: the station, or a base. The ship has to be docked there, or on its pad.
+var _at: Dictionary = {"kind": "station"}
 var _tab: String = "REPAIRS"
 var _panel := Rect2()
 var _finger := Vector2.ZERO
@@ -36,9 +39,10 @@ var _pictures: Dictionary = {}
 var _note: String = ""
 
 
-## Shows the terminal, on REPAIRS if anything needs fixing and REFUEL if not.
-func open(services: ShipServices) -> void:
+## Shows the terminal at a place, on REPAIRS if anything needs fixing and REFUEL if not.
+func open(services: ShipServices, at: Dictionary = {"kind": "station"}) -> void:
 	_services = services
+	_at = at
 	_tab = "REPAIRS" if not services.problems().is_empty() else "REFUEL"
 	_keys_ready = false
 	_note = ""
@@ -102,8 +106,10 @@ func _process(_delta: float) -> void:
 		close()
 
 
-# REPAIR ALL or REFUEL, whichever tab's up.
+# REPAIR ALL or REFUEL, whichever tab's up, if the ship's here.
 func _act() -> void:
+	if not _services.ship_here(_at):
+		return
 	if _tab == "REPAIRS":
 		var cost: int = _services.repair_cost()
 		if _services.repair():
@@ -170,7 +176,7 @@ func _draw() -> void:
 	var title_size: int = 3 if _panel.size.x >= 760.0 else 2
 	var title_y: float = _panel.position.y + floorf((HEADER - 7.0 * title_size) / 2.0)
 	UiStyle.draw_text(self, _tab, Vector2(_panel.position.x + MARGIN, title_y), palette.agency_orange_light, title_size)
-	var where: String = "SHIP SERVICES // DOCKING BAY"
+	var where: String = "SHIP SERVICES // %s" % ("DOCKING BAY" if _at.get("kind", "") == "station" else _services.place_name(_at))
 	var where_x: float = _panel.position.x + MARGIN + UiStyle.text_width(_tab + "  ", title_size)
 	if where_x + UiStyle.text_width(where, 1) < _close_rect().position.x - 12.0:
 		UiStyle.draw_text(self, where, Vector2(where_x, _panel.position.y + floorf(HEADER / 2.0) - 3.0), palette.hull_lighter, 1)
@@ -252,7 +258,9 @@ func _draw_repairs(palette: AgencyPalette) -> void:
 		y += 26.0
 
 	var total: int = _services.repair_cost()
-	if problems.is_empty():
+	if not _services.ship_here(_at):
+		_draw_action("REPAIR ALL", false, palette, _away_reason())
+	elif problems.is_empty():
 		_draw_action("NO REPAIRS NEEDED", false, palette)
 	elif not _services.can_pay(total):
 		_draw_action("REPAIR ALL · %s CR" % Units.grouped(total), false, palette, "NOT ENOUGH CREDIT")
@@ -282,7 +290,9 @@ func _draw_refuel(palette: AgencyPalette) -> void:
 
 	var wanted: float = _services.fuel_wanted() + _services.rcs_wanted()
 	var share: float = _services.refuel_share()
-	if wanted <= 0.01:
+	if not _services.ship_here(_at):
+		_draw_action("REFUEL", false, palette, _away_reason())
+	elif wanted <= 0.01:
 		_draw_action("TANKS FULL", false, palette)
 	elif share <= 0.0:
 		_draw_action("REFUEL · %s CR" % Units.grouped(_services.refuel_cost()), false, palette, "NO CREDIT LEFT")
@@ -390,6 +400,11 @@ func _draw_meter(meter: Rect2, palette: AgencyPalette) -> void:
 			draw_rect(Rect2(inside.position.x - 2.0, floorf(stop), inside.size.x + 4.0, 2.0), palette.agency_red)
 		var percent: String = "%d%%" % roundi(100.0 * gauge[1] / whole)
 		UiStyle.draw_text(self, percent, Vector2(column.position.x + floorf((width - UiStyle.text_width(percent, 1)) / 2.0), bar.end.y + 8.0), palette.hull_lightest, 1)
+
+
+# Why the ship can't be served from here.
+func _away_reason() -> String:
+	return "SHIP NOT DOCKED" if _at.get("kind", "") == "station" else "SHIP NOT ON THE PAD"
 
 
 func _list_top() -> float:

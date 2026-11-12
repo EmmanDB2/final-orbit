@@ -96,7 +96,6 @@ func _on_ship_warning_raised(text: String) -> void:
 func _on_ship_docked_changed(is_docked: bool) -> void:
 	if is_docked:
 		_show_message("DOCKED", UiStyle.palette().telemetry_green)
-		_show_message("REFUELED AND REPAIRED", UiStyle.palette().telemetry_green)
 
 
 func _on_ship_lost() -> void:
