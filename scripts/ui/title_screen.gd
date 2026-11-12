@@ -28,6 +28,9 @@ const NOT_YET: Array[String] = ["ZEN MODE", "SETTINGS"]
 const WORLD_OF: Dictionary = {"CONTINUE": "continue", "NEW FLIGHT": "new"}
 const SUBTITLE: String = "KEPLA SYSTEM · AGENCY FLIGHT OPERATIONS"
 const EDGE: float = 24.0
+## Where the title and the menu start from the left, and the title from the top, as in the mockup.
+const LEFT: float = 48.0
+const TITLE_TOP: float = 47.0
 const ROW: float = 44.0
 const ROW_GAP: float = 10.0
 const MENU_WIDTH: float = 236.0
@@ -212,7 +215,7 @@ func _item_at(point: Vector2) -> String:
 # stay crisp squares.
 func _art_scale() -> int:
 	var letters: Vector2 = Vector2(TitleLettering.letters_size())
-	return clampi(floori(minf(size.x * 0.46 / letters.x, size.y * 0.36 / letters.y)), 1, 6)
+	return clampi(floori(minf(size.x * 0.5 / letters.x, size.y * 0.36 / letters.y)), 1, 6)
 
 
 func _draw() -> void:
@@ -221,15 +224,15 @@ func _draw() -> void:
 	var art_scale: int = _art_scale()
 	var lettering: Vector2 = Vector2(TitleLettering.letters_size() * art_scale)
 	var subtitle_size: int = 2 if UiStyle.text_width(SUBTITLE, 2) <= lettering.x else 1
-	var left_reach: float = EDGE + maxf(maxf(lettering.x, UiStyle.text_width(SUBTITLE, subtitle_size)), MENU_WIDTH + SELECTED_WIDER) + 40.0
+	var left_reach: float = LEFT + maxf(maxf(lettering.x, UiStyle.text_width(SUBTITLE, subtitle_size)), MENU_WIDTH + SELECTED_WIDER) + 40.0
 	var left := Vector2(-left_reach * eased, 0.0)
 	var right := Vector2((EDGE + 220.0) * eased, 0.0)
 
 	if _lettering == null:
 		_lettering = ImageTexture.create_from_image(TitleLettering.paint())
-	var letters_at: Vector2 = Vector2(EDGE, EDGE - 4.0) - Vector2(TitleLettering.letters_offset() * art_scale)
+	var letters_at: Vector2 = Vector2(LEFT, TITLE_TOP) - Vector2(TitleLettering.letters_offset() * art_scale)
 	draw_texture_rect(_lettering, Rect2(letters_at + left, _lettering.get_size() * art_scale), false)
-	var subtitle_at := Vector2(EDGE, EDGE - 4.0 + lettering.y + 10.0) + left
+	var subtitle_at := Vector2(LEFT, TITLE_TOP + lettering.y + 20.0) + left
 	UiStyle.draw_text(self, SUBTITLE, subtitle_at, palette.hull_lightest, subtitle_size)
 
 	_draw_menu(palette, left)
@@ -255,7 +258,7 @@ func _draw_menu(palette: AgencyPalette, shift: Vector2) -> void:
 	for i in range(shown.size()):
 		var item: String = shown[i]
 		var selected: bool = item == _selected
-		var rect := Rect2(Vector2(EDGE, y) + shift, Vector2(MENU_WIDTH + (SELECTED_WIDER if selected else 0.0), heights[i]))
+		var rect := Rect2(Vector2(LEFT, y) + shift, Vector2(MENU_WIDTH + (SELECTED_WIDER if selected else 0.0), heights[i]))
 		_rects[item] = rect
 		_draw_item(palette, item, rect, selected)
 		y += heights[i] + ROW_GAP

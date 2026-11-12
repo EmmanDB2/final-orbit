@@ -1,76 +1,70 @@
-# title_lettering.gd: paints FINAL ORBIT as pixel art, with an agency-orange orbit swept around it, into a
-# small image the title screen draws scaled up by whole numbers, so every art pixel stays a crisp square.
-# The letters are stencil letters: each piece is its own shape, with a one-pixel gap where pieces would
-# join, bowls and the O rounded off, a shaded bottom edge, and a dark outline. The orbit is a stepped
-# ring, thicker where it swings to the front, light on its outer edge and dark on its inner one. It
-# weaves: in front of the O where it swings round at the lower left, and behind the letters everywhere
-# else, so they stay readable. From DESIGN.md, "Saving and the title screen" (Manny's mockup).
+# title_lettering.gd: paints FINAL ORBIT as pixel art, with an agency-orange orbit around it, into a small
+# image the title screen draws scaled up by whole numbers, so every art pixel stays a crisp square. It's
+# copied from Manny's mockup, measured off it in its own pixels: wide, sharp stencil letters, flat cream
+# with a dark outline, each cut where a stencil would be (F's arms, N's stems, the A, L's foot, the O
+# top and bottom, R's and B's bowls, T's bar), the O and the bowls round as in the mockup. The orbit
+# is the ellipse that fits the mockup's: its near half crosses over the letters, and its far half
+# passes behind the whole word, showing only at its two ends. From DESIGN.md, "Saving and the title
+# screen".
 class_name TitleLettering
 
-## Art pixels to a cell of the letter grid.
-const CELL: int = 3
-## Each letter on a grid 9 cells tall and 7 wide (I is 6), with strokes 2 cells thick. A letter is its
-## pieces; a piece is blocks [x, y, width, height] and slants [x at the top, x at the bottom, width,
-## top, bottom], in cells, joined into one shape. Every outside corner loses its corner pixel, and the
-## corners named in "curve" ("tl", "tr", "bl", "br", of the piece's bounds) are rounded off along a
-## circle as wide as "radius", in art pixels.
-const LETTERS: Dictionary = {
-	"F": {"width": 7, "pieces": [
-		{"blocks": [[0, 0, 2, 9]], "round": 1},
-		{"blocks": [[2, 0, 5, 2]], "round": 1},
-		{"blocks": [[2, 3.5, 4, 2]], "round": 1}]},
-	"I": {"width": 6, "pieces": [
-		{"blocks": [[0, 0, 6, 2], [2, 2, 2, 5], [0, 7, 6, 2]], "round": 1}]},
-	"N": {"width": 7, "pieces": [
-		{"blocks": [[0, 0, 2, 9]], "round": 1},
-		{"slants": [[2, 3, 2, 0, 9]], "round": 1},
-		{"blocks": [[5, 0, 2, 9]], "round": 1}]},
-	"A": {"width": 7, "pieces": [
-		{"slants": [[1.5, 0, 2, 0, 9]], "round": 1},
-		{"slants": [[3.5, 5, 2, 0, 9]], "round": 1},
-		{"blocks": [[2.5, 5, 2, 1.7]], "round": 0}]},
-	"L": {"width": 7, "pieces": [
-		{"blocks": [[0, 0, 2, 9]], "round": 1},
-		{"blocks": [[2, 7, 5, 2]], "round": 1}]},
-	"O": {"width": 7, "pieces": [
-		{"blocks": [[0, 0, 2, 9], [2, 0, 1.5, 2], [2, 7, 1.5, 2]], "round": 1, "curve": ["tl", "bl"], "radius": 6},
-		{"blocks": [[5, 0, 2, 9], [3.5, 0, 1.5, 2], [3.5, 7, 1.5, 2]], "round": 1, "curve": ["tr", "br"], "radius": 6}]},
-	"R": {"width": 7, "pieces": [
-		{"blocks": [[0, 0, 2, 9]], "round": 1},
-		{"blocks": [[2, 0, 3.5, 2], [5, 0, 2, 5.5], [2, 3.5, 3.5, 2]], "round": 1, "curve": ["tr", "br"], "radius": 5},
-		{"slants": [[3.5, 5, 2, 5.5, 9]], "round": 1}]},
-	"B": {"width": 7, "pieces": [
-		{"blocks": [[0, 0, 2, 9]], "round": 1},
-		{"blocks": [[2, 0, 3.5, 2], [5, 0, 2, 4.2], [2, 3.5, 3, 2], [5, 4.8, 2, 4.2], [2, 7, 3.5, 2]], "round": 1, "curve": ["tr", "br"], "radius": 5}]},
-	"T": {"width": 7, "pieces": [
-		{"blocks": [[0, 0, 7, 2]], "round": 1},
-		{"blocks": [[2.5, 2, 2, 7]], "round": 1}]},
-}
-const LINES: Array[String] = ["FINAL", "ORBIT"]
-const LETTER_HEIGHT: float = 9.0
-## Room between letters, and between the two lines, in cells.
-const LETTER_GAP: float = 1.5
-const LINE_GAP: float = 2.0
-## Room around the letters for the orbit, in art pixels.
-const MARGIN := Vector2i(10, 6)
-## How the orbit leans, in radians, how big it is against the letters, and how thick it is at the back
-## and the front, in art pixels.
-const ORBIT_TILT: float = -0.22
-const ORBIT_REACH := Vector2(0.55, 0.42)
-const ORBIT_BACK: float = 2.6
-const ORBIT_FRONT: float = 4.6
-## The stretch of the orbit drawn in front of the letters, as angles around it in its own frame, from
-## the bottom (PI / 2) round to the left end (PI) and a little past.
-const ORBIT_FRONT_FROM: float = 1.95
-const ORBIT_FRONT_TO: float = 3.45
+## The mockup's pixels to an art pixel, and where its letters start, in its pixels.
+const MOCKUP_SCALE: float = 3.76
+const MOCKUP_ORIGIN := Vector2(60.0, 59.0)
+const MOCKUP_END := Vector2(527.0, 282.0)
+## The letters' pieces, in the mockup's pixels, in the order they're laid. A piece that touches one
+## laid before it is cut back a pixel there, which is the stencil's seam. A piece adds shapes, takes
+## "cut" shapes away, and may be clipped to a rectangle. Shapes: ["rect", x0, y0, x1, y1],
+## ["round", x0, y0, x1, y1, top-left, top-right, bottom-right, bottom-left radii],
+## ["ellipse", middle x, middle y, half width, half height], and ["poly", [x, y, x, y, ...]].
+const PIECES: Array = [
+	# F
+	{"add": [["rect", 65, 59, 90, 162]]},
+	{"add": [["rect", 90, 59, 148, 78], ["rect", 90, 103, 140, 121]]},
+	# I
+	{"add": [["rect", 163, 59, 188, 162]]},
+	# N: the diagonal first, so the stems are the ones cut.
+	{"add": [["poly", [206.7, 59, 234, 59, 302, 162, 275, 162]]]},
+	{"add": [["rect", 205, 59, 230, 162]]},
+	{"add": [["rect", 276, 59, 301, 162]]},
+	# A: the right leg with the top and the crossbar, then the left leg.
+	{"add": [["poly", [367, 59, 391, 59, 430, 162, 404, 162]], ["rect", 353, 123, 415, 142]]},
+	{"add": [["poly", [356, 59, 381, 59, 342, 162, 316, 162]]]},
+	# L
+	{"add": [["rect", 445, 59, 470, 162]]},
+	{"add": [["rect", 470, 143, 527, 162]]},
+	# O, in two halves.
+	{"add": [["ellipse", 113, 230.5, 53.5, 51.5]], "cut": [["round", 87, 202, 140, 259, 16, 16, 16, 16]], "clip": [60, 179, 113, 282]},
+	{"add": [["ellipse", 113, 230.5, 53.5, 51.5]], "cut": [["round", 87, 202, 140, 259, 16, 16, 16, 16]], "clip": [113, 179, 167, 282]},
+	# R
+	{"add": [["rect", 181, 182, 207, 276]]},
+	{"add": [["round", 207, 182, 272, 246, 0, 30, 32, 0], ["poly", [226, 240, 253, 240, 275, 282, 249, 282]]], "cut": [["round", 207, 202, 247, 227, 0, 6, 6, 0]]},
+	# B
+	{"add": [["rect", 293, 182, 318, 282]]},
+	{"add": [["round", 318, 182, 379, 226, 0, 22, 22, 0], ["round", 318, 222, 383, 282, 0, 26, 26, 0]], "cut": [["round", 318, 202, 353, 220, 0, 6, 6, 0], ["round", 318, 237, 358, 263, 0, 8, 8, 0]]},
+	# I
+	{"add": [["rect", 400, 181, 425, 282]]},
+	# T
+	{"add": [["rect", 440, 181, 527, 202]]},
+	{"add": [["rect", 471, 202, 496, 282]]},
+]
+## The orbit, fitted to the mockup's in its pixels: middle, half length, half width, lean in radians,
+## and how thick the band is.
+const ORBIT_MIDDLE := Vector2(288.3, 180.1)
+const ORBIT_REACH := Vector2(273.7, 70.1)
+const ORBIT_TILT: float = -0.344
+const ORBIT_THICKNESS: float = 7.0
+## Across this stretch of the mockup, the orbit's far half is out of sight behind the word.
+const ORBIT_HIDDEN := Vector2(48.0, 502.0)
+## Room around the letters for the orbit, in art pixels: left, top, right, bottom.
+const MARGIN := Vector2i(12, 4)
+const MARGIN_END := Vector2i(12, 6)
 
 
 ## How big the letters are, without the room around them, in art pixels.
 static func letters_size() -> Vector2i:
-	var widest: float = 0.0
-	for line: String in LINES:
-		widest = maxf(widest, _line_width(line))
-	return Vector2i(roundi(widest * CELL), roundi((LETTER_HEIGHT * LINES.size() + LINE_GAP) * CELL))
+	var size: Vector2 = (MOCKUP_END - MOCKUP_ORIGIN) / MOCKUP_SCALE
+	return Vector2i(ceili(size.x), ceili(size.y))
 
 
 ## Where the letters start in the painted image, in art pixels.
@@ -78,25 +72,23 @@ static func letters_offset() -> Vector2i:
 	return MARGIN
 
 
-## Paints the whole thing: the back of the orbit, the letters, then the front of the orbit.
+## Paints the whole thing: the far half of the orbit, the letters, then the near half over them.
 static func paint() -> Image:
 	var palette: AgencyPalette = UiStyle.palette()
-	var size: Vector2i = letters_size() + MARGIN * 2
+	var size: Vector2i = letters_size() + MARGIN + MARGIN_END
 	var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
 	var back: Dictionary = {}
 	var front: Dictionary = {}
 	_orbit(size, back, front, palette)
 	_lay(image, back, palette.hull_darkest)
-	_lay(image, _letters(palette), palette.hull_darkest)
+	_lay(image, _letters(size, palette), palette.hull_darkest)
 	_lay(image, front, palette.hull_darkest)
 	return image
 
 
-static func _line_width(line: String) -> float:
-	var width: float = 0.0
-	for letter: String in line:
-		width += LETTERS[letter]["width"] + LETTER_GAP
-	return width - LETTER_GAP
+# Where an art pixel's middle falls on the mockup.
+static func _on_mockup(at: Vector2i) -> Vector2:
+	return MOCKUP_ORIGIN + (Vector2(at - MARGIN) + Vector2(0.5, 0.5)) * MOCKUP_SCALE
 
 
 # Paints a layer of pixels, {Vector2i: Color}, with a one-pixel outline around it first, so it stands
@@ -116,115 +108,96 @@ static func _inside(image: Image, at: Vector2i) -> bool:
 	return at.x >= 0 and at.y >= 0 and at.x < image.get_width() and at.y < image.get_height()
 
 
-# Every letter's pieces, gapped where they meet, rounded, and shaded along their bottoms.
-static func _letters(palette: AgencyPalette) -> Dictionary:
-	# Which piece each pixel belongs to, numbered across the whole lettering.
+# Every piece, cut back a pixel where it touches one laid before it.
+static func _letters(size: Vector2i, palette: AgencyPalette) -> Dictionary:
 	var owner: Dictionary = {}
-	var piece_number: int = 0
-	for row in range(LINES.size()):
-		var x: float = 0.0
-		var y: float = row * (LETTER_HEIGHT + LINE_GAP)
-		for letter: String in LINES[row]:
-			for piece: Dictionary in LETTERS[letter]["pieces"]:
-				var mask: Dictionary = _round(_piece_mask(piece, Vector2(x, y)), piece.get("round", 0))
-				mask = _curve(mask, piece.get("curve", []), piece.get("radius", 0))
-				for at: Vector2i in mask:
-					# Touching a piece already laid leaves a gap: a stencil's bridge.
-					var touches: bool = false
-					for step: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-						if owner.has(at + step) and owner[at + step] != piece_number:
-							touches = true
-					if not touches:
-						owner[at] = piece_number
-				piece_number += 1
-			x += LETTERS[letter]["width"] + LETTER_GAP
+	for number in range(PIECES.size()):
+		var piece: Dictionary = PIECES[number]
+		for y in range(size.y):
+			for x in range(size.x):
+				var at := Vector2i(x, y)
+				if owner.has(at) or not _in_piece(piece, _on_mockup(at)):
+					continue
+				var touches: bool = false
+				for step: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+					if owner.has(at + step) and owner[at + step] != number:
+						touches = true
+				if not touches:
+					owner[at] = number
 	var pixels: Dictionary = {}
 	for at: Vector2i in owner:
-		var bottom: bool = not owner.has(at + Vector2i.DOWN) or owner[at + Vector2i.DOWN] != owner[at]
-		pixels[at + MARGIN] = palette.hull_light if bottom else palette.hull_lightest
+		pixels[at] = palette.hull_lightest
 	return pixels
 
 
-# One piece's pixels: its blocks and slants filled, judged at each pixel's middle.
-static func _piece_mask(piece: Dictionary, origin: Vector2) -> Dictionary:
-	var mask: Dictionary = {}
-	for block: Array in piece.get("blocks", []):
-		var low := Vector2i(roundi((origin.x + block[0]) * CELL), roundi((origin.y + block[1]) * CELL))
-		var high := Vector2i(roundi((origin.x + block[0] + block[2]) * CELL), roundi((origin.y + block[1] + block[3]) * CELL))
-		for y in range(low.y, high.y):
-			for x in range(low.x, high.x):
-				mask[Vector2i(x, y)] = true
-	for slant: Array in piece.get("slants", []):
-		var top: float = (origin.y + slant[3]) * CELL
-		var bottom: float = (origin.y + slant[4]) * CELL
-		var top_x: float = (origin.x + slant[0]) * CELL
-		var bottom_x: float = (origin.x + slant[1]) * CELL
-		var width: float = slant[2] * CELL
-		for y in range(floori(top), ceili(bottom)):
-			var share: float = (y + 0.5 - top) / (bottom - top)
-			var left: float = lerpf(top_x, bottom_x, share)
-			for x in range(floori(left), ceili(left + width)):
-				if x + 0.5 >= left and x + 0.5 < left + width:
-					mask[Vector2i(x, y)] = true
-	return mask
+static func _in_piece(piece: Dictionary, point: Vector2) -> bool:
+	if piece.has("clip"):
+		var clip: Array = piece["clip"]
+		if point.x < clip[0] or point.y < clip[1] or point.x >= clip[2] or point.y >= clip[3]:
+			return false
+	var inside: bool = false
+	for shape: Array in piece["add"]:
+		if _in_shape(shape, point):
+			inside = true
+			break
+	if not inside:
+		return false
+	for shape: Array in piece.get("cut", []):
+		if _in_shape(shape, point):
+			return false
+	return true
 
 
-# Takes the corner pixel off each of a shape's outside corners, which softens it without thinning it.
-static func _round(mask: Dictionary, chop: int) -> Dictionary:
-	if chop <= 0:
-		return mask
-	var kept: Dictionary = {}
-	for at: Vector2i in mask:
-		var open_x: bool = not mask.has(at + Vector2i.LEFT) or not mask.has(at + Vector2i.RIGHT)
-		var open_y: bool = not mask.has(at + Vector2i.UP) or not mask.has(at + Vector2i.DOWN)
-		if not (open_x and open_y):
-			kept[at] = true
-	return kept
+static func _in_shape(shape: Array, point: Vector2) -> bool:
+	match shape[0]:
+		"rect":
+			return point.x >= shape[1] and point.y >= shape[2] and point.x < shape[3] and point.y < shape[4]
+		"round":
+			if point.x < shape[1] or point.y < shape[2] or point.x >= shape[3] or point.y >= shape[4]:
+				return false
+			# Each corner's radius, and the middle of its arc.
+			var corners: Array = [
+				[shape[5], Vector2(shape[1] + shape[5], shape[2] + shape[5]), -1, -1],
+				[shape[6], Vector2(shape[3] - shape[6], shape[2] + shape[6]), 1, -1],
+				[shape[7], Vector2(shape[3] - shape[7], shape[4] - shape[7]), 1, 1],
+				[shape[8], Vector2(shape[1] + shape[8], shape[4] - shape[8]), -1, 1],
+			]
+			for corner: Array in corners:
+				var radius: float = corner[0]
+				var middle: Vector2 = corner[1]
+				if radius <= 0.0:
+					continue
+				var beyond_x: bool = (point.x - middle.x) * corner[2] > 0.0
+				var beyond_y: bool = (point.y - middle.y) * corner[3] > 0.0
+				if beyond_x and beyond_y and point.distance_to(middle) > radius:
+					return false
+			return true
+		"ellipse":
+			var d := Vector2((point.x - shape[1]) / shape[3], (point.y - shape[2]) / shape[4])
+			return d.length_squared() <= 1.0
+		"poly":
+			var points := PackedVector2Array()
+			var flat: Array = shape[1]
+			for i in range(0, flat.size(), 2):
+				points.append(Vector2(flat[i], flat[i + 1]))
+			return Geometry2D.is_point_in_polygon(point, points)
+	return false
 
 
-# Rounds the named corners of a shape's bounds off along a circle this wide.
-static func _curve(mask: Dictionary, corners: Array, radius: int) -> Dictionary:
-	if corners.is_empty() or radius <= 0 or mask.is_empty():
-		return mask
-	var low := Vector2i(1 << 20, 1 << 20)
-	var high := Vector2i(-(1 << 20), -(1 << 20))
-	for at: Vector2i in mask:
-		low = Vector2i(mini(low.x, at.x), mini(low.y, at.y))
-		high = Vector2i(maxi(high.x, at.x + 1), maxi(high.y, at.y + 1))
-	var kept: Dictionary = mask.duplicate()
-	for corner: String in corners:
-		var right: bool = corner.ends_with("r")
-		var lower: bool = corner.begins_with("b")
-		var middle := Vector2(high.x - radius if right else low.x + radius, high.y - radius if lower else low.y + radius)
-		for at: Vector2i in mask:
-			var in_corner_x: bool = at.x >= high.x - radius if right else at.x < low.x + radius
-			var in_corner_y: bool = at.y >= high.y - radius if lower else at.y < low.y + radius
-			if in_corner_x and in_corner_y and (Vector2(at) + Vector2(0.5, 0.5)).distance_to(middle) > radius:
-				kept.erase(at)
-	return kept
-
-
-# The orbit as stepped pixels, split into the half behind the letters and the half in front.
+# The orbit's band, split into its far half (above its long axis) and its near half.
 static func _orbit(size: Vector2i, back: Dictionary, front: Dictionary, palette: AgencyPalette) -> void:
-	var middle: Vector2 = Vector2(size) / 2.0
-	var reach: Vector2 = Vector2(letters_size()) * ORBIT_REACH
 	for y in range(size.y):
 		for x in range(size.x):
+			var at := Vector2i(x, y)
 			# Into the orbit's own frame, where it's an upright ellipse.
-			var local: Vector2 = (Vector2(x + 0.5, y + 0.5) - middle).rotated(-ORBIT_TILT)
-			var angle: float = fposmod(atan2(local.y / reach.y, local.x / reach.x), TAU)
-			var ring_radius: float = Vector2(cos(angle) * reach.x, sin(angle) * reach.y).length()
-			var out: float = (Vector2(local.x / reach.x, local.y / reach.y).length() - 1.0) * ring_radius
-			var near: float = maxf(sin(angle), 0.0)
-			var half: float = lerpf(ORBIT_BACK, ORBIT_FRONT, near) / 2.0
-			if absf(out) > half:
+			var on_mockup: Vector2 = _on_mockup(at)
+			var local: Vector2 = (on_mockup - ORBIT_MIDDLE).rotated(-ORBIT_TILT)
+			var angle: float = atan2(local.y / ORBIT_REACH.y, local.x / ORBIT_REACH.x)
+			var ring_radius: float = Vector2(cos(angle) * ORBIT_REACH.x, sin(angle) * ORBIT_REACH.y).length()
+			var out: float = (Vector2(local.x / ORBIT_REACH.x, local.y / ORBIT_REACH.y).length() - 1.0) * ring_radius
+			if absf(out) > ORBIT_THICKNESS / 2.0:
 				continue
-			var color: Color = palette.agency_orange
-			if out > half - 1.0:
-				color = palette.agency_orange_light
-			elif out < -half + 1.0:
-				color = palette.agency_orange_dark
-			if angle >= ORBIT_FRONT_FROM and angle <= ORBIT_FRONT_TO:
-				front[Vector2i(x, y)] = color
-			else:
-				back[Vector2i(x, y)] = color
+			if sin(angle) >= 0.0:
+				front[at] = palette.agency_orange
+			elif on_mockup.x < ORBIT_HIDDEN.x or on_mockup.x > ORBIT_HIDDEN.y:
+				back[at] = palette.agency_orange

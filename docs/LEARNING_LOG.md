@@ -748,3 +748,11 @@ Files: `scripts/ui/title_lettering.gd`, `scripts/ui/title_screen.gd`, `docs/DESI
 - painting into an `Image` at low resolution, then scaling it up with nearest filtering
 - rasterizing shapes pixel by pixel (polygons, a rotated ellipse ring)
 - layering with outlines to fake depth (in front of / behind)
+
+## 2026-11-12: Title copied from the mockup
+
+Files: `scripts/ui/title_lettering.gd`, `scripts/ui/title_screen.gd`, `docs/DESIGN.md`
+
+- measuring a reference image's pixels from a script
+- fitting an ellipse to measured points by searching for the least error
+- defining shapes in a reference's own coordinates and sampling them at a lower resolution
