@@ -740,3 +740,11 @@ Files: `scripts/ui/title_screen.gd`, `scripts/ui/title_lettering.gd`, `scripts/f
 - pausing the scene tree, and process modes that keep working while paused
 - static variables that last across a scene reload
 - solving for a camera's zoom, turn, and center from where two points should land on screen
+
+## 2026-11-12: Title lettering as pixel art
+
+Files: `scripts/ui/title_lettering.gd`, `scripts/ui/title_screen.gd`, `docs/DESIGN.md`
+
+- painting into an `Image` at low resolution, then scaling it up with nearest filtering
+- rasterizing shapes pixel by pixel (polygons, a rotated ellipse ring)
+- layering with outlines to fake depth (in front of / behind)

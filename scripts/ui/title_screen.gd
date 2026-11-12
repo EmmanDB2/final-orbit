@@ -59,6 +59,8 @@ var _pull_left: float = 0.0
 var _settling: bool = false
 var _settle_ticks: int = 0
 var _rects: Dictionary = {}
+# The lettering, painted once as pixel art and drawn scaled up.
+var _lettering: ImageTexture
 
 
 ## Whether the title can open: not while a test runs the game, unless it asks.
@@ -206,23 +208,27 @@ func _item_at(point: Vector2) -> String:
 	return ""
 
 
-# How big a lettering cell is for this screen.
-func _cell() -> float:
-	var lettering: Vector2 = TitleLettering.size_for(1.0)
-	return clampf(floorf(minf(size.x * 0.46 / lettering.x, size.y * 0.36 / lettering.y)), 4.0, 14.0)
+# How many game pixels each of the lettering's art pixels takes on this screen: a whole number, so they
+# stay crisp squares.
+func _art_scale() -> int:
+	var letters: Vector2 = Vector2(TitleLettering.letters_size())
+	return clampi(floori(minf(size.x * 0.46 / letters.x, size.y * 0.36 / letters.y)), 1, 6)
 
 
 func _draw() -> void:
 	var palette: AgencyPalette = UiStyle.palette()
 	var eased: float = _leave * _leave * (3.0 - 2.0 * _leave)
-	var cell: float = _cell()
-	var lettering: Vector2 = TitleLettering.size_for(cell)
+	var art_scale: int = _art_scale()
+	var lettering: Vector2 = Vector2(TitleLettering.letters_size() * art_scale)
 	var subtitle_size: int = 2 if UiStyle.text_width(SUBTITLE, 2) <= lettering.x else 1
 	var left_reach: float = EDGE + maxf(maxf(lettering.x, UiStyle.text_width(SUBTITLE, subtitle_size)), MENU_WIDTH + SELECTED_WIDER) + 40.0
 	var left := Vector2(-left_reach * eased, 0.0)
 	var right := Vector2((EDGE + 220.0) * eased, 0.0)
 
-	TitleLettering.draw(self, Vector2(EDGE, EDGE - 4.0) + left, cell)
+	if _lettering == null:
+		_lettering = ImageTexture.create_from_image(TitleLettering.paint())
+	var letters_at: Vector2 = Vector2(EDGE, EDGE - 4.0) - Vector2(TitleLettering.letters_offset() * art_scale)
+	draw_texture_rect(_lettering, Rect2(letters_at + left, _lettering.get_size() * art_scale), false)
 	var subtitle_at := Vector2(EDGE, EDGE - 4.0 + lettering.y + 10.0) + left
 	UiStyle.draw_text(self, SUBTITLE, subtitle_at, palette.hull_lightest, subtitle_size)
 
