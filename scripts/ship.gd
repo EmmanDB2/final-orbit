@@ -1615,10 +1615,11 @@ func carry_passenger(kg: float) -> void:
 	orbit_changed.emit()
 
 
-## Takes all the cargo off, and says how much there was.
-func unload_cargo() -> float:
+## Takes cargo off, in kilograms, and says how much there was aboard before. With no amount (or -1) it
+## takes all of it.
+func unload_cargo(kg: float = -1.0) -> float:
 	var had: float = cargo_kg
-	cargo_kg = 0.0
+	cargo_kg = 0.0 if kg < 0.0 or cargo_kg - kg < 0.5 else cargo_kg - kg
 	_update_performance()
 	orbit_changed.emit()
 	return had

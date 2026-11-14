@@ -1,5 +1,5 @@
-# agency.gd: the space agency's side of gigs: what each gig board offers, the gig the pilot has taken
-# and how far along it is, and the credits paid out. Boards are filled from gig types in data, the same
+# agency.gd: the space agency's side of gigs: what each gig board offers, the gigs the pilot holds (up
+# to three) and how far along each is, and the credits paid out. Boards are filled from gig types in data, the same
 # way every time for the same place and slot, so the same seed gives the same gigs. It learns what's
 # going on from the ship, station, and sites, and tells the UI and the comms line through signals.
 # From DESIGN.md, "Core loop" (gigs and payment rules) and "Gigs".
@@ -7,8 +7,8 @@ class_name Agency
 extends Node
 
 signal credits_changed(credits: int)
-## Emitted whenever the active gig changes: taken, a step done or undone, delivered, or failed. Null
-## once there's none.
+## Emitted whenever the held gigs change: one taken, a step done or undone, one delivered or failed, or
+## the focus moved. It carries the focused gig, or null once none is held.
 signal gig_changed(gig: Gig)
 ## Emitted with something for the comms line, and whether it's good news.
 signal message_raised(text: String, good: bool)
@@ -21,6 +21,8 @@ const DOWN_DELTA_V: Dictionary = {"station": 30.0, "planet": 120.0, "moon": 260.
 ## How far off the middle of a pad a landed ship can be and still be on it, past its half width, in
 ## world units.
 const PAD_SLACK: float = 60.0
+## How many gigs the pilot can hold at once.
+const MAX_GIGS: int = 3
 
 @export var gig_types: Array[GigType] = [preload("res://data/gigs/cargo.tres"), preload("res://data/gigs/survey.tres")]
 ## Below this map band a planet's surface is sea, where nothing's surveyed.
@@ -32,7 +34,10 @@ const RELAY_CHECK_SECONDS: float = 0.5
 @export var board_size: int = 4
 
 var credits: int = 0
-var active: Gig = null
+## The gigs held, oldest first. Each is in state "active".
+var gigs: Array[Gig] = []
+## The held gig the tracker shows in full, and the one last taken or picked. Null only while none is held.
+var focus: Gig = null
 var _gravity_model: GravityModel
 var _ship: Node2D
 var _pilot: Pilot
@@ -85,6 +90,24 @@ func board(place: Dictionary) -> Array[Gig]:
 	return shown
 
 
+## How many gigs are held.
+func held_count() -> int:
+	return gigs.size()
+
+
+## Whether no more gigs can be taken.
+func is_full() -> bool:
+	return gigs.size() >= MAX_GIGS
+
+
+## Makes a held gig the one the tracker shows in full. Nothing happens for one that isn't held.
+func set_focus(gig: Gig) -> void:
+	if gig == null or gig == focus or not gigs.has(gig):
+		return
+	focus = gig
+	gig_changed.emit(focus)
+
+
 ## Takes credits for something, going as far below zero as the credit line allows. Says whether it
 ## could.
 func spend(amount: int, credit_line: int) -> bool:
@@ -97,15 +120,16 @@ func spend(amount: int, credit_line: int) -> bool:
 	return true
 
 
-## Everything a save needs from the agency: credits, how far each board has got, the gig taken and
-## how far along it is, and the cargo aboard for it. Boards themselves come back from the seed.
+## Everything a save needs from the agency: credits, how far each board has got, and the gigs held and
+## how far along each is, with which one's in focus. Boards themselves come back from the seed, and the
+## cargo aboard comes back from the held cargo gigs.
 func save_state() -> Dictionary:
 	return {
 		"credits": credits,
 		"next_id": _next_id,
 		"rounds": _rounds.duplicate(true),
-		"active": _gig_state(active) if active != null else {},
-		"cargo_kg": _ship.cargo_kg,
+		"gigs": gigs.map(_gig_state),
+		"focus": focus.id if focus != null else -1,
 	}
 
 
@@ -115,13 +139,25 @@ func restore_state(saved: Dictionary) -> void:
 	_next_id = saved.get("next_id", 1)
 	_rounds = saved.get("rounds", {}).duplicate(true)
 	_boards.clear()
-	active = _gig_from(saved.get("active", {}))
+	gigs.clear()
+	focus = null
+	var cargo: float = 0.0
+	for saved_gig: Dictionary in saved.get("gigs", []):
+		var gig: Gig = _gig_from(saved_gig)
+		if gig == null:
+			continue
+		gigs.append(gig)
+		if gig.type.kind == "cargo":
+			cargo += gig.cargo_kg
+		if gig.id == saved.get("focus", -1):
+			focus = gig
+	if focus == null and not gigs.is_empty():
+		focus = gigs[0]
 	_ship.unload_cargo()
-	var cargo: float = saved.get("cargo_kg", 0.0)
 	if cargo > 0.0:
 		_ship.load_cargo(cargo)
 	credits_changed.emit(credits)
-	gig_changed.emit(active)
+	gig_changed.emit(focus)
 
 
 func _gig_state(gig: Gig) -> Dictionary:
@@ -175,8 +211,7 @@ func requirements(gig: Gig) -> Array:
 		rows.append(["SHIP DOCKED HERE" if gig.origin["kind"] == "station" else "SHIP ON THE PAD", ship_at(gig.origin)])
 	var delta_v: float = _ship.delta_v_with(gig.cargo_kg if gig.type.kind == "cargo" else 0.0)
 	rows.append(["ΔV %s/%s M/S" % [Units.speed_number(gig.route_delta_v), Units.speed_number(delta_v)], delta_v >= gig.route_delta_v])
-	if active != null and active != gig:
-		rows.append(["ONE GIG AT A TIME", false])
+	rows.append(["GIG SLOT FREE (%d OF %d HELD)" % [held_count(), MAX_GIGS], not is_full()])
 	return rows
 
 
@@ -196,17 +231,18 @@ func hazards(gig: Gig) -> Array:
 	return rows
 
 
-## Takes a gig, if everything it needs is met. Cargo goes aboard then and there.
+## Takes a gig, if everything it needs is met, and focuses it. Cargo goes aboard then and there.
 func accept(gig: Gig) -> bool:
 	for row: Array in requirements(gig):
 		if not row[1]:
 			return false
 	var key: String = place_key(gig.origin)
-	var slot: int = _boards[key].find(gig)
+	var slot: int = _boards[key].find(gig) if _boards.has(key) else -1
 	if slot >= 0:
 		_boards[key][slot] = null
 		_rounds[key][slot] += 1
-	active = gig
+	gigs.append(gig)
+	focus = gig
 	gig.state = "active"
 	gig.step = 0
 	message_raised.emit("GIG ACCEPTED: %s" % gig.title.to_upper(), true)
@@ -223,13 +259,41 @@ func accept(gig: Gig) -> bool:
 ## What the agency adds to the context menu right now: each a "label", a "target" giving box corners
 ## in the world, and what to "run" when it's picked.
 func options() -> Array:
-	if active == null or _pilot.mode != Pilot.ABOARD:
+	if gigs.is_empty() or _pilot.mode != Pilot.ABOARD:
 		return []
-	if active.type.kind == "cargo" and active.step == 2:
-		return [{"label": "UNLOAD CARGO", "target": _place_box(active.destination), "run": _deliver}]
-	if active.type.kind == "survey" and active.step == 1 and not active.scanning:
-		return [{"label": "SCAN SITE", "target": _place_box(active.destination), "run": _start_scan}]
-	return []
+	var offered: Array = []
+	var due: Array[Gig] = _due_here()
+	if not due.is_empty():
+		offered.append({"label": "UNLOAD CARGO", "target": _place_box(due[0].destination), "run": _deliver})
+	var to_scan: Gig = _scannable()
+	if to_scan != null:
+		offered.append({"label": "SCAN SITE", "target": _place_box(to_scan.destination), "run": _start_scan})
+	return offered
+
+
+# The held cargo gigs at their unload step whose destination the ship is at now, oldest first.
+func _due_here() -> Array[Gig]:
+	var due: Array[Gig] = []
+	for gig: Gig in gigs:
+		if gig.type.kind == "cargo" and gig.step == 2 and ship_at(gig.destination):
+			due.append(gig)
+	return due
+
+
+# The held survey the ship could start scanning now: landed within reach at its scan step, and no scan
+# already running. If two are in reach, the focused one, else the oldest.
+func _scannable() -> Gig:
+	var ready: Array[Gig] = []
+	for gig: Gig in gigs:
+		if gig.type.kind != "survey":
+			continue
+		if gig.scanning:
+			return null
+		if gig.step == 1:
+			ready.append(gig)
+	if ready.is_empty():
+		return null
+	return focus if ready.has(focus) else ready[0]
 
 
 ## Where a place is now, in the world.
@@ -308,18 +372,28 @@ func ship_at(place: Dictionary) -> bool:
 
 
 func _physics_process(delta: float) -> void:
-	if active == null or _ship == null:
+	if gigs.is_empty() or _ship == null:
 		return
-	if active.type.kind == "cargo":
-		var there: bool = ship_at(active.destination)
-		if active.step == 1 and there:
-			active.step = 2
-			gig_changed.emit(active)
-		elif active.step == 2 and not there:
-			active.step = 1
-			gig_changed.emit(active)
-	if active.type.kind == "survey":
-		_track_survey(delta)
+	# The relay check is shared, so several surveys waiting to send don't each speed it up.
+	var relay_checked: bool = false
+	if gigs.any(func(gig: Gig) -> bool: return gig.type.kind == "survey" and gig.step == 2):
+		_relay_wait -= delta
+		if _relay_wait <= 0.0:
+			_relay_wait = RELAY_CHECK_SECONDS
+			relay_in_sight = _relay_in_sight()
+			relay_checked = true
+	# Paying removes a gig, so this goes over a copy.
+	for gig: Gig in gigs.duplicate():
+		if gig.type.kind == "cargo":
+			var there: bool = ship_at(gig.destination)
+			if gig.step == 1 and there:
+				gig.step = 2
+				gig_changed.emit(focus)
+			elif gig.step == 2 and not there:
+				gig.step = 1
+				gig_changed.emit(focus)
+		elif gig.type.kind == "survey":
+			_track_survey(gig, delta, relay_checked)
 	# F on the Mac picks the agency's choice when the pilot has nothing of their own to do.
 	if _pilot.mode == Pilot.ABOARD and _pilot._action == "" and Input.is_action_just_pressed("interact"):
 		var offered: Array = options()
@@ -327,22 +401,25 @@ func _physics_process(delta: float) -> void:
 			offered[0]["run"].call()
 
 
-# Cargo off at its destination: paid for the deliverable.
+# Cargo off at its destination: every held cargo gig due here is paid for its deliverable, each taking
+# its own cargo off the ship.
 func _deliver() -> void:
-	if active == null or active.type.kind != "cargo" or not ship_at(active.destination):
-		return
-	_ship.unload_cargo()
-	_pay(active, "CARGO DELIVERED")
+	for gig: Gig in _due_here():
+		_ship.unload_cargo(gig.cargo_kg)
+		_pay(gig, "CARGO DELIVERED")
 
 
+# Pays a gig and lets it go, moving the focus to the oldest gig left if it was the focused one.
 func _pay(gig: Gig, what: String) -> void:
 	credits += gig.payout
 	gig.state = "done"
 	gig.step = gig.objectives.size()
-	active = null
+	gigs.erase(gig)
+	if focus == gig:
+		focus = gigs[0] if not gigs.is_empty() else null
 	credits_changed.emit(credits)
 	message_raised.emit("%s: +%s CR" % [what, Units.grouped(gig.payout)], true)
-	gig_changed.emit(null)
+	gig_changed.emit(focus)
 
 
 ## Pays for something that isn't a gig, such as charting a signal, and says so on the comms line.
@@ -359,26 +436,35 @@ func can_see_relay() -> bool:
 	return _relay_in_sight()
 
 
-## The pilot died: their gig pays nothing, and what it carried is gone.
+## The pilot died: their gigs pay nothing, and what they carried is gone.
 func pilot_lost() -> void:
-	if active == null:
+	if gigs.is_empty():
 		return
-	active.state = "failed"
-	active = null
+	var count: int = gigs.size()
+	_fail_all()
 	_ship.unload_cargo()
-	message_raised.emit("GIG FAILED: PILOT LOST", false)
+	message_raised.emit("GIG FAILED: PILOT LOST" if count == 1 else "%d GIGS FAILED: PILOT LOST" % count, false)
 	gig_changed.emit(null)
 
 
-# Losing the ship loses what it carried, so the gig pays nothing.
+# Losing the ship loses what it carried, so the gigs pay nothing.
 func _on_ship_lost() -> void:
-	if active == null:
+	if gigs.is_empty():
 		return
-	var what: String = "CARGO LOST" if active.type.kind == "cargo" else "DATA LOST"
-	active.state = "failed"
-	active = null
-	message_raised.emit("GIG FAILED: %s" % what, false)
+	var count: int = gigs.size()
+	var cargo: bool = gigs.any(func(gig: Gig) -> bool: return gig.type.kind == "cargo")
+	var data: bool = gigs.any(func(gig: Gig) -> bool: return gig.type.kind == "survey")
+	var what: String = "CARGO AND DATA LOST" if cargo and data else ("CARGO LOST" if cargo else "DATA LOST")
+	_fail_all()
+	message_raised.emit("GIG FAILED: %s" % what if count == 1 else "%d GIGS FAILED: %s" % [count, what], false)
 	gig_changed.emit(null)
+
+
+func _fail_all() -> void:
+	for gig: Gig in gigs:
+		gig.state = "failed"
+	gigs.clear()
+	focus = null
 
 
 # Pointing at a place, for the context menu: the pad, or the port the ship's docked at.
@@ -501,38 +587,35 @@ func _make_survey(gig: Gig, rng: RandomNumberGenerator) -> void:
 
 
 # A survey's steps: landed near the spot, a scan running there, then the data sent once a relay's in
-# sight.
-func _track_survey(delta: float) -> void:
-	var near: bool = _ship_near_survey(active)
-	if active.step == 0 and near:
-		active.step = 1
-		gig_changed.emit(active)
-	elif active.step == 1:
+# sight. Relay checked says the shared check just ran, with the answer in relay_in_sight.
+func _track_survey(gig: Gig, delta: float, relay_checked: bool) -> void:
+	var near: bool = _ship_near_survey(gig)
+	if gig.step == 0 and near:
+		gig.step = 1
+		gig_changed.emit(focus)
+	elif gig.step == 1:
 		if not near:
-			active.scanning = false
-			active.step = 0
-			gig_changed.emit(active)
-		elif active.scanning:
-			active.scan_share = minf(active.scan_share + delta / active.type.scan_seconds, 1.0)
-			if active.scan_share >= 1.0:
-				active.scanning = false
-				active.step = 2
+			gig.scanning = false
+			gig.step = 0
+			gig_changed.emit(focus)
+		elif gig.scanning:
+			gig.scan_share = minf(gig.scan_share + delta / gig.type.scan_seconds, 1.0)
+			if gig.scan_share >= 1.0:
+				gig.scanning = false
+				gig.step = 2
 				message_raised.emit("SCAN COMPLETE: DATA STORED", true)
-				gig_changed.emit(active)
-	elif active.step == 2:
-		_relay_wait -= delta
-		if _relay_wait <= 0.0:
-			_relay_wait = RELAY_CHECK_SECONDS
-			relay_in_sight = _relay_in_sight()
-			if relay_in_sight:
-				_pay(active, "DATA UPLINKED")
+				gig_changed.emit(focus)
+	elif gig.step == 2 and relay_checked and relay_in_sight:
+		_pay(gig, "DATA UPLINKED")
 
 
+# Starts the scan of the survey that SCAN SITE was offered for.
 func _start_scan() -> void:
-	if active != null and active.type.kind == "survey" and active.step == 1:
-		active.scanning = true
+	var gig: Gig = _scannable()
+	if gig != null:
+		gig.scanning = true
 		message_raised.emit("SCANNING", true)
-		gig_changed.emit(active)
+		gig_changed.emit(focus)
 
 
 # Landed within reach of the survey spot, measured along the ground.

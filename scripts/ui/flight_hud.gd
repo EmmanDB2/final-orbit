@@ -191,7 +191,7 @@ func _on_gig_changed(gig: Gig) -> void:
 
 # The tracker's numbers: how far to where the current step happens, and the cargo aboard.
 func _update_gig_tracker() -> void:
-	var gig: Gig = _agency.active if _agency != null else null
+	var gig: Gig = _agency.focus if _agency != null else null
 	_gig_tracker.gig = gig
 	if gig == null:
 		_survey_marker.visible = false

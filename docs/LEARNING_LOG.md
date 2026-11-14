@@ -1043,3 +1043,12 @@ Files: `scripts/pilot.gd`, `scripts/pilot/astronaut_view.gd`, `tests/test_pilot_
 - carrying an easing offset across a mode change so the drawn position stays continuous
 - why a headless harness can mislead: a hidden node doesn't run its process, so a phase never advanced
 - exaggerating a pose for a small sprite (bigger arcs, a body rock) and checking it by screenshot
+
+## 2026-11-14: Several gigs ticket 1, the agency holds several gigs
+
+Files: `scripts/gig/agency.gd`, `scripts/ship.gd`, `scripts/save/save_game.gd`, `scripts/ui/flight_hud.gd`, `tests/test_gigs.gd`, `docs/LEARNING_LOG.md`
+
+- iterating over a copy of an array when the loop removes items from it
+- one shared timer for a check, so several things waiting on it don't each speed it up
+- a versioned save upgrade step (version 2 to 3) that reshapes one entry into a list
+- a default argument as a sentinel (-1 means "all") so old callers keep working

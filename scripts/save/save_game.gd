@@ -8,7 +8,7 @@ class_name SaveGame
 extends Node
 
 ## This version of the save. Raise it when what's saved changes, and add a step to _upgrade.
-const VERSION: int = 2
+const VERSION: int = 3
 ## Where saves live. A test points this somewhere of its own and turns saving on for itself.
 static var folder: String = "user://saves"
 static var on_in_tests: bool = false
@@ -76,6 +76,14 @@ static func _upgrade(data: Dictionary) -> Dictionary:
 			1:
 				# Version 2 added mid-flight events. An older world has had none.
 				data["events"] = {}
+			2:
+				# Version 3 holds up to three gigs. An older world has at most one, the active one.
+				var agency: Dictionary = data.get("agency", {})
+				var active: Dictionary = agency.get("active", {})
+				agency["gigs"] = [active] if not active.is_empty() else []
+				agency["focus"] = active["id"] if not active.is_empty() else -1
+				agency.erase("active")
+				data["agency"] = agency
 		data["version"] += 1
 	return data
 
