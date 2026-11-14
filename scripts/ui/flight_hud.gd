@@ -108,9 +108,12 @@ var _gig_board: GigBoard
 var _service_board: ServiceBoard
 var _services: ShipServices
 var _gig_tracker: GigTracker
-var _survey_marker: SurveyMarker
+# One set of brackets for each gig that can be held.
+var _survey_markers: Array[SurveyMarker] = []
 var _agency: Agency
 var _targeted_gig: int = -1
+# The ids of the gigs held when the agency last said something changed, to tell a gig just taken.
+var _known_gigs: Array[int] = []
 var _events: EventDirector
 var _event_list: EventList
 var _event_markers: EventMarkers
@@ -173,34 +176,73 @@ func connect_agency(agency: Agency) -> void:
 	agency.gig_changed.connect(_on_gig_changed)
 
 
-# A newly taken gig becomes the target, so the edge marker points the way.
+# A newly taken gig becomes the target, so the edge marker points the way. When the focus moves because
+# the focused gig ended, the target goes with it only if it was that gig's; otherwise the pilot's own
+# target stays. A tap on another gig's row targets it in _on_gig_picked.
 func _on_gig_changed(gig: Gig) -> void:
 	_gig_tracker.gig = gig
-	_gig_tracker.wanted_open = true if gig != null and gig.id != _targeted_gig else _gig_tracker.wanted_open
-	if gig != null and gig.id != _targeted_gig:
-		_targeted_gig = gig.id
-		var thing: Dictionary = _agency.place_thing(gig.destination)
-		if not thing.is_empty():
-			_markers.set_target(thing, _catalog.callsign_of(thing), _catalog.reach_of(thing), _view.point_getter(thing))
-		else:
-			# A survey spot isn't anything the camera knows, so it gets its own way to be found.
-			var destination: Dictionary = gig.destination
-			_markers.set_target({"kind": "survey", "gig": gig.id}, "SURVEY", 0.0, func() -> PackedFloat64Array: return _agency.place_point(destination))
+	var held_ids: Array[int] = []
+	for held: Gig in _agency.gigs:
+		held_ids.append(held.id)
+	if gig != null and gig.id != _targeted_gig and (not _known_gigs.has(gig.id) or not held_ids.has(_targeted_gig)):
+		_target_gig(gig)
+	_known_gigs = held_ids
 	_gig_tracker.queue_redraw()
 
 
-# The tracker's numbers: how far to where the current step happens, and the cargo aboard.
+# Points the edge marker at a gig's destination, and opens the tracker so it's seen.
+func _target_gig(gig: Gig) -> void:
+	_targeted_gig = gig.id
+	_gig_tracker.wanted_open = true
+	var thing: Dictionary = _agency.place_thing(gig.destination)
+	if not thing.is_empty():
+		_markers.set_target(thing, _catalog.callsign_of(thing), _catalog.reach_of(thing), _view.point_getter(thing))
+	else:
+		# A survey spot isn't anything the camera knows, so it gets its own way to be found.
+		var destination: Dictionary = gig.destination
+		_markers.set_target({"kind": "survey", "gig": gig.id}, "SURVEY", 0.0, func() -> PackedFloat64Array: return _agency.place_point(destination))
+
+
+# A tap on another held gig's row in the tracker focuses it and points the way to it.
+func _on_gig_picked(id: int) -> void:
+	for gig: Gig in _agency.gigs:
+		if gig.id == id:
+			_agency.set_focus(gig)
+			if _targeted_gig != id:
+				_target_gig(gig)
+			return
+
+
+# The tracker's numbers: how far to where the focused gig's current step happens and the cargo aboard,
+# a row for each other held gig, and brackets on every survey spot being found or scanned.
 func _update_gig_tracker() -> void:
+	var held: Array[Gig] = _agency.gigs if _agency != null else []
 	var gig: Gig = _agency.focus if _agency != null else null
 	_gig_tracker.gig = gig
+	_gig_tracker.held = held.size()
+	var from: ShipState = _ship.state if _mode == Pilot.ABOARD else _pilot.state
+	# The survey spots get brackets on screen once they're in view, while they're being found and while
+	# the scan runs. Waiting to be scanned, the context menu's brackets are on it instead.
+	var marked: int = 0
+	var others: Array = []
+	for each: Gig in held:
+		var at: PackedFloat64Array = _agency.place_point(_agency.current_place(each))
+		if each.type.kind == "survey" and (each.step == 0 or (each.step == 1 and each.scanning)) and at.size() == 2 and marked < _survey_markers.size():
+			_survey_markers[marked].visible = true
+			_survey_markers[marked].at = _view.to_screen(at[0], at[1])
+			_survey_markers[marked].queue_redraw()
+			marked += 1
+		if each != gig:
+			others.append({"id": each.id, "title": each.title, "right_text": _gig_row_text(each, at, from)})
+	for i in range(marked, _survey_markers.size()):
+		_survey_markers[i].visible = false
+	_gig_tracker.others = others
 	if gig == null:
-		_survey_marker.visible = false
 		_gig_tracker.queue_redraw()
 		return
 	var place: Dictionary = _agency.current_place(gig)
-	var at: PackedFloat64Array = _agency.place_point(place)
-	var from: ShipState = _ship.state if _mode == Pilot.ABOARD else _pilot.state
-	_gig_tracker.distance_text = Units.distance_text(Vector2(at[0] - from.x, at[1] - from.y).length()) if at.size() == 2 else ""
+	var at_focus: PackedFloat64Array = _agency.place_point(place)
+	_gig_tracker.distance_text = Units.distance_text(Vector2(at_focus[0] - from.x, at_focus[1] - from.y).length()) if at_focus.size() == 2 else ""
 	_gig_tracker.cargo_text = "CARGO: %s KG" % Units.grouped(roundi(_ship.cargo_kg)) if _ship.cargo_kg > 0.0 else ""
 	if gig.type.kind == "survey":
 		match gig.step:
@@ -208,13 +250,17 @@ func _update_gig_tracker() -> void:
 				_gig_tracker.cargo_text = "SCAN: %d%%" % roundi(gig.scan_share * 100.0) if gig.scanning or gig.scan_share > 0.0 else "LANDED: READY TO SCAN"
 			2:
 				_gig_tracker.cargo_text = "UPLINKING" if _agency.relay_in_sight else "NO RELAY IN SIGHT"
-	# The survey spot gets brackets on screen once it's in view, while it's being found and while the
-	# scan runs. Waiting to be scanned, the context menu's brackets are on it instead.
-	_survey_marker.visible = gig.type.kind == "survey" and (gig.step == 0 or (gig.step == 1 and gig.scanning))
-	if _survey_marker.visible and at.size() == 2:
-		_survey_marker.at = _view.to_screen(at[0], at[1])
-		_survey_marker.queue_redraw()
 	_gig_tracker.queue_redraw()
+
+
+# What goes at the right of another gig's row: how far it is to where its step happens, or for a survey
+# with the data stored, whether it's sending.
+func _gig_row_text(gig: Gig, at: PackedFloat64Array, from: ShipState) -> String:
+	if gig.type.kind == "survey" and gig.step == 2:
+		return "UPLINKING" if _agency.relay_in_sight else "NO RELAY"
+	if at.size() != 2:
+		return ""
+	return Units.distance_text(Vector2(at[0] - from.x, at[1] - from.y).length())
 
 
 ## Connects the mid-flight events: their markers on screen, the list of open ones, and what they add
@@ -456,10 +502,13 @@ func _build() -> void:
 	add_child(_flight_menu)
 	_event_markers = EventMarkers.new()
 	add_child(_event_markers)
-	_survey_marker = SurveyMarker.new()
-	_survey_marker.visible = false
-	add_child(_survey_marker)
+	for i in range(Agency.MAX_GIGS):
+		var marker := SurveyMarker.new()
+		marker.visible = false
+		add_child(marker)
+		_survey_markers.append(marker)
 	_gig_tracker = GigTracker.new()
+	_gig_tracker.gig_picked.connect(_on_gig_picked)
 	add_child(_gig_tracker)
 	_event_list = EventList.new()
 	_event_list.row_tapped.connect(_on_event_row_tapped)
@@ -578,8 +627,9 @@ func _layout() -> void:
 	_med_bay.size = view
 	_settings.position = Vector2.ZERO
 	_settings.size = view
-	_survey_marker.position = Vector2.ZERO
-	_survey_marker.size = view
+	for marker: SurveyMarker in _survey_markers:
+		marker.position = Vector2.ZERO
+		marker.size = view
 	_gig_tracker.position = Vector2(EDGE, BAR_HEIGHT + 8.0)
 	_gig_tracker.size = Vector2(GigTracker.WIDTH, 200.0)
 	_event_markers.position = Vector2.ZERO

@@ -1,10 +1,15 @@
-# gig_tracker.gd: the active gig, under the readouts at the top left: what it is, its steps with the
-# one being worked on marked OBJ, how far it is to where that step happens, the cargo aboard, and the
-# pay. A tap on its header folds it into an orange GIG tab on the left edge, and a tap on the tab opens
-# it again, whether the controls are hidden or not. It's only there while a gig is. From DESIGN.md,
-# "Gigs" (tracker), drawn to Manny's 2026-11-10 mockup.
+# gig_tracker.gd: the gigs the pilot holds, under the readouts at the top left. The focused gig shows in
+# full: what it is, its steps with the one being worked on marked OBJ, how far it is to where that step
+# happens, the cargo aboard, and the pay. Any others are one row each under it, with a tap on a row
+# focusing that gig. A tap on its header folds it into an orange GIG tab on the left edge (with the count
+# under the word when several are held), and a tap on the tab opens it again, whether the controls are
+# hidden or not. It's only there while a gig is. From DESIGN.md, "Gigs" (tracker), drawn to Manny's
+# 2026-11-10 mockup.
 class_name GigTracker
 extends UiWidget
+
+## Emitted when a row of another held gig is tapped, with that gig's id.
+signal gig_picked(id: int)
 
 const WIDTH: float = 236.0
 const PADDING: float = 10.0
@@ -12,13 +17,20 @@ const LINE: float = 12.0
 const HEADER: float = 22.0
 const TAB_SIZE: Vector2 = Vector2(18.0, 70.0)
 
+## The focused gig, shown in full.
 var gig: Gig = null
+## How many gigs are held in all, the focused one included.
+var held: int = 1
+## One per other held gig, oldest first: its "title", the "right_text" at the row's right (how far it is,
+## or the survey's state), and its "id".
+var others: Array = []
 ## Whether it's open, rather than folded to its tab. Only a tap changes it.
 var wanted_open: bool = true
 ## How far it is to where the current step happens, as text, or nothing.
 var distance_text: String = ""
 var cargo_text: String = ""
-var _pressed: bool = false
+# What a finger's on: -1 for the header, a row's number, or -2 for nothing.
+var _pressed: int = -2
 
 
 func is_open() -> bool:
@@ -38,25 +50,48 @@ func touch_rect() -> Rect2:
 	var rect: Rect2 = shown_rect()
 	if not rect.has_area():
 		return Rect2()
-	if is_open():
+	if is_open() and others.is_empty():
 		# Only the header folds it; the rest is just to read.
 		rect.size.y = HEADER + 8.0
 	return Rect2(global_position + rect.position, rect.size).grow_individual(0.0, 0.0, maxf(44.0 - rect.size.x, 0.0), maxf(44.0 - rect.size.y, 0.0))
 
 
-func finger_down(_position: Vector2) -> void:
-	_pressed = true
+func finger_down(at: Vector2) -> void:
+	_pressed = _part_at(at - global_position)
 	queue_redraw()
 
 
 func finger_up() -> void:
-	if _pressed:
+	if _pressed == -1:
 		wanted_open = not wanted_open
-	_pressed = false
+	elif _pressed >= 0 and _pressed < others.size():
+		gig_picked.emit(others[_pressed]["id"])
+	_pressed = -2
 	queue_redraw()
 
 
+# The header, a row of another gig, or nothing, at a point in its own space. Folded, the whole tab is
+# the header. The first row's reach includes the separator above it.
+func _part_at(local: Vector2) -> int:
+	if not is_open() or local.y < HEADER + 4.0:
+		return -1
+	if others.is_empty() or local.y < _rows_top() - 6.0:
+		return -2
+	return clampi(floori((local.y - _rows_top()) / LINE), 0, others.size() - 1)
+
+
+# Where the gig's own part ends and the separator goes, when there are other gigs.
+func _separator_y() -> float:
+	return HEADER + 4.0 + (_title_lines().size() + gig.objectives.size() + 1) * LINE + 4.0 + 7.0 + 6.0
+
+
+func _rows_top() -> float:
+	return _separator_y() + 6.0
+
+
 func _open_height() -> float:
+	if not others.is_empty():
+		return _rows_top() + others.size() * LINE + PADDING
 	var lines: int = _title_lines().size() + gig.objectives.size() + 3
 	return HEADER + PADDING + lines * LINE + PADDING
 
@@ -76,12 +111,13 @@ func _draw() -> void:
 	UiStyle.draw_box(self, rect, palette.hull_mid, UiStyle.box_fill())
 	_draw_corners(rect.grow(2.0), palette.agency_orange)
 	# The header: a warning sign, ACTIVE GIG, and a fold mark.
-	var header_fill: Color = palette.hull_mid if _pressed else Color(0.0, 0.0, 0.0, 0.0)
+	var header_fill: Color = palette.hull_mid if _pressed == -1 else Color(0.0, 0.0, 0.0, 0.0)
 	if header_fill.a > 0.0:
 		draw_rect(Rect2(2.0, 2.0, WIDTH - 4.0, HEADER), header_fill)
 	_draw_warning(Vector2(PADDING, 7.0), 9.0, palette.agency_orange)
-	UiStyle.draw_text(self, "ACTIVE GIG", Vector2(PADDING + 16.0, 8.0), palette.agency_orange_light, 1)
-	var arrow_x: float = PADDING + 16.0 + UiStyle.text_width("ACTIVE GIG ", 1)
+	var header: String = "ACTIVE GIG" if held <= 1 else "ACTIVE GIGS %d/%d" % [held, Agency.MAX_GIGS]
+	UiStyle.draw_text(self, header, Vector2(PADDING + 16.0, 8.0), palette.agency_orange_light, 1)
+	var arrow_x: float = PADDING + 16.0 + UiStyle.text_width(header + " ", 1)
 	draw_colored_polygon(PackedVector2Array([Vector2(arrow_x, 9.0), Vector2(arrow_x + 6.0, 9.0), Vector2(arrow_x + 3.0, 13.0)]), palette.agency_orange_light)
 	var y: float = HEADER + 4.0
 	for line: String in _title_lines():
@@ -105,18 +141,49 @@ func _draw() -> void:
 		UiStyle.draw_text(self, cargo_text, Vector2(PADDING + 18.0, y), palette.hull_lighter, 1)
 	var pay: String = "%s Cr" % Units.grouped(gig.payout)
 	UiStyle.draw_text(self, pay, Vector2(WIDTH - PADDING - UiStyle.text_width(pay, 1), y), palette.gold_light, 1)
+	if not others.is_empty():
+		_draw_others(palette)
+
+
+# A thin separator, then each other held gig as a row: its title cut to fit, and its distance or state
+# at the right.
+func _draw_others(palette: AgencyPalette) -> void:
+	draw_rect(Rect2(PADDING, _separator_y(), WIDTH - PADDING * 2.0, 1.0), palette.hull_mid)
+	var y: float = _rows_top()
+	for i in range(others.size()):
+		var row: Dictionary = others[i]
+		if _pressed == i:
+			draw_rect(Rect2(2.0, y - 2.0, WIDTH - 4.0, LINE), palette.hull_mid)
+		var right: String = row["right_text"]
+		var right_width: float = UiStyle.text_width(right, 1)
+		UiStyle.draw_text(self, right, Vector2(WIDTH - PADDING - right_width, y), palette.hull_lighter, 1)
+		var title: String = _cut(String(row["title"]).to_upper(), WIDTH - PADDING * 2.0 - right_width - 8.0)
+		UiStyle.draw_text(self, title, Vector2(PADDING, y), palette.hull_lightest, 1)
+		y += LINE
+
+
+# Text cut to fit a width, ending in .. if it had to be.
+func _cut(text: String, width: float) -> String:
+	if UiStyle.text_width(text, 1) <= width:
+		return text
+	while text.length() > 1 and UiStyle.text_width(text + "..", 1) > width:
+		text = text.substr(0, text.length() - 1)
+	return text.strip_edges() + ".."
 
 
 # Folded: an orange tab on the left edge, with an arrow and GIG down it.
 func _draw_tab(palette: AgencyPalette) -> void:
 	var rect: Rect2 = shown_rect()
-	UiStyle.draw_box(self, rect, palette.agency_orange, palette.hull_mid if _pressed else UiStyle.box_fill())
+	UiStyle.draw_box(self, rect, palette.agency_orange, palette.hull_mid if _pressed == -1 else UiStyle.box_fill())
 	var middle: float = rect.position.x + floorf(rect.size.x / 2.0)
 	draw_colored_polygon(PackedVector2Array([Vector2(middle - 2.0, 7.0), Vector2(middle + 2.0, 10.0), Vector2(middle - 2.0, 13.0)]), palette.agency_orange_light)
 	var y: float = 20.0
 	for letter: String in "GIG":
 		UiStyle.draw_text(self, letter, Vector2(middle - 2.0, y), palette.agency_orange_light, 1)
 		y += 11.0
+	# With several held, how many, under the word.
+	if held > 1:
+		UiStyle.draw_text(self, str(held), Vector2(middle - 2.0, y + 4.0), palette.hull_lightest, 1)
 
 
 func _draw_corners(box: Rect2, color: Color) -> void:

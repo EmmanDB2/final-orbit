@@ -1052,3 +1052,12 @@ Files: `scripts/gig/agency.gd`, `scripts/ship.gd`, `scripts/save/save_game.gd`, 
 - one shared timer for a check, so several things waiting on it don't each speed it up
 - a versioned save upgrade step (version 2 to 3) that reshapes one entry into a list
 - a default argument as a sentinel (-1 means "all") so old callers keep working
+
+## 2026-11-14: Several gigs ticket 2, the tracker and HUD show several
+
+Files: `scripts/ui/gig_tracker.gd`, `scripts/ui/flight_hud.gd`, `docs/LEARNING_LOG.md`
+
+- a widget that works out which part of itself a tap landed on (header, a row, or nothing) from the tap's y
+- a signal from a child widget (gig_picked) so the HUD, not the widget, talks to the agency
+- a pool of marker nodes, one per slot, shown or hidden each frame instead of made and freed
+- telling "just taken" from "already held" by remembering the ids held at the last change
