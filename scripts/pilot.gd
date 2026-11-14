@@ -505,6 +505,9 @@ func _leave_ship() -> void:
 	var center: PackedFloat64Array = _gravity_model.get_body_position(world, ship_state.time)
 	var angle: float = atan2(ship_state.y - center[1], ship_state.x - center[0])
 	_fall_facing_right = out.dot(Vector2(-sin(angle), cos(angle))) >= 0.0
+	# Out of the hatch already at the ship's angle, not turning to it from wherever they last were.
+	if _figure != null:
+		_figure.body_angle = wrapf(facing - _roll, -PI, PI)
 	_ship.set_pilot_aboard(false)
 	_set_mode(EVA)
 
