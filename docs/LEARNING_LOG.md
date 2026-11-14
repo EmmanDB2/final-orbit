@@ -942,3 +942,9 @@ Files: `scripts/station/med_bay.gd`, `scripts/ui/med_bay_board.gd`, `scripts/sta
 - a pure function for a bill (inputs in, a dictionary out) that's easy to test
 - saving a pending event at once so quitting can't undo it, and charging it only once (idempotency)
 - a timer (SceneTree.create_timer) for a delay before the next step
+
+## 2026-11-14: Death, ticket 5: going down with the ship
+
+Files: `scripts/pilot.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- one code path for several ways in (both deaths reach the med bay through one function)

@@ -303,6 +303,10 @@ func _restore(saved: Dictionary, catalog: WorldCatalog) -> void:
 # The moment the pilot dies, a burst where it happened: dust thrown up from the ground, a puff of frost
 # from the suit in space, or sparks as they burn up.
 func _on_pilot_died(cause: String, severity: float) -> void:
+	_note_death(severity)
+	# Aboard, the wreck has its own crash; out of it, the body makes its own.
+	if $Pilot.mode == Pilot.ABOARD:
+		return
 	var state: ShipState = $Pilot.state
 	var palette: AgencyPalette = UiStyle.palette()
 	var offsets := PackedVector2Array()
@@ -321,10 +325,14 @@ func _on_pilot_died(cause: String, severity: float) -> void:
 		offsets.append(Vector2.UP.rotated(randf() * TAU) * randf_range(1.0, 9.0))
 		colors.append(shades[i % shades.size()])
 	$Sparks.scatter(offsets, colors, 2, state.x, state.y, state.velocity_x, state.velocity_y, Vector2.ZERO, Vector2.ZERO, blast, dust)
+
+
+# Keeps the death, fails the gig, and brings the med bay a few seconds on.
+func _note_death(severity: float) -> void:
 	_death["severity"] = severity
 	_death["ship_lost"] = $Ship._lost
 	if not _death.has("killed"):
-		_death["killed"] = cause
+		_death["killed"] = $Pilot.death_cause
 	agency.pilot_lost()
 	if _saves != null:
 		_saves.note_death(_death)

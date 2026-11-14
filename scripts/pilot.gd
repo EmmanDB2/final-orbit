@@ -63,6 +63,8 @@ var near_moving: Callable
 ## Whether the helmet lamp's on. Inside a station it comes on by itself where the lamps leave it dark,
 ## and goes off again where they don't.
 var helmet_lamp: bool = false
+## Inside this distance from the star's middle, hulls burn, in world units, from DESIGN.md's hazards.
+const STAR_HEAT_REACH: float = 6000000.0
 ## Below this much light the helmet lamp comes on, and above that it goes off, from 0 to 1.
 const LAMP_ON_BELOW: float = 0.5
 const LAMP_OFF_ABOVE: float = 0.62
@@ -140,6 +142,8 @@ func start_pilot(gravity_model: GravityModel, ship: Node2D, station: StationView
 	_station = station
 	gas = data.jet_seconds
 	air = data.air_seconds
+	# A cockpit destroyed with them in it kills them too.
+	ship.ship_lost.connect(_on_ship_lost)
 	# The boots are what meet the ground.
 	state.ground_clearance = data.stand_height
 	# Before the ship's tick, so the pilot and ship both reach the same moment before the view's drawn.
@@ -201,7 +205,8 @@ func _tick_aboard(delta: float) -> void:
 # Dead: the body drifts, tumbles, falls, and comes to rest like anything else, lying where it stops.
 # The air still drags on it, and can still burn it up.
 func _tick_dead(delta: float) -> void:
-	if death_cause == "BURNED UP":
+	# Gone with the ship, or burned away: there's no body to move.
+	if death_cause == "BURNED UP" or mode == ABOARD:
 		return
 	if _feel_air(delta):
 		_burn_up()
@@ -211,6 +216,15 @@ func _tick_dead(delta: float) -> void:
 		_spin = move_toward(_spin, 0.0, 4.0 * delta)
 	else:
 		facing = wrapf(facing + _spin * delta, -PI, PI)
+
+
+# The ship's lost when its cockpit's destroyed, and a pilot in it goes with it: burned up near the star,
+# crushed anywhere else.
+func _on_ship_lost() -> void:
+	if mode != ABOARD:
+		return
+	var near_star: bool = Vector2(_ship.state.x, _ship.state.y).length() < STAR_HEAT_REACH
+	_die("BURNED UP" if near_star else "CRUSHED", 1.0 if near_star else 0.8)
 
 
 # The air slows the pilot as it does a debris chunk, and heats them; too much and they burn up. Says
