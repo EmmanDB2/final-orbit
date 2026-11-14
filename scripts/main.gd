@@ -134,7 +134,7 @@ func _ready() -> void:
 	var event_scene := EventScene.new()
 	add_child(event_scene)
 	move_child(event_scene, $Pilot.get_index())
-	event_scene.start(events, $Pilot)
+	event_scene.start(events, $Pilot, gravity_model)
 	$Camera2D.view_rolled.connect(event_scene._on_view_rolled)
 	$Camera2D.view_changed.connect(event_scene._on_view_changed)
 	var warp := TimeWarp.new()

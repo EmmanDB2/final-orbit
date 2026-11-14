@@ -49,3 +49,13 @@ extends Resource
 @export var nucleus_color: Color = Color("B8C2C9")
 @export var dust_color: Color = Color("5E5954")
 @export var glow_color: Color = Color("D6ECF4")
+## Comets: the ion tail's color, the dust tail's color, how long the dust tail is along its path, in
+## world units, and how far its end is pushed away from the star, as a share of that length. Each
+## tail's widest, at its end, as a share of its length (the ion tail is a third as wide), and the most
+## jets a nucleus can have. Nature's colors: never telemetry cyan or agency orange.
+@export var ion_color: Color = Color("9DB8F2")
+@export var dust_tail_color: Color = Color("E6D8B8")
+@export var dust_length: float = 60000.0
+@export var dust_lift: float = 0.35
+@export var tail_width: float = 0.16
+@export var jets: int = 3

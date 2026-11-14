@@ -6,6 +6,7 @@ extends Node2D
 
 var _events: EventDirector
 var _pilot: Pilot
+var _gravity_model: GravityModel
 var _views: Dictionary = {}
 var _center_x: float = 0.0
 var _center_y: float = 0.0
@@ -13,9 +14,10 @@ var _pixels_per_unit: float = 1.0
 var _roll: float = 0.0
 
 
-func start(events: EventDirector, pilot: Pilot) -> void:
+func start(events: EventDirector, pilot: Pilot, gravity_model: GravityModel) -> void:
 	_events = events
 	_pilot = pilot
+	_gravity_model = gravity_model
 	events.event_found.connect(_add)
 	events.event_gone.connect(_remove)
 	for event: FlightEvent in events.events:
@@ -33,7 +35,7 @@ func _add(event: FlightEvent) -> void:
 			view = survivor
 		"comet":
 			var comet := CometView.new()
-			comet.setup(event)
+			comet.setup(event, _gravity_model)
 			view = comet
 	if view == null:
 		return

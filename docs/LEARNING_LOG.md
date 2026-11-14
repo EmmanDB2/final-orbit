@@ -979,3 +979,12 @@ Files: `art/moon_hopper/*.png`, `data/moon_hopper_design.tres`, `data/ship_list.
 - materials read from art color, so the game's mass differs from the editor's explicit one
 - setting engine and RCS numbers from measured mass (thrust over weight, delta-v)
 - awaiting a frame in a test so a scene's nodes are ready
+
+## 2026-11-14: Comet look ticket 1, the nucleus
+
+Files: `shaders/comet_nucleus.gdshader`, `scripts/event/comet_view.gd`, `scripts/event/event_type.gd`, `scripts/event/event_scene.gd`, `scripts/main.gd`, `data/events/comet.tres`, `docs/briefs/comet_look.md`, `docs/LEARNING_LOG.md`
+
+- a canvas_item shader drawn over a quad, with uniform arrays (bulges, craters) filled from seeded code
+- shading a flat disc as a lumpy sphere: height from the radius, a normal, a dot with the light
+- 4 x 4 Bayer dither between banded tones, on a game-pixel grid kept square to the screen under view roll
+- seeding from a name hash so the same comet always looks the same
