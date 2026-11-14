@@ -52,14 +52,17 @@ work down:
 - **explorer** (`.claude/agents/explorer.md`, Haiku): answers "where is" and "how does" questions about
   the code without reading it all into the main session.
 - **Sprites, in three steps:** (1) Opus writes an art brief (like
-  `docs/briefs/lander_mk2_in_asset_editor.md`) with a Gemini prompt for the concept; (2) Manny makes
-  the concept in his Gemini app; (3) a separate session working in the Asset Editor project (Sonnet,
+  `docs/briefs/lander_mk2_in_asset_editor.md`) with a Gemini prompt for the concept; (2) Opus makes
+  the concept itself with the Antigravity CLI, in a scratch folder:
+  `agy -p "<prompt; save it here as name.png>" --sandbox` (Manny's Google sign-in; it comes back as a
+  1024 px pixel-art-style picture, not on the grid, not in the palette, with no transparency); (3) a
+  separate session working in the Asset Editor project (Sonnet,
   or Opus for hard pieces) builds it there from the brief and the concept, on the pixel grid, in the
   palette, with layers, materials, and components, and exports the game's PNGs. Then this session
   brings them into the game, with Manny's OK. Never edit the editor's project from here. (Fable did
   step 3 until it left the Pro plan in November 2026.)
-- **Gemini, through Manny's Gemini app:** concepts for those briefs, a second opinion on screenshots,
-  and brainstorming.
+- **Gemini, through `agy`:** concepts for those briefs, a second opinion on screenshots, and
+  brainstorming. Manny only talks to Opus; Opus calls it.
 
 Keep the main session to one feature at a time, and start a fresh one for the next: this file,
 `docs/DESIGN.md`, the brief, and the learning log carry everything over. Small one-line changes can
