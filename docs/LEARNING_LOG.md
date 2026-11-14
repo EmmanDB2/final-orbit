@@ -828,3 +828,10 @@ Files: `scripts/event/event_director.gd`, `scripts/event/event_type.gd`, `script
 - running an orbit backward in time (a negative time step) to find where something starts
 - orbital period from the semi-major axis, T = 2π√(a³/μ)
 - caching an expensive result and refreshing it on a timer
+
+## 2026-11-14: Events list fits its space, and warp drops for news
+
+Files: `scripts/ui/event_list.gd`, `scripts/ui/flight_hud.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- laying out a panel from the room left between its neighbors
+- connecting one system's signal to another's method in the one place that knows both (main)
