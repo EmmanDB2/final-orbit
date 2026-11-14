@@ -105,6 +105,9 @@ var _gig_tracker: GigTracker
 var _survey_marker: SurveyMarker
 var _agency: Agency
 var _targeted_gig: int = -1
+var _events: EventDirector
+var _event_list: EventList
+var _event_markers: EventMarkers
 # Where the pilot was on screen against the context menu's target, and how fast that's changing, to
 # keep the label out of where they're walking.
 var _menu_pilot_from := Vector2.ZERO
@@ -204,6 +207,57 @@ func _update_gig_tracker() -> void:
 		_survey_marker.at = _view.to_screen(at[0], at[1])
 		_survey_marker.queue_redraw()
 	_gig_tracker.queue_redraw()
+
+
+## Connects the mid-flight events: their markers on screen, the list of open ones, and what they add
+## to the context menu.
+func connect_events(events: EventDirector) -> void:
+	_events = events
+	_event_markers.start(events, _view, _markers)
+	# A new one opens the list, so it's seen.
+	events.event_found.connect(func(_event: FlightEvent) -> void: _event_list.wanted_open = true)
+	events.event_gone.connect(func(id: int) -> void:
+		var thing: Dictionary = {"kind": "event", "index": id}
+		if _markers.is_target(thing):
+			_markers.clear_target()
+		if _card.visible and _card.thing == thing:
+			_card.visible = false)
+
+
+# A tap on an event's row looks at it and points the way to it.
+func _on_event_row_tapped(id: int) -> void:
+	var thing: Dictionary = {"kind": "event", "index": id}
+	_view.set_focus(thing)
+	_markers.set_target(thing, _catalog.callsign_of(thing), _catalog.reach_of(thing), _view.point_getter(thing))
+
+
+# The open events' rows, and where the list goes: under the gig tracker, or its tab, if there's one.
+func _update_event_list() -> void:
+	if _events == null:
+		return
+	var rows: Array = []
+	var from: ShipState = _ship.state if _mode == Pilot.ABOARD else _pilot.state
+	for event: FlightEvent in _events.open_events():
+		var at: PackedFloat64Array = _events.point_of(event.id)
+		rows.append({
+			"id": event.id,
+			"kind": event.type.kind,
+			"title": _events.title_of(event),
+			"distance": Units.distance_text(Vector2(at[0] - from.x, at[1] - from.y).length()) if at.size() == 2 else "",
+			"status": _events.status_of(event),
+			"targeted": _markers.is_target(event.thing_dict()),
+		})
+	_event_list.rows = rows
+	_place_event_list()
+	_event_list.queue_redraw()
+
+
+func _place_event_list() -> void:
+	var top: float = BAR_HEIGHT + 8.0
+	var tracker: Rect2 = _gig_tracker.shown_rect()
+	if tracker.has_area():
+		top += tracker.size.y + 8.0
+	_event_list.position = Vector2(EDGE, top)
 
 
 ## Connects the station's ship services, for the docking room's terminal, and sends each terminal to
@@ -377,11 +431,16 @@ func _build() -> void:
 	_flight_menu.pause_pressed.connect(_toggle_pause)
 	_flight_menu.title_pressed.connect(_to_title)
 	add_child(_flight_menu)
+	_event_markers = EventMarkers.new()
+	add_child(_event_markers)
 	_survey_marker = SurveyMarker.new()
 	_survey_marker.visible = false
 	add_child(_survey_marker)
 	_gig_tracker = GigTracker.new()
 	add_child(_gig_tracker)
+	_event_list = EventList.new()
+	_event_list.row_tapped.connect(_on_event_row_tapped)
+	add_child(_event_list)
 	# Last, so it covers everything while it's up.
 	_gig_board = GigBoard.new()
 	_gig_board.visible = false
@@ -482,6 +541,10 @@ func _layout() -> void:
 	_survey_marker.size = view
 	_gig_tracker.position = Vector2(EDGE, BAR_HEIGHT + 8.0)
 	_gig_tracker.size = Vector2(GigTracker.WIDTH, 200.0)
+	_event_markers.position = Vector2.ZERO
+	_event_markers.size = view
+	_event_list.size = Vector2(EventList.WIDTH, 200.0)
+	_place_event_list()
 	_place_panels()
 
 
@@ -543,6 +606,7 @@ func _process(frame_delta: float) -> void:
 	if _service_board.visible:
 		_service_board.queue_redraw()
 	_update_gig_tracker()
+	_update_event_list()
 	_place_context_menu(delta)
 
 
@@ -760,12 +824,14 @@ func _gather_context_rows() -> Array:
 		labels.append(_pilot._action)
 		_menu_runs.append(_tap_action.bind(&"interact"))
 		corners = _pilot.action_target()
-	if _agency != null:
-		for option: Dictionary in _agency.options():
-			labels.append(option["label"])
-			_menu_runs.append(option["run"])
-			if corners.is_empty() and option["target"].is_valid():
-				corners = option["target"].call()
+	var offered: Array = _agency.options() if _agency != null else []
+	if _events != null:
+		offered.append_array(_events.options())
+	for option: Dictionary in offered:
+		labels.append(option["label"])
+		_menu_runs.append(option["run"])
+		if corners.is_empty() and option["target"].is_valid():
+			corners = option["target"].call()
 	return [labels, corners]
 
 
@@ -793,6 +859,9 @@ func _place_context_menu(delta: float) -> void:
 	var tracker: Rect2 = _gig_tracker.shown_rect()
 	if tracker.has_area():
 		avoid.append([Rect2(_gig_tracker.position + tracker.position, tracker.size).grow(6.0), 4.0])
+	var listed: Rect2 = _event_list.shown_rect()
+	if listed.has_area():
+		avoid.append([Rect2(_event_list.position + listed.position, listed.size).grow(6.0), 4.0])
 	if _mode != Pilot.ABOARD and corners.size() >= 8:
 		var pilot_at: Vector2 = _view.to_screen(_pilot.state.x, _pilot.state.y)
 		var half: Vector2 = (PILOT_HALF * _view._zoom).max(Vector2(8.0, 12.0))
@@ -904,6 +973,8 @@ func _widgets_in_reach() -> Array[UiWidget]:
 	# After the context menu, which keeps off it anyway, so a choice is never lost under it.
 	if _gig_tracker.gig != null:
 		widgets.append(_gig_tracker)
+	if not _event_list.rows.is_empty():
+		widgets.append(_event_list)
 	widgets.append_array([_left_tab, _eva_button, _legs_button])
 	if not _hidden:
 		widgets.append(_lever)

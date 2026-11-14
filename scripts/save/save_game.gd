@@ -8,7 +8,7 @@ class_name SaveGame
 extends Node
 
 ## This version of the save. Raise it when what's saved changes, and add a step to _upgrade.
-const VERSION: int = 1
+const VERSION: int = 2
 ## Where saves live. A test points this somewhere of its own and turns saving on for itself.
 static var folder: String = "user://saves"
 static var on_in_tests: bool = false
@@ -21,6 +21,8 @@ var slot: String = "normal"
 var keep_lost_ship: bool = true
 ## The station's hangar, with the ships left there.
 var hangar: Hangar
+## The mid-flight events that have come up.
+var events: EventDirector
 
 var _ship: Node2D
 var _pilot: Pilot
@@ -64,12 +66,14 @@ static func erase(world: String) -> void:
 		DirAccess.remove_absolute(path_of(world))
 
 
-# Brings an older save up to this version, one version at a time. There's nothing older than 1 yet.
+# Brings an older save up to this version, one version at a time.
 static func _upgrade(data: Dictionary) -> Dictionary:
 	while data["version"] < VERSION:
 		match data["version"]:
-			_:
-				data["version"] += 1
+			1:
+				# Version 2 added mid-flight events. An older world has had none.
+				data["events"] = {}
+		data["version"] += 1
 	return data
 
 
@@ -96,6 +100,10 @@ func start(ship: Node2D, pilot: Pilot, agency: Agency, catalog: WorldCatalog, st
 	ship.design_changed.connect(func(_design: ShipDesign) -> void:
 		_take_flight()
 		_soon = true)
+	if events != null:
+		events.event_found.connect(func(_event: FlightEvent) -> void: _soon = true)
+		events.event_changed.connect(func(_event: FlightEvent) -> void: _soon = true)
+		events.event_gone.connect(func(_id: int) -> void: _soon = true)
 
 
 ## Stops saving, for a new flight that's about to replace this one.
@@ -119,6 +127,7 @@ func save_now() -> void:
 		"agency": _agency.save_state(),
 		"worlds": _catalog.save_state(),
 		"hangar": hangar.save_state() if hangar != null else {},
+		"events": events.save_state() if events != null else {},
 	}
 	_write(data)
 	_wait = EVERY_SECONDS

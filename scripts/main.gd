@@ -28,6 +28,8 @@ var save_slot: String = "normal"
 
 ## The agency: gig boards, the gig taken, and credits.
 var agency: Agency
+## Mid-flight events: signals, distress beacons, and comets.
+var events: EventDirector
 var _site_views: Array = []
 var _saves: SaveGame
 var _saved: Dictionary = {}
@@ -113,6 +115,15 @@ func _ready() -> void:
 	agency = Agency.new()
 	add_child(agency)
 	agency.start(gravity_model, $Ship, $Pilot, $Station, station, station_index, _site_views, {planet_index: planet, moon_index: moon})
+	events = EventDirector.new()
+	add_child(events)
+	events.start(gravity_model, $Ship, $Pilot, agency, bodies, _site_views)
+	# Zen Mode only gets the calm ones.
+	events.calm_only = _zen
+	$Camera2D.set_events(events)
+	catalog.set_events(events)
+	$Hud/SafeArea/FlightHud.connect_events(events)
+	events.message_raised.connect($Hud/SafeArea/CommsLine.on_agency_message)
 	var warp := TimeWarp.new()
 	add_child(warp)
 	warp.start(gravity_model, $Ship, $Pilot)
@@ -152,6 +163,7 @@ func _begin() -> void:
 	_saves = SaveGame.new()
 	_saves.slot = save_slot
 	_saves.hangar = _hangar
+	_saves.events = events
 	_saves.keep_lost_ship = not _zen
 	add_child(_saves)
 	_saves.start($Ship, $Pilot, agency, _catalog, $Station, _saved)
@@ -263,6 +275,7 @@ func _restore(saved: Dictionary, catalog: WorldCatalog) -> void:
 		$Hud/SafeArea/FlightHud.show_throttle($Ship.throttle)
 	agency.restore_state(saved.get("agency", {}))
 	catalog.restore_state(saved.get("worlds", {}))
+	events.restore_state(saved.get("events", {}))
 
 
 # TITLE: saves, and goes back to the title screen over this flight, Zen or not.

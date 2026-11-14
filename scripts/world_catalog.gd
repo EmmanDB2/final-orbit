@@ -15,6 +15,7 @@ var _pilot: Node2D
 var _bodies: Dictionary = {}
 var _stations: Dictionary = {}
 var _sites: Array[SiteView] = []
+var _events: EventDirector
 var _home_gravity: float = 1.0
 var _visited: Dictionary = {}
 
@@ -33,6 +34,11 @@ func set_pilot(pilot: Node2D) -> void:
 
 func add_body(index: int, data: BodyData) -> void:
 	_bodies[index] = data
+
+
+## The mid-flight events, which know their own cards.
+func set_events(events: EventDirector) -> void:
+	_events = events
 
 
 ## A place built on a world, in the order the view numbers them.
@@ -69,6 +75,8 @@ func callsign_of(thing: Dictionary) -> String:
 			return "PILOT"
 		"site":
 			return _sites[thing["index"]].data.callsign
+		"event":
+			return _events.callsign_of(thing["index"])
 	return "SHIP"
 
 
@@ -83,6 +91,8 @@ func reach_of(thing: Dictionary) -> float:
 			return 24.0
 		"site":
 			return _sites[thing["index"]].reach()
+		"event":
+			return _events.tap_radius(thing["index"])
 	return 110.0
 
 
@@ -98,6 +108,8 @@ func info_of(thing: Dictionary) -> Dictionary:
 			return _pilot_info()
 		"site":
 			return _site_info(thing["index"])
+		"event":
+			return _events.info_of(thing["index"])
 	return _ship_info()
 
 

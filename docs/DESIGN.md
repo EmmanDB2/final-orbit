@@ -21,6 +21,8 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-14 | Zen Mode gets gigs and pay back, on Manny's call: "Zen mode should let the player do as they want just stress free". Fuel, propellant, gas, repairs, and the hangar stay free, and only the calm events come up: signals and comets. Replaces "no gigs, no pay" in the locked Zen line \[Locked\] |
+| 2026-11-14 | Mid-flight events planned, on Manny's call: they're opportunities, never forced on the pilot; each is picked up far enough out to change course for; and the ones that can be come back to stay listed and focusable until they're done. Uncharted signals, distress beacons, and passing comets come first. A stranded astronaut is rescued by grabbing their hand on EVA and jetpacking them back to the ship. Derelicts wait for salvage in Tier 2. Solar flares wait for Tier 2 too, as the hazards table has them, since sheltering from one needs radiation and crew health, which don't exist yet \[Leaning\] |
 | 2026-11-12 | Landing legs reworked, on Manny's call: each leg has a shock absorber with its own stroke and how hard a landing it soaks up, so a ship's safe landing speed comes from its working legs; they squeeze on touchdown, spring back to a sag, and on uneven ground each meets its own ground so the ship sits nearer level. How wide a ship stands is measured from its feet \[Leaning\] |
 | 2026-11-12 | The Lander Mk II added as a second ship, designed by Fable in the Asset Editor from a brief, with a stand-in hangar on Manny's call: a SHIPS tab on the station's terminal trades the docked ship for another, free for now. Each ship waits in the hangar as it was left. A ship mall where ships are bought, walked through like a dealership, is the plan for later \[Leaning\] |
 | 2026-11-12 | Landing at home no longer refills the tanks, on Manny's call: the launch base's Vehicle Assembly building has a paid service terminal instead, the same screen as the station's. Each terminal only serves a ship docked there or on its pad \[Leaning\] |
@@ -203,13 +205,14 @@ Risk and pacing: \[Leaning\]
 - Mid-flight events: distress beacons, solar flares, passing comets, derelicts, uncharted signals.
 - Being first to chart a body or anomaly pays a bonus and stays on your map.
 
-Zen Mode: no gigs, no pay, unlimited fuel, free time warp, ambient music. It doubles as the physics test bed. \[Locked\]
+Zen Mode: gigs and pay as in normal play, but with unlimited fuel, free services, free time warp, ambient music, and only the calm mid-flight events. It doubles as the physics test bed. Gigs came back on 2026-11-14, on Manny's call: Zen lets the player do as they like, stress free. \[Locked\]
 
 How Zen Mode works, built 2026-11-12: \[Leaning\]
 
 - It's its own world with its own save, picked on the title like NEW FLIGHT: the view pulls out, the Zen world comes in behind the menu, and the second tap goes in. The first Zen flight starts where a new flight does, in orbit near Kapteyn-3. TITLE from Zen comes back to the Zen world.
 - Fuel and RCS propellant never run out, and nor does the jetpack's gas. A holed tank still loses what's in it, since damage is physics.
-- No gigs and no pay: the terminals only say NO GIGS IN ZEN MODE, and there are no credits.
+- Gigs and pay work as in normal play, with Zen's own credits, since Zen is its own world. Fuel, propellant, repairs, and trading ships are free. (Until 2026-11-14 Zen had no gigs, and its terminals said NO GIGS IN ZEN MODE.)
+- Only the calm mid-flight events come up: uncharted signals and passing comets, not distress beacons.
 - Time warp is the same as in normal play, which costs nothing already. The fast warps still only run while coasting, since that's what keeps the physics right.
 - A lost ship isn't kept: leaving it, the Zen save goes, and the next Zen flight starts fresh. Normal play keeps its wrecks.
 - Music plays only here (see Sound).
@@ -261,6 +264,20 @@ Survey gigs: \[Leaning\]
 - The data uplinks by itself once Kapteyn-3 or a base is in line of sight, with no world in the way, and the gig pays then, as the payment rules say for data. Until then the tracker says NO RELAY IN SIGHT. Losing the ship before the uplink loses the data, and the gig pays nothing.
 - The spot is the target, and on screen it gets orange brackets marked SURVEY SITE while it's being found and while the scan runs.
 - Pay is a flat part and more for the route's delta-v: a moon survey from the launch base pays most.
+
+## Mid-flight events
+
+Decided 2026-11-14, on Manny's call. \[Leaning\]
+
+- Events are opportunities, never forced on the pilot: something to go after for credits and data, or to leave be. Hazards stay what the hazards table says: physical and predictable.
+- Each one is picked up far out, at least about 7 km away, since changing course takes planning. It comes in on the comms line, with what it is, where, and how far.
+- The ones that can be come back to stay on a list, and can be focused and targeted, until they're done: a signal until it's charted, and an astronaut until they're rescued. A comet only stays while it's passing.
+- Events come only while the ship's flying: not docked, and not landed. A roll every so often, more often the longer nothing's come up, and never more than four open at once. Each roll comes from the seed and how many rolls there have been, so the same seed gives the same events. Event types are data, in `data/events/`.
+- Every event can be tapped, focused, and held for a card, like a station, and a card's TARGET makes it the target. Under the gig tracker, an EVENTS list shows each open one and how far it is, and a tap on a row focuses and targets it. Its header folds it to a tab, like the gig tracker.
+- Uncharted signals: a source on the ground of the planet or the moon, kept off the seas and the bases. Its card knows only that something's there until it's charted. Flying or landing within 300 m offers SCAN SIGNAL; the scan runs whenever the ship's within reach, keeping what it has when it leaves, and once it's whole the data uplinks by itself with a relay in sight, like a survey's. Charting pays for the data, and a bonus for being first to chart it, and the anomaly stays on the map for good, by name.
+- Distress beacons: an astronaut adrift in orbit, waving, with their suit's beacon on. No air clock: they wait until they're found. Match their orbit, go out on EVA, and GRAB HAND when close and slow enough. Holding hands, the pilot carries their mass too, so the jetpack pushes half as hard and its gas goes half as far. Boarding the ship takes them aboard, where they weigh like cargo; LET GO leaves them drifting. Bringing them to Kapteyn-3 or a base, docked, landed on its pad, or in through an airlock or door, pays the rescue.
+- Passing comets: an icy nucleus on a path through the planet's sphere of influence, with a tail that points away from the star. It's picked up well before its closest pass, which the card counts down to. Spending enough time inside its coma, within 1 km, scans it, a little at a time; the data uplinks like a signal's and pays. Once it leaves, it's gone.
+- Later: derelicts, with salvage (Tier 2), and solar flares (Tier 2, as the hazards table has them): sheltering behind a planet only matters once there's radiation and crew health.
 
 ## Player
 

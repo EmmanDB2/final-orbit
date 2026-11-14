@@ -795,3 +795,12 @@ Files: `scripts/ship/module_data.gd`, `scripts/ship/ship_design.gd`, `scripts/sh
 - a damped spring stepped each tick (semi-implicit Euler), and choosing stiffness and damping
 - combining energies: safe speed as the square root of summed squares
 - measuring a shape (the stance) instead of hard-coding it
+
+## 2026-11-14: Mid-flight events, and uncharted signals
+
+Files: `scripts/event/event_type.gd`, `scripts/event/flight_event.gd`, `scripts/event/event_director.gd`, `data/events/signal.tres`, `scripts/ui/event_list.gd`, `scripts/ui/event_markers.gd`, `scripts/ui/flight_hud.gd`, `scripts/flight_view.gd`, `scripts/world_catalog.gd`, `scripts/gig/agency.gd`, `scripts/save/save_game.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- seeded random rolls (a hash of the seed and a counter) so the same seed gives the same events
+- a growing chance (pity timer) so long dry spells don't happen
+- delegating by "kind" so one camera, card, and marker system handles a new type of thing
+- upgrading a versioned save one step at a time

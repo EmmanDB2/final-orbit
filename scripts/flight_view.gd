@@ -81,6 +81,8 @@ var _lit_stop: String = "?"
 var _pilot: Node2D
 # Places built on worlds, which can be tapped and focused like anything else.
 var _sites: Array[SiteView] = []
+# Mid-flight events, which can be too.
+var _events: EventDirector
 # What the SHIP button brings the view back to: the ship, or the pilot while they're out of it.
 var _avatar: Dictionary = {"kind": "ship", "index": 0}
 var _center_x: float = 0.0
@@ -316,6 +318,10 @@ func _point_of(focus: Dictionary, ship: PackedFloat64Array) -> PackedFloat64Arra
 			return PackedFloat64Array([_pilot.state.x, _pilot.state.y])
 		"site":
 			return _sites[focus["index"]].middle(_state.time)
+		"event":
+			# One that's gone leaves the view on the ship.
+			var at: PackedFloat64Array = _events.point_of(focus["index"]) if _events != null else PackedFloat64Array()
+			return at if at.size() == 2 else ship
 		"title":
 			var body: PackedFloat64Array = _gravity_model.get_body_position(_title_body, _state.time)
 			return PackedFloat64Array([body[0] + _title_offset.x, body[1] + _title_offset.y])
@@ -343,6 +349,14 @@ func _closest_zoom() -> float:
 ## Tells the view about a place built on a world.
 func add_site(site: SiteView) -> void:
 	_sites.append(site)
+
+
+## Tells the view about the mid-flight events.
+func set_events(events: EventDirector) -> void:
+	_events = events
+	events.event_gone.connect(func(id: int) -> void:
+		if _focus == {"kind": "event", "index": id}:
+			_set_focus(_avatar))
 
 
 ## Tells the view about the pilot.
@@ -409,6 +423,8 @@ func thing_at(screen_position: Vector2) -> Dictionary:
 		candidates.append({"kind": "body", "index": index})
 	for index in range(_sites.size()):
 		candidates.append({"kind": "site", "index": index})
+	if _events != null:
+		candidates.append_array(_events.things())
 	for candidate: Dictionary in candidates:
 		var at: PackedFloat64Array = _point_of(candidate, PackedFloat64Array([_state.x, _state.y]))
 		var radius: float = _tap_radius_of(candidate)
@@ -417,6 +433,8 @@ func thing_at(screen_position: Vector2) -> Dictionary:
 		# or the world itself could never be picked once it's small.
 		if candidate["kind"] == "site":
 			reach = maxf(radius, minf(reach, _gravity_model.get_body_radius(_sites[candidate["index"]].world) * 0.5))
+		elif candidate["kind"] == "event" and _events.world_of(candidate["index"]) >= 0:
+			reach = maxf(radius, minf(reach, _gravity_model.get_body_radius(_events.world_of(candidate["index"])) * 0.5))
 		if Vector2(at[0] - tapped.x, at[1] - tapped.y).length() <= reach and radius < smallest:
 			smallest = radius
 			best = candidate
@@ -433,6 +451,8 @@ func _tap_radius_of(focus: Dictionary) -> float:
 			return pilot_tap_radius
 		"site":
 			return _sites[focus["index"]].reach()
+		"event":
+			return _events.tap_radius(focus["index"]) if _events != null else 0.0
 	return ship_tap_radius
 
 

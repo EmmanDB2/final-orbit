@@ -345,6 +345,20 @@ func _pay(gig: Gig, what: String) -> void:
 	gig_changed.emit(null)
 
 
+## Pays for something that isn't a gig, such as charting a signal, and says so on the comms line.
+func pay(amount: int, what: String) -> void:
+	if amount <= 0:
+		return
+	credits += amount
+	credits_changed.emit(credits)
+	message_raised.emit("%s: +%s CR" % [what, Units.grouped(amount)], true)
+
+
+## Whether the ship can see Kapteyn-3 or a base right now, for sending data home.
+func can_see_relay() -> bool:
+	return _relay_in_sight()
+
+
 # Losing the ship loses what it carried, so the gig pays nothing.
 func _on_ship_lost() -> void:
 	if active == null:

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EventType" format=3]
+
+[ext_resource type="Script" path="res://scripts/event/event_type.gd" id="1_type"]
+
+[resource]
+script = ExtResource("1_type")
+kind = "signal"
+label = "UNCHARTED SIGNAL"
+chip = "SIGNAL"
+call = "UNCHARTED SIGNAL"
+things = PackedStringArray("Radio echo", "Magnetic anomaly", "Thermal vent", "Buried metal", "Glass field", "Seismic hum", "Ice seam", "Meteorite")
+weight = 1.0
+calm = true
+nearest = 140000.0
+scan_reach = 6000.0
+scan_seconds = 12.0
+pay = 2500
+first_bonus = 1500
