@@ -390,17 +390,21 @@ func _roll() -> void:
 		_misses += 1
 		return
 	var kinds: Array[EventType] = event_types.filter(func(type: EventType) -> bool: return type.calm or not calm_only)
+	# Each one of a kind already open halves its chance, so a run of the same kind is rare.
+	var weights: Array[float] = []
 	var total: float = 0.0
 	for type: EventType in kinds:
-		total += type.weight
+		var open: int = open_events().filter(func(event: FlightEvent) -> bool: return event.type == type).size()
+		weights.append(type.weight * pow(0.5, open))
+		total += weights.back()
 	if total <= 0.0:
 		return
 	var pick: float = rng.randf() * total
 	var chosen: EventType = kinds[0]
-	for type: EventType in kinds:
-		pick -= type.weight
+	for i in range(kinds.size()):
+		pick -= weights[i]
 		if pick <= 0.0:
-			chosen = type
+			chosen = kinds[i]
 			break
 	if spawn(chosen, "%d|event|%d|place" % [_world_seed, _rolls]) == null:
 		_misses += 1

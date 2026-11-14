@@ -835,3 +835,10 @@ Files: `scripts/ui/event_list.gd`, `scripts/ui/flight_hud.gd`, `scripts/main.gd`
 
 - laying out a panel from the room left between its neighbors
 - connecting one system's signal to another's method in the one place that knows both (main)
+
+## 2026-11-14: Fewer runs of the same event
+
+Files: `scripts/event/event_director.gd`, `docs/DESIGN.md`
+
+- weighted random choice, with weights that change with what's already happened
+- soak testing: running a long simulated flight fast to catch rare errors
