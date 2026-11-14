@@ -66,6 +66,10 @@ var holding: int = 0
 ## How much light falls on them, from 0 to 1: dimmer in a dark room, and the palette shading takes
 ## them down its steps.
 var light_level: float = 1.0
+## Where the main light comes from on screen, with y down, and how much of it there is, from 0 to 1.
+## Outside it's the star, and none in a world's shadow.
+var light_from := Vector2(-1.0, -1.4)
+var sun_level: float = 1.0
 var _light: DirectionalLight3D
 var _environment: Environment
 ## The view's turn, so the canvas can stay square with the screen.
@@ -193,8 +197,12 @@ func _process(delta: float) -> void:
 		return
 	_time += delta
 	_flicker += delta
-	_light.light_energy = 0.9 * light_level
-	_environment.ambient_light_energy = 0.3 * light_level
+	_light.light_energy = 0.9 * light_level * sun_level
+	# A little more light all round in shadow, so they're never lost.
+	_environment.ambient_light_energy = (0.3 + 0.15 * (1.0 - sun_level)) * light_level
+	var from := Vector3(light_from.x, -light_from.y, 0.0).normalized() * 1.4 + Vector3(0.0, 0.0, 1.2)
+	if not _light.global_transform.origin.is_equal_approx(from):
+		_light.look_at_from_position(from, Vector3.ZERO)
 	_turn(delta)
 	_pose(delta)
 	_material.set_shader_parameter("far_side", _far_side())

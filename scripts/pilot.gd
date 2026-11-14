@@ -1003,7 +1003,16 @@ func _light_inside() -> void:
 			helmet_lamp = false
 			_station.light_helmet(Vector2.ZERO, 0.0, false)
 		_figure.light_level = 1.0
+		# Outside, lit by the star, and dark in a world's shadow. Indoors at a base, by the room.
+		if mode == EVA or mode == SURFACE:
+			_figure.light_from = (-Vector2(state.x, state.y).normalized()).rotated(-_roll)
+			_figure.sun_level = Sunlight.at(_gravity_model, state.x, state.y, state.time)
+		else:
+			_figure.light_from = Vector2(-1.0, -1.4)
+			_figure.sun_level = 1.0
 		return
+	_figure.light_from = Vector2(-1.0, -1.4)
+	_figure.sun_level = 1.0
 	var room: float = _station.light_at(_local)
 	if helmet_lamp and room > LAMP_OFF_ABOVE:
 		helmet_lamp = false

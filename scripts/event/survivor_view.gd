@@ -42,6 +42,10 @@ func _process(delta: float) -> void:
 		return
 	rotation = _roll
 	_figure.screen_roll = _roll
+	# Lit by the star, like the pilot, and dark in a world's shadow.
+	var state: ShipState = _event.state
+	_figure.light_from = (-Vector2(state.x, state.y).normalized()).rotated(-_roll)
+	_figure.sun_level = Sunlight.at(_pilot._gravity_model, state.x, state.y, state.time)
 	_figure.turning = 0.0
 	if _event.rescue == "held" and _pilot._figure != null:
 		_keep_with_pilot()

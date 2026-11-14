@@ -902,3 +902,11 @@ Files: `scripts/sunlight.gd`, `scripts/ship.gd`, `docs/DESIGN.md`
 
 - a shadow as a cylinder behind a sphere: projecting onto the star's direction (dot) and measuring the distance off that axis (cross)
 - smoothstep for a soft edge (a penumbra)
+
+## 2026-11-14: Lighting outside, ticket 3: the station and the pilot
+
+Files: `scripts/ship/hull_light.gd`, `shaders/hull_light.gdshader`, `scripts/station/station_view.gd`, `scripts/pilot/astronaut_view.gd`, `scripts/pilot.gd`, `scripts/event/survivor_view.gd`, `docs/DESIGN.md`
+
+- choosing a surface's curve from the shorter of two runs (a cheap guess at a shape's axis)
+- aiming a 3D light from a 2D screen direction
+- doing big image work on a worker thread and swapping the result in

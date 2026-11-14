@@ -54,6 +54,8 @@ var _inside_sprite := Sprite2D.new()
 var _light_task: int = -1
 var _baked_light: Image
 var _powered: bool = true
+var _hull_task: int = -1
+var _hull_material: ShaderMaterial
 var _light_time: float = 0.0
 var _sputter_on: bool = false
 var _sputter_left: float = 0.0
@@ -95,6 +97,9 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 		var surface: Vector2 = Vector2(port["point"]) + Vector2(0.5, 0.5) + face * 0.5
 		_ports.append({"at": (surface - Vector2(layout.origin)) * design.art_pixel_size, "face": face})
 	_sprite.texture = ImageTexture.create_from_image(layout.image)
+	# Its outside is lit by the star once its curvature's worked out, off to the side, as it's big.
+	var outside: Image = layout.image
+	_hull_task = WorkerThreadPool.add_task(func() -> void: _hull_material = HullLight.material_for(outside))
 	_sprite.centered = false
 	_sprite.offset = -Vector2(layout.origin)
 	_inside_sprite.texture = ImageTexture.create_from_image(layout.interior_image)
@@ -189,6 +194,24 @@ func _wait_for_light() -> void:
 
 func _exit_tree() -> void:
 	_wait_for_light()
+	if _hull_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_hull_task)
+		_hull_task = -1
+
+
+# The outside lit by the star, and dark in a world's shadow, once its curvature's ready.
+func _light_outside() -> void:
+	if _hull_task >= 0 and WorkerThreadPool.is_task_completed(_hull_task):
+		WorkerThreadPool.wait_for_task_completion(_hull_task)
+		_hull_task = -1
+		# Its art has some shading drawn in already, so the star's is gentler.
+		_hull_material.set_shader_parameter("ambient", 0.5)
+		_sprite.material = _hull_material
+	if _sprite.material == null or _gravity_model == null:
+		return
+	var frame: Dictionary = _frame_at(_state.time)
+	var toward: Vector2 = -Vector2(frame["x"], frame["y"]).normalized()
+	HullLight.aim(_sprite, toward, Sunlight.at(_gravity_model, frame["x"], frame["y"], _state.time))
 
 
 # Emergency lamps pulse slowly, and failing ones sputter: mostly dark, with bursts of light.
@@ -248,6 +271,7 @@ func set_roof_off(off: bool) -> void:
 func _process(delta: float) -> void:
 	_pick_up_light()
 	_change_lights(TimeWarp.real(delta))
+	_light_outside()
 	var wanted: float = 1.0 if _roof_off else 0.0
 	if _roof_gone == wanted:
 		return
