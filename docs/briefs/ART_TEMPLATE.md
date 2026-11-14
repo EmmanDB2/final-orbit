@@ -8,22 +8,27 @@ the worked example, from before Gemini took over the editor step.
 
 ## How Opus runs it
 
-1. **Template and concept**, in a scratch folder outside both projects, with this brief and the
-   template's numbers in the prompt:
-   `agy -p "<prompt>; save them here as <asset>_template.png and <asset>_concept.png" --sandbox`.
+Everything Gemini reads or makes outside the editor lives in the **drop folder**,
+`/Users/emmanuelwalters/Projects/Final Orbit Art Drop/<asset>/`, outside both projects, since the
+editor's `AGENTS.md` bars reading game files. Opus copies this brief there.
+
+1. **Template and concept**, run from the drop folder, with the template's numbers in the prompt:
+   `cd "<drop>/<asset>" && agy -p "<prompt>; save them here as <asset>_template.png and <asset>_concept.png" --sandbox`.
    Show Manny the concept; nothing goes on until he OKs it.
-2. **Exterior in the editor**, run from the editor's folder:
-   `cd "/Users/emmanuelwalters/Projects/Final Orbit Asset Editor" && agy -p "<prompt>" --sandbox --settings '<rules>'`,
+2. **Exterior in the editor**, run from the editor's folder with the drop folder added:
+   `cd "/Users/emmanuelwalters/Projects/Final Orbit Asset Editor" && agy -p "<prompt>" --sandbox --add-dir "<drop>"`,
    pointing at this brief and the concept by absolute path. It stops after the flat exterior preview.
    Show Manny; he OKs it or asks for changes.
 
-   Headless `agy` can't ask for permission, so every tool it needs must be allowed up front, for that
-   run only with `--settings` (never saved). Tested 2026-11-14, reading and running Godot:
-   `{"trustedWorkspaces":["/Users/emmanuelwalters/Projects/Final Orbit Asset Editor"],"permissions":{"allow":["read_file","command(godot --version)"]}}`.
-   A build run also needs writing and its commands, such as `"write_file"`, `"command(godot *)"`, and
-   `"command(python3 *)"`. A denied tool ends the run with "a tool required the "<name>" permission";
-   add exactly that rule and run again. Keep the brief and concept outside both projects (the run reads
-   them by absolute path), since the editor's `AGENTS.md` bars reading game files.
+   Headless `agy` can't ask for permission, so what it needs is saved, with Manny's OK (2026-11-14), in
+   `~/.gemini/antigravity-cli/settings.json`: the editor and the drop folder as trusted workspaces;
+   reading the editor; writing only its `game/` and `exports/`; reading and writing the drop folder;
+   and the commands `godot *` and `python3 *` (which may run outside agy's sandbox). Reads outside the
+   working folder are always refused headless, whatever the rules say, hence `--add-dir`. Anything
+   else is passed for one run only, such as a commit in the editor once Manny allows it:
+   `--settings '{"permissions":{"allow":["command(git add *)","command(git commit *)"]}}'`. A denied
+   tool ends the run with "a tool required the "<name>" permission": add exactly that rule and run
+   again.
 3. **The rest in the editor**, a second run from the same folder: inside layers, materials,
    components, checks, exports, and the JSON. Then Opus checks the stats and shows Manny the previews.
 4. **Into the game**, with Manny's OK: the builder (Sonnet) copies the PNGs and writes the data file,

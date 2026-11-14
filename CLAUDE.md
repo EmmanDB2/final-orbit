@@ -53,9 +53,10 @@ work down:
 - **explorer** (`.claude/agents/explorer.md`, Haiku): answers "where is" and "how does" questions about
   the code without reading it all into the main session.
 - **Sprites, all drawn by Gemini through `agy`:** (1) Opus writes an art brief from
-  `docs/briefs/ART_TEMPLATE.md`, which says how to run each step; (2) `agy`, in a scratch folder, draws a
-  template (the canvas grid with a 36 px pilot for scale) and the concept on it, and Manny OKs the
-  concept; (3) `agy`, run from the Asset Editor's folder, builds it there from the brief and the
+  `docs/briefs/ART_TEMPLATE.md`, which says how to run each step; (2) `agy`, in the drop folder
+  `~/Projects/Final Orbit Art Drop/<asset>/`, draws a template (the canvas grid with a 36 px pilot for scale) and the concept on it, and Manny OKs the
+  concept; (3) `agy`, run from the Asset Editor's folder with
+  `--add-dir` for the drop folder, builds it there from the brief and the
   concept, on the grid, in the palette, with layers, materials, and components, stopping once for
   Manny's OK on the flat exterior, then exports the game's PNGs and JSON; (4) with Manny's OK, the
   builder brings them into the game and the checker screenshots it. Sonnet only does the game side.
