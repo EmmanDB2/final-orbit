@@ -74,5 +74,14 @@ extends Resource
 @export var climb_speed: float = 30.0
 ## The hardest the pilot can come down on EVA and land on their feet, in world units per second.
 @export var safe_landing_speed: float = 80.0
+## Past this, a landing or a hit kills; between it and the safe speed, it knocks them down. World
+## units per second.
+@export var fatal_landing_speed: float = 160.0
+## How the air drags on the pilot, against their mass, like a debris chunk's width: falling through
+## the home planet's air near the ground, it holds them to about 20 m/s.
+@export var drag_area: float = 0.3
+## How much heat from moving through air the suit can take, as the ship's heat limit is; past it, they
+## burn up.
+@export var heat_limit: float = 1.2e10
 ## Higher than this above the ground, the pilot's flying on EVA again, in world units.
 @export var ground_reach: float = 400.0

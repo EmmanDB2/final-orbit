@@ -160,6 +160,7 @@ func _ready() -> void:
 	_saved = saved
 	_catalog = catalog
 	$Hud/SafeArea/FlightHud.title_requested.connect(_to_title)
+	$Pilot.died.connect(_on_pilot_died)
 	$Hud/SafeArea/FlightHud.lights_requested.connect(func() -> void:
 		$Station.set_powered(not $Station.is_powered())
 		$Hud/SafeArea/FlightHud.show_powered($Station.is_powered()))
@@ -284,6 +285,29 @@ func _restore(saved: Dictionary, catalog: WorldCatalog) -> void:
 	agency.restore_state(saved.get("agency", {}))
 	catalog.restore_state(saved.get("worlds", {}))
 	events.restore_state(saved.get("events", {}))
+
+
+# The moment the pilot dies, a burst where it happened: dust thrown up from the ground, a puff of frost
+# from the suit in space, or sparks as they burn up.
+func _on_pilot_died(cause: String, _severity: float) -> void:
+	var state: ShipState = $Pilot.state
+	var palette: AgencyPalette = UiStyle.palette()
+	var offsets := PackedVector2Array()
+	var colors := PackedColorArray()
+	var shades: Array[Color] = [palette.glass_light, palette.hull_lightest, palette.hull_lighter]
+	var blast: float = 40.0
+	var dust: bool = false
+	if cause == "BURNED UP":
+		shades = [palette.thrust_white, palette.thrust_yellow, palette.thrust_red]
+		blast = 140.0
+	elif state.is_on_surface():
+		shades = [palette.hull_light, palette.hull_mid, palette.hull_dark]
+		blast = 70.0
+		dust = true
+	for i in range(36):
+		offsets.append(Vector2.UP.rotated(randf() * TAU) * randf_range(1.0, 9.0))
+		colors.append(shades[i % shades.size()])
+	$Sparks.scatter(offsets, colors, 2, state.x, state.y, state.velocity_x, state.velocity_y, Vector2.ZERO, Vector2.ZERO, blast, dust)
 
 
 # TITLE: saves, and goes back to the title screen over this flight, Zen or not.

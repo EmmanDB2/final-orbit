@@ -108,6 +108,7 @@ func start(hud: FlightHud, comms: CommsLine, ship: Node2D, pilot: Pilot) -> void
 	ship.part_detached.connect(func(piece: Dictionary, _x: float, _y: float, _vx: float, _vy: float, _angle: float, _spin: float, _kick: Vector2) -> void: _on_part_detached(piece))
 	ship.hull_struck.connect(_on_hull_struck)
 	ship.ship_lost.connect(_on_ship_lost)
+	pilot.died.connect(_on_pilot_died)
 
 
 ## Plays one of the sound set's sounds once, on a channel.
@@ -262,6 +263,13 @@ func _on_ship_lost() -> void:
 	if aboard:
 		_buzz(400, 1.0)
 	_after(0.5, func() -> void: play("radio_static", "Radio", -2.0))
+
+
+# The pilot's death: the hit, if it was one, then the radio going to static.
+func _on_pilot_died(cause: String, _severity: float) -> void:
+	if cause == "IMPACT":
+		play("impact", "Effects", -2.0)
+	_after(0.4, func() -> void: play("radio_static", "Radio", -2.0))
 
 
 func _hull_sound_buzz(milliseconds: int, strength: float) -> void:

@@ -918,3 +918,11 @@ Files: `shaders/hull_light.gdshader`, `scripts/ship.gd`, `scripts/ship/hull_ligh
 - a point light in a sprite's own pixel space
 - the same lighting worked out on the CPU for a picture drawn as part of a bigger one
 - refactoring shared logic so the shader's table and the code's come from one place
+
+## 2026-11-14: Death, ticket 1: how the pilot dies
+
+Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_view.gd`, `scripts/main.gd`, `scripts/audio/sound_director.gd`, `scripts/event/event_director.gd`, `docs/DESIGN.md`
+
+- quadratic drag and terminal velocity (v = sqrt(2mg / (rho A)))
+- thresholds as bands (safe, hard, fatal) instead of one cutoff
+- turning a character into a passive physics body when it dies (a simple ragdoll stand-in)

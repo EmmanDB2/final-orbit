@@ -74,6 +74,14 @@ func start(gravity_model: GravityModel, ship: Node2D, pilot: Pilot, agency: Agen
 	_wait = first_wait
 	ship.ship_lost.connect(_on_ship_lost)
 	pilot.mode_changed.connect(_on_pilot_mode_changed)
+	# A dead pilot's hand lets go.
+	pilot.died.connect(func(_cause: String, _severity: float) -> void:
+		for event: FlightEvent in events:
+			if event.type.kind == "distress" and event.rescue == "held":
+				event.rescue = "adrift"
+				_paths.erase(event.id)
+				event_changed.emit(event)
+		_pilot.carried_kg = 0.0)
 	# After the pilot and before the ship, so whatever's moving reaches the moment the ship's about to
 	# reach before the view's placed, as the pilot does.
 	process_physics_priority = -2

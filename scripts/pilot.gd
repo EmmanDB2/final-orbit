@@ -25,6 +25,9 @@ signal can_leave_changed(can_leave: bool)
 signal stranded_changed(stranded: bool)
 ## Emitted when the pilot should hear something.
 signal message_raised(text: String)
+## Emitted when the pilot dies: what killed them ("IMPACT", "BURNED UP", or "AIR RAN OUT"), and how
+## badly, from 0 to 1, which sets the med bay's bill.
+signal died(cause: String, severity: float)
 ## Emitted when the pilot uses a terminal: a gig board, the station's or a base's mission computer, as
 ## {"kind": "station"} or {"kind": "site", "index": i}; or ship services, as {"kind": "service", "at":
 ## place}, the place being the station or the site the terminal's at.
@@ -92,7 +95,10 @@ var input_blocked: bool = false
 var _action_target: Callable = Callable()
 var _can_leave: bool = false
 var _stranded: bool = false
-var _lost: bool = false
+## Whether the pilot's dead, and what killed them. The body stays a body: it drifts, falls, and comes
+## to rest like anything else, until the med bay.
+var dead: bool = false
+var death_cause: String = ""
 var _pixels_per_unit: float = 1.0
 var _show_dot: bool = false
 var _last_interact_frame: int = -1
@@ -149,6 +155,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if endless_gas:
 		gas = data.jet_seconds
+	if dead:
+		_tick_dead(delta)
+		return
 	match mode:
 		ABOARD:
 			_tick_aboard(delta)
@@ -184,6 +193,90 @@ func _tick_aboard(delta: float) -> void:
 		_tick_inside(delta)
 
 
+# Dead: the body drifts, tumbles, falls, and comes to rest like anything else, lying where it stops.
+# The air still drags on it, and can still burn it up.
+func _tick_dead(delta: float) -> void:
+	if death_cause == "BURNED UP":
+		return
+	if _feel_air(delta):
+		_burn_up()
+		return
+	_gravity_model.propagate(state, delta)
+	if state.is_on_surface():
+		_spin = move_toward(_spin, 0.0, 4.0 * delta)
+	else:
+		facing = wrapf(facing + _spin * delta, -PI, PI)
+
+
+# The air slows the pilot as it does a debris chunk, and heats them; too much and they burn up. Says
+# whether they did.
+func _feel_air(delta: float) -> bool:
+	if state.is_on_surface():
+		return false
+	var density: float = _gravity_model.get_air_density(state.x, state.y, state.time)
+	if density <= 0.0:
+		return false
+	var air: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+	var through := Vector2(state.velocity_x - air[0], state.velocity_y - air[1])
+	var speed: float = through.length()
+	if speed < 0.001:
+		return false
+	var slowing: float = 0.5 * density * speed * speed * data.drag_area / data.mass_kg
+	var change: float = minf(slowing * delta, speed)
+	state.velocity_x -= through.x / speed * change
+	state.velocity_y -= through.y / speed * change
+	return sqrt(density) * speed * speed * speed / data.heat_limit >= 1.0
+
+
+# Close enough to the star for the suit to cook, long before touching it.
+func _too_near_star() -> bool:
+	var star: float = _gravity_model.get_body_radius(0)
+	return Vector2(state.x, state.y).length() < star * 1.5
+
+
+# Dead from hitting something too hard: worse the harder it was.
+func _die_of_impact(speed: float) -> void:
+	var over: float = clampf((speed - data.fatal_landing_speed) / (data.fatal_landing_speed * 4.0), 0.0, 1.0)
+	_spin = randf_range(-3.0, 3.0) * clampf(speed / data.fatal_landing_speed, 1.0, 3.0)
+	# The ground stops a body dead, as it does a ship.
+	if state.is_on_surface() or mode == SURFACE:
+		var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+		state.velocity_x = ground[0]
+		state.velocity_y = ground[1]
+	_die("IMPACT", 0.3 + 0.7 * over, " %s" % Units.speed_text(speed))
+
+
+func _burn_up() -> void:
+	_die("BURNED UP", 1.0)
+
+
+# Knocked down by a hard landing: on their back for a moment. The suit takes a scrape too, once it
+# has air to lose.
+func _land_hard(_speed: float) -> void:
+	_show_pose(data.jump_side[5], 0.8)
+	message_raised.emit("HARD LANDING")
+
+
+func _die(cause: String, severity: float, detail: String = "") -> void:
+	if dead:
+		return
+	dead = true
+	death_cause = cause
+	_firing = Vector2.ZERO
+	_push_local = Vector2.ZERO
+	_set_action("")
+	_set_stranded(true)
+	if helmet_lamp:
+		helmet_lamp = false
+		_station.light_helmet(Vector2.ZERO, 0.0, false)
+	# Lying down, the body sits lower than standing, and settles there.
+	state.ground_clearance = 6.0
+	if cause == "BURNED UP":
+		visible = false
+	message_raised.emit("SIGNAL LOST · %s%s" % [cause, detail])
+	died.emit(cause, severity)
+
+
 ## How hard the jetpack pushes now, in world units per second squared: less with someone held.
 func jet_push() -> float:
 	return data.jet_acceleration * data.mass_kg / (data.mass_kg + carried_kg)
@@ -205,8 +298,8 @@ func _leave_ship() -> void:
 
 
 func _tick_eva(delta: float) -> void:
-	if _lost:
-		_gravity_model.propagate(state, delta)
+	if dead:
+		_tick_dead(delta)
 		return
 	# The ship hasn't moved yet this tick, so this is the moment the two can be compared.
 	_look_around_outside()
@@ -229,16 +322,18 @@ func _tick_eva(delta: float) -> void:
 		state.velocity_x += _firing.x * jet_push() * delta
 		state.velocity_y += _firing.y * jet_push() * delta
 		gas = maxf(gas - push.length() * delta, 0.0)
-	_gravity_model.propagate(state, delta)
-	if state.is_on_surface() and FeatureFlags.WALKING_ON_WORLDS and state.get_touchdown_speed() <= data.safe_landing_speed:
-		_land_on_ground()
+	if _feel_air(delta) or _too_near_star():
+		_die("BURNED UP", 1.0)
 		return
+	_gravity_model.propagate(state, delta)
 	if state.is_on_surface():
-		_lost = true
-		visible = false
-		message_raised.emit("PILOT LOST")
-		_set_stranded(true)
-		_set_action("")
+		var speed: float = state.get_touchdown_speed()
+		if speed > data.fatal_landing_speed or not FeatureFlags.WALKING_ON_WORLDS:
+			_die_of_impact(speed)
+			return
+		_land_on_ground()
+		if speed > data.safe_landing_speed:
+			_land_hard(speed)
 		return
 	_bump_station()
 
@@ -284,6 +379,8 @@ func _bump_station() -> void:
 	if into < 0.0:
 		state.velocity_x -= normal.x * into * 1.2
 		state.velocity_y -= normal.y * into * 1.2
+		if -into > data.fatal_landing_speed:
+			_die_of_impact(-into)
 
 
 func _look_around_outside() -> void:
@@ -505,6 +602,7 @@ func _tick_surface(delta: float) -> void:
 	if _grounded and feet - floor_there > data.step_height:
 		_grounded = false
 		_rising = 0.0
+	var landed_at: float = 0.0
 	if _grounded:
 		feet = floor_there
 	else:
@@ -513,10 +611,17 @@ func _tick_surface(delta: float) -> void:
 			feet = floor_there
 			_grounded = true
 			_jetting = false
+			landed_at = -_rising
 			_rising = 0.0
 			_show_pose(data.jump_side[5], 0.15)
 	state.time = later
 	_place_on_ground(center_later, angle_later, feet)
+	# A fall too far kills; a hard one knocks them down.
+	if landed_at > data.fatal_landing_speed:
+		_die_of_impact(landed_at)
+		return
+	if landed_at > data.safe_landing_speed:
+		_land_hard(landed_at)
 	_set_stranded(not _ship.can_be_boarded() or not _ship.state.is_on_surface() or _gravity_model.get_dominant_body(_ship.state.x, _ship.state.y, _ship.state.time) != _world)
 	if feet - floor_there > data.ground_reach:
 		_set_mode(EVA)
@@ -947,6 +1052,9 @@ func _show_figure(delta: float) -> void:
 	# A hand out to the side for someone being held, on EVA.
 	_figure.holding = 1 if carried_kg > 0.0 and mode == EVA else 0
 	_light_inside()
+	if dead:
+		_show_body(delta)
+		return
 	match mode:
 		SURFACE:
 			_figure.look = AstronautView.Look.SIDE
@@ -993,6 +1101,24 @@ func _show_figure(delta: float) -> void:
 			_figure.body_angle = wrapf(facing - _roll, -PI, PI)
 			_figure.speed_share = _walking.length() / data.walk_speed
 			_figure.motion = &"walk" if _walking.length() > 5.0 else &"idle"
+
+
+# Dead: limp, tumbling in space, or lying along the ground where the body came to rest.
+func _show_body(delta: float) -> void:
+	_figure.motion = &"limp"
+	_figure.push = Vector2.ZERO
+	_figure.turning = 0.0
+	_figure.holding = 0
+	_figure.feet_below = 0.0
+	if state.is_on_surface():
+		var world: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
+		var center: PackedFloat64Array = _gravity_model.get_body_position(world, state.time)
+		var up_heading: float = atan2(state.x - center[0], center[1] - state.y)
+		_figure.look = AstronautView.Look.SIDE
+		_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(up_heading + PI / 2.0 - _roll, -PI, PI), 6.0 * delta)
+	else:
+		_figure.look = AstronautView.Look.EVA
+		_figure.body_angle = wrapf(facing - _roll, -PI, PI)
 
 
 # Inside a station, the pilot's lit by the lamps where they stand, and the helmet lamp comes on where

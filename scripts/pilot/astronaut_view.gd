@@ -328,6 +328,17 @@ func _pose(delta: float) -> void:
 			arm_l = 0.3 + sin(_time * 0.6) * 0.25
 			arm_out = 0.55
 			elbow = 0.5
+		&"limp":
+			# Dead: everything slack, drifting a little with the tumble, and no breath.
+			hip_l = 0.35
+			hip_r = 0.15
+			knee_l = -0.6
+			knee_r = -0.35
+			arm_l = 0.5
+			arm_r = 0.2
+			arm_out = 0.8
+			elbow = 0.4
+			breathe = 0.0
 		&"float":
 			hip_l = 0.25 + sin(_time * 0.7) * 0.18
 			hip_r = 0.05 + sin(_time * 0.55 + 2.0) * 0.18
