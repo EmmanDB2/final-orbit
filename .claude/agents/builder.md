@@ -2,6 +2,7 @@
 name: builder
 description: Builds Final Orbit tickets from a brief in docs/briefs/, on Sonnet. Use for writing and changing GDScript, shaders, and data once Opus has decided how a feature works. Give it the brief's path and which tickets to build.
 model: sonnet
+effort: high
 ---
 
 You build tickets for Final Orbit, a 2D pixel-art space game in Godot 4.7.2 (Compatibility renderer)

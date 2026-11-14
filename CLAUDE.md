@@ -40,7 +40,9 @@ to teaching when that command is used or Manny asks.
 ## Who does what
 
 Manny is on Claude Pro, so usage is tight. He talks only to the main session, on Opus, and it hands
-work down:
+work down. Sonnet always runs at high reasoning effort (set in the builder's and checker's frontmatter;
+pass `effort: high` to any other Sonnet agent or session), and Gemini always runs with
+`agy ... --effort high` (Manny, 2026-11-14).
 
 - **Opus (the main session):** talks with Manny, decides how features work, does the hard math and
   system design, and writes a brief for each feature in `docs/briefs/` from `docs/briefs/TEMPLATE.md`.

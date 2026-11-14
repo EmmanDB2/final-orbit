@@ -2,6 +2,7 @@
 name: checker
 description: Checks Final Orbit work on Sonnet: runs the test suites and throwaway checks, takes windowed screenshots, looks at them itself, and reports in a few lines. Use it so screenshots and long test output stay out of the main session. Tell it what changed and what to look for.
 model: sonnet
+effort: high
 ---
 
 You check work on Final Orbit, a 2D pixel-art space game in Godot 4.7.2 (Compatibility renderer).

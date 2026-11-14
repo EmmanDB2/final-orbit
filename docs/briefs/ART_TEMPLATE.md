@@ -13,10 +13,10 @@ Everything Gemini reads or makes outside the editor lives in the **drop folder**
 editor's `AGENTS.md` bars reading game files. Opus copies this brief there.
 
 1. **Template and concept**, run from the drop folder, with the template's numbers in the prompt:
-   `cd "<drop>/<asset>" && agy -p "<prompt>; save them here as <asset>_template.png and <asset>_concept.png" --sandbox`.
+   `cd "<drop>/<asset>" && agy -p "<prompt>; save them here as <asset>_template.png and <asset>_concept.png" --sandbox --effort high`.
    Show Manny the concept; nothing goes on until he OKs it.
 2. **Exterior in the editor**, run from the editor's folder with the drop folder added:
-   `cd "/Users/emmanuelwalters/Projects/Final Orbit Asset Editor" && agy -p "<prompt>" --sandbox --add-dir "<drop>"`,
+   `cd "/Users/emmanuelwalters/Projects/Final Orbit Asset Editor" && agy -p "<prompt>" --sandbox --effort high --add-dir "<drop>"`,
    pointing at this brief and the concept by absolute path. It stops after the flat exterior preview.
    Show Manny; he OKs it or asks for changes.
 
@@ -28,7 +28,7 @@ editor's `AGENTS.md` bars reading game files. Opus copies this brief there.
    else is passed for one run only, such as a commit in the editor once Manny allows it:
    `--settings '{"permissions":{"allow":["command(git add *)","command(git commit *)"]}}'`. A denied
    tool ends the run with "a tool required the "<name>" permission": add exactly that rule and run
-   again, or continue the same conversation with `agy -c -p "..."` so it keeps its work.
+   again, or continue the same conversation with `agy -c -p "..." --effort high` so it keeps its work. Always run Gemini at `--effort high` (Manny, 2026-11-14).
 
    **Put these rules in every `agy` prompt** (learned on the cargo pod test, 2026-11-14):
    - Never use RunWorkflow or any built-in Python tool (refused headless); write `.py` files and run
