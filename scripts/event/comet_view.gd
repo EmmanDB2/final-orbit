@@ -1,13 +1,15 @@
-# comet_view.gd: a passing comet: a lumpy, cratered nucleus lit from the star, tumbling slowly, in a
-# faint coma round it as wide as the scan reaches, and a tail streaming straight away from the star,
-# with a narrower bright one down its middle. The nucleus is drawn by a shader in banded, dithered
-# tones; its outline, craters, spin, and jets all come from the comet's name, so the same comet always
-# looks the same. Its colors are its own data, being nature's, not the agency's. From DESIGN.md,
-# "Mid-flight events" (passing comets).
+# comet_view.gd: a passing comet, all in code and shaders, being nature's: a lumpy, cratered nucleus
+# lit from the star, tumbling slowly, with gas jets; a coma as wide as the scan reaches; a straight
+# ion tail away from the star; and a dust tail that follows the comet's own path back from the
+# nucleus, measured against the planet it's passing, and bends away from the star, so it sweeps round
+# as the comet swings past. The nucleus's outline, craters, spin, and jets all come from the comet's
+# name, so the same comet always looks the same. Everything's drawn in banded, dithered game pixels
+# by two shaders. From DESIGN.md, "Mid-flight events" (passing comets).
 class_name CometView
 extends Node2D
 
 const NUCLEUS_SHADER: Shader = preload("res://shaders/comet_nucleus.gdshader")
+const GLOW_SHADER: Shader = preload("res://shaders/comet_glow.gdshader")
 ## How many bulges the nucleus's outline has, and the most craters on it.
 const BULGES: int = 18
 const MOST_CRATERS: int = 10
@@ -18,6 +20,17 @@ const SPIN_SECONDS_MOST: float = 360.0
 const SQUARE_RADII: float = 2.4
 ## Under this many pixels across, the nucleus is a small dot instead.
 const DOT_BELOW: float = 1.5
+## The dust path: how many steps back along it, how often it's worked out again in seconds of game
+## time, and the furthest back it goes, in seconds.
+const DUST_SEGMENTS: int = 24
+const DUST_REBUILD_SECONDS: float = 2.0
+const DUST_MOST_SECONDS: float = 900.0
+## How wide the glow's game pixels are, in screen pixels.
+const GLOW_BLOCK: float = 4.0
+## A jet's spot starts spraying once it faces the star this much (the dot of its direction with the
+## star's), and sprays fully at the second number.
+const JET_FACING_FROM: float = 0.1
+const JET_FACING_TO: float = 0.5
 
 # What the comet's name decides: its outline, craters, spin, and where its jets sit.
 var seed_value: float = 0.0
@@ -32,7 +45,24 @@ var _event: FlightEvent
 var _gravity_model: GravityModel
 var _pixels_per_unit: float = 1.0
 var _roll: float = 0.0
+var _glow: GlowLayer
 var _nucleus: NucleusLayer
+# The dust tail's path: where the comet was, against the middle of the world it's passing, going
+# back from the nucleus, as world units, and when that was worked out on the flight's clock.
+var _dust_offsets := PackedVector2Array()
+var _dust_built_at: float = -1.0e30
+# The same path as it's drawn now, in screen pixels from the nucleus, and how far from the nucleus its
+# furthest point is, in world units.
+var _dust_points := PackedVector2Array()
+var _dust_extent: float = 0.0
+
+
+## What's drawn for the coma, the tails, and the jets: one rectangle for their shader.
+class GlowLayer extends Node2D:
+	var rect := Rect2()
+
+	func _draw() -> void:
+		draw_rect(rect, Color.WHITE)
 
 
 ## What's drawn for the nucleus: its shader's square, or a dot when it's too small to show.
@@ -52,6 +82,17 @@ func setup(event: FlightEvent, gravity_model: GravityModel = null) -> void:
 	_event = event
 	_gravity_model = gravity_model
 	_work_out_look()
+	# The glow first, and the nucleus over it.
+	_glow = GlowLayer.new()
+	var glow_material := ShaderMaterial.new()
+	glow_material.shader = GLOW_SHADER
+	glow_material.set_shader_parameter("seed", seed_value)
+	glow_material.set_shader_parameter("glow_color", event.type.glow_color)
+	glow_material.set_shader_parameter("ion_color", event.type.ion_color)
+	glow_material.set_shader_parameter("dust_color", event.type.dust_tail_color)
+	glow_material.set_shader_parameter("block", GLOW_BLOCK)
+	_glow.material = glow_material
+	add_child(_glow)
 	_nucleus = NucleusLayer.new()
 	var material := ShaderMaterial.new()
 	material.shader = NUCLEUS_SHADER
@@ -96,18 +137,20 @@ func place(center_x: float, center_y: float, pixels_per_unit: float, roll: float
 	_pixels_per_unit = pixels_per_unit
 	_roll = roll
 	position = Vector2((_event.state.x - center_x) * pixels_per_unit, (_event.state.y - center_y) * pixels_per_unit)
-	# Only while some of it could be on screen: the tail reaches far.
-	var reach: float = (_event.type.tail_length + _event.type.scan_reach) * pixels_per_unit
+	# Only while some of it could be on screen: the tails reach far, and so does the dust path.
+	var type: EventType = _event.type
+	var reach: float = (maxf(type.tail_length, _dust_extent) + type.scan_reach) * pixels_per_unit
 	visible = position.length() <= reach + 2000.0
 	if visible:
+		if absf(_event.state.time - _dust_built_at) >= DUST_REBUILD_SECONDS:
+			_rebuild_dust()
+		_place_glow()
 		_place_nucleus()
-	queue_redraw()
 
 
 # The nucleus's square, with what its shader needs to light it this moment.
 func _place_nucleus() -> void:
 	var type: EventType = _event.type
-	var state: ShipState = _event.state
 	var radius: float = type.nucleus_radius * _pixels_per_unit
 	_nucleus.dot = radius < DOT_BELOW
 	_nucleus.dot_color = type.glow_color
@@ -115,48 +158,170 @@ func _place_nucleus() -> void:
 	_nucleus.queue_redraw()
 	if _nucleus.dot:
 		return
-	var toward_star: Vector2 = -Vector2(state.x, state.y).normalized()
-	var sun: float = 1.0
-	if _gravity_model != null:
-		sun = Sunlight.at(_gravity_model, state.x, state.y, state.time)
 	var material: ShaderMaterial = _nucleus.material as ShaderMaterial
-	material.set_shader_parameter("spin", spin_at(state.time))
-	material.set_shader_parameter("light_dir", toward_star)
-	material.set_shader_parameter("sun", sun)
+	material.set_shader_parameter("spin", spin_at(_event.state.time))
+	material.set_shader_parameter("light_dir", toward_star())
+	material.set_shader_parameter("sun", sun_level())
 	material.set_shader_parameter("radius_px", radius)
 	material.set_shader_parameter("block", clampf(floorf(radius / 20.0), 1.0, 6.0))
 	material.set_shader_parameter("roll", _roll)
 
 
-func _draw() -> void:
+## The way the star is from the comet, as a unit vector. The star sits at the world's middle.
+func toward_star() -> Vector2:
+	var toward: Vector2 = -Vector2(_event.state.x, _event.state.y).normalized()
+	return toward if toward != Vector2.ZERO else Vector2.LEFT
+
+
+## How much of the star can be seen from the comet, from 0 to 1.
+func sun_level() -> float:
+	if _gravity_model == null:
+		return 1.0
+	return Sunlight.at(_gravity_model, _event.state.x, _event.state.y, _event.state.time)
+
+
+## The dust tail's path as it's drawn now, in screen pixels from the nucleus.
+func dust_points() -> PackedVector2Array:
+	return _dust_points
+
+
+# The glow's rectangle and what its shader needs: the coma, both tails, and the jets.
+func _place_glow() -> void:
 	var type: EventType = _event.type
 	var scale_by: float = _pixels_per_unit
-	# Away from the star, which sits at the world's middle.
-	var away := Vector2(_event.state.x, _event.state.y).normalized()
-	if away == Vector2.ZERO:
-		away = Vector2.RIGHT
+	var state: ShipState = _event.state
+	var away: Vector2 = -toward_star()
 	var across := Vector2(-away.y, away.x)
-	# The coma, in soft rings out to the scan's reach.
-	var glow: Color = type.glow_color
-	for ring in range(4):
-		var share: float = 1.0 - ring * 0.24
-		glow.a = 0.018 + ring * 0.008
-		draw_circle(Vector2.ZERO, maxf(type.scan_reach * share * scale_by, 2.0), glow)
-	# The dust tail, wide and fading, and the bright one down its middle, both starting under the
-	# nucleus.
-	var head: float = type.nucleus_radius * 1.1 * scale_by
-	var length: float = type.tail_length * scale_by
-	var dust: Color = type.glow_color
-	dust.a = 0.2
-	var faded: Color = dust
-	faded.a = 0.0
-	draw_polygon(
-			PackedVector2Array([across * head, away * length + across * length * 0.12, away * length - across * length * 0.12, -across * head]),
-			PackedColorArray([dust, faded, faded, dust]))
-	var bright: Color = type.glow_color
-	bright.a = 0.38
-	var bright_faded: Color = bright
-	bright_faded.a = 0.0
-	draw_polygon(
-			PackedVector2Array([across * head * 0.4, away * length * 0.7, -across * head * 0.4]),
-			PackedColorArray([bright, bright_faded, bright]))
+	var sun: float = sun_level()
+	var nucleus_px: float = type.nucleus_radius * scale_by
+	var reach_px: float = type.scan_reach * scale_by
+	var ion_length_px: float = type.tail_length * scale_by
+	var ion_end_px: float = type.tail_width / 3.0 * ion_length_px
+	var dust_length_px: float = type.dust_length * scale_by
+	var dust_end_px: float = type.tail_width * dust_length_px
+	_draw_dust_path(away)
+	# The jets: each spot turns with the nucleus, and only sprays while it faces the star.
+	var spin: float = spin_at(state.time)
+	var toward: Vector2 = -away
+	var sprays := PackedVector4Array()
+	for angle: float in jet_angles:
+		var pointing: Vector2 = Vector2.from_angle(angle + spin)
+		var facing: float = smoothstep(JET_FACING_FROM, JET_FACING_TO, pointing.dot(toward))
+		sprays.append(Vector4(pointing.x, pointing.y, outline_at(angle) * nucleus_px * 0.9, facing))
+	while sprays.size() < 3:
+		sprays.append(Vector4.ZERO)
+	# What the glow covers: the coma, the ion tail, the dust path, and the jets (inside the coma).
+	var covered := Rect2(Vector2.ZERO, Vector2.ZERO).grow(reach_px)
+	covered = covered.expand(away * ion_length_px + across * ion_end_px).expand(away * ion_length_px - across * ion_end_px)
+	covered = covered.expand(-across * maxf(nucleus_px, GLOW_BLOCK)).expand(across * maxf(nucleus_px, GLOW_BLOCK))
+	var dust_box := Rect2(Vector2.ZERO, Vector2.ZERO)
+	for point: Vector2 in _dust_points:
+		dust_box = dust_box.expand(point)
+	covered = covered.merge(dust_box.grow(dust_end_px)).grow(GLOW_BLOCK * 2.0)
+	# Only what's on screen is drawn, with room for the view's roll: the middle of the screen is at
+	# minus the comet's position.
+	var half_screen: float = get_viewport_rect().size.length() / 2.0 + GLOW_BLOCK * 2.0
+	var on_screen := Rect2(-position - Vector2(half_screen, half_screen), Vector2(half_screen, half_screen) * 2.0)
+	var shown: Rect2 = covered.intersection(on_screen)
+	_glow.visible = shown.has_area()
+	if not _glow.visible:
+		return
+	_glow.rect = shown
+	_glow.queue_redraw()
+	var material: ShaderMaterial = _glow.material as ShaderMaterial
+	material.set_shader_parameter("view_origin", position)
+	material.set_shader_parameter("roll", _roll)
+	material.set_shader_parameter("sun", sun)
+	material.set_shader_parameter("away", away)
+	material.set_shader_parameter("reach_px", reach_px)
+	material.set_shader_parameter("nucleus_px", nucleus_px)
+	material.set_shader_parameter("ion_length_px", ion_length_px)
+	material.set_shader_parameter("ion_end_px", ion_end_px)
+	material.set_shader_parameter("dust_length_px", dust_length_px)
+	material.set_shader_parameter("dust_end_px", dust_end_px)
+	material.set_shader_parameter("dust_points", _dust_points)
+	material.set_shader_parameter("jets", sprays)
+	material.set_shader_parameter("jet_count", jet_angles.size())
+
+
+## The nucleus's outline toward an angle in its own frame, in nominal radii, blended smoothly between
+## the bulges on either side, as its shader does.
+func outline_at(angle: float) -> float:
+	var turns: float = fposmod(angle / TAU, 1.0) * BULGES
+	var first: int = int(floorf(turns)) % BULGES
+	var second: int = (first + 1) % BULGES
+	var along: float = turns - floorf(turns)
+	along = along * along * (3.0 - 2.0 * along)
+	return lerpf(bulges[first], bulges[second], along)
+
+
+# Works the dust path out again: step back from now along the comet's own path, keeping where it was
+# against the middle of the world it's passing. The steps are sized by how fast it's going against
+# that world, so the points add up to the dust tail's length along the path.
+func _rebuild_dust() -> void:
+	var state: ShipState = _event.state
+	_dust_built_at = state.time
+	_dust_offsets = PackedVector2Array()
+	var world: int = _event.place.get("world", 0)
+	if _gravity_model == null:
+		return
+	var spacing: float = _event.type.dust_length / DUST_SEGMENTS
+	var past := ShipState.new()
+	past.x = state.x
+	past.y = state.y
+	past.velocity_x = state.velocity_x
+	past.velocity_y = state.velocity_y
+	past.time = state.time
+	past.ground_clearance = _event.type.nucleus_radius
+	var age: float = 0.0
+	_dust_offsets.append(_against_world(past, world))
+	for step in range(DUST_SEGMENTS):
+		var moving: PackedFloat64Array = _gravity_model.get_body_velocity(world, past.time)
+		var speed: float = Vector2(past.velocity_x - moving[0], past.velocity_y - moving[1]).length()
+		var back: float = minf(spacing / maxf(speed, 1.0), DUST_MOST_SECONDS - age)
+		if back <= 0.0:
+			break
+		_gravity_model.propagate(past, -back)
+		age += back
+		if past.is_on_surface():
+			break
+		_dust_offsets.append(_against_world(past, world))
+	# A path that ran out early ends where it stopped.
+	while _dust_offsets.size() < DUST_SEGMENTS + 1:
+		_dust_offsets.append(_dust_offsets[_dust_offsets.size() - 1])
+
+
+# Where a state is against the middle of the world, at its own time.
+func _against_world(past: ShipState, world: int) -> Vector2:
+	var middle: PackedFloat64Array = _gravity_model.get_body_position(world, past.time)
+	return Vector2(past.x - middle[0], past.y - middle[1])
+
+
+# The dust path as it's drawn now, in screen pixels from the nucleus: each kept point is the world's
+# middle now plus where the comet was against it, and the further along, the more it's pushed away from
+# the star, so the tail bends away from it.
+func _draw_dust_path(away: Vector2) -> void:
+	_dust_points.resize(DUST_SEGMENTS + 1)
+	_dust_extent = 0.0
+	if _dust_offsets.size() < DUST_SEGMENTS + 1 or _gravity_model == null:
+		for i in range(DUST_SEGMENTS + 1):
+			_dust_points[i] = Vector2.ZERO
+		return
+	var state: ShipState = _event.state
+	var world: int = _event.place.get("world", 0)
+	var middle: PackedFloat64Array = _gravity_model.get_body_position(world, state.time)
+	var comet := Vector2(state.x, state.y)
+	var type: EventType = _event.type
+	var units := PackedVector2Array()
+	units.resize(DUST_SEGMENTS + 1)
+	# The nucleus is the first point, wherever the path was worked out.
+	units[0] = Vector2.ZERO
+	for i in range(1, DUST_SEGMENTS + 1):
+		units[i] = Vector2(middle[0], middle[1]) + _dust_offsets[i] - comet
+	var along: float = 0.0
+	for i in range(DUST_SEGMENTS + 1):
+		if i > 0:
+			along += units[i].distance_to(units[i - 1])
+		var lifted: Vector2 = units[i] + away * type.dust_lift * type.dust_length * pow(along / type.dust_length, 2.0)
+		_dust_extent = maxf(_dust_extent, lifted.length())
+		_dust_points[i] = lifted * _pixels_per_unit

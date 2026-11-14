@@ -988,3 +988,12 @@ Files: `shaders/comet_nucleus.gdshader`, `scripts/event/comet_view.gd`, `scripts
 - shading a flat disc as a lumpy sphere: height from the radius, a normal, a dot with the light
 - 4 x 4 Bayer dither between banded tones, on a game-pixel grid kept square to the screen under view roll
 - seeding from a name hash so the same comet always looks the same
+
+## 2026-11-14: Comet look ticket 2, the coma and both tails
+
+Files: `shaders/comet_glow.gdshader`, `scripts/event/comet_view.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- rewinding a copy of a state with a negative `propagate` to get a path behind a moving body
+- distance to a polyline in a shader (nearest point on each segment, and how far along it is)
+- a vec2 array uniform carrying a path to a fragment shader, and clipping a huge quad to the screen
+- 1D value noise for streamers, and cutting a strength into 5 alpha bands with a Bayer dither
