@@ -48,6 +48,9 @@ var _design: StationDesign
 var _index: int = 0
 var _sprite := Sprite2D.new()
 var _inside_sprite := Sprite2D.new()
+# The insides' light map, worked out on a worker thread, and that work while it's under way.
+var _light_task: int = -1
+var _baked_light: Image
 var _roof_off: bool = false
 var _roof_gone: float = 0.0
 var _show_dot: bool = false
@@ -110,7 +113,37 @@ func _light_inside() -> void:
 	material.set_shader_parameter("lamps", lamps)
 	material.set_shader_parameter("lamp_count", count)
 	material.set_shader_parameter("ambient", _design.ambient_light)
+	material.set_shader_parameter("floor_mask", ImageTexture.create_from_image(StationLight.floor_mask(layout.picture_size(), layout.floors())))
 	_inside_sprite.material = material
+	# Walls stopping the lamps' light takes a while to work out, so it's done off to the side. Until
+	# it's ready, the lamps light straight through.
+	_wait_for_light()
+	var size: Vector2i = layout.picture_size()
+	var rooms: Array = layout.room_areas
+	var lit: Array = layout.lamps if _design.powered else []
+	var ambient: float = _design.ambient_light
+	var brightness: float = _design.lamp_brightness
+	_light_task = WorkerThreadPool.add_task(func() -> void: _baked_light = StationLight.bake(size, rooms, lit, ambient, brightness))
+
+
+# Once the light map's ready, the insides use it.
+func _pick_up_light() -> void:
+	if _light_task < 0 or not WorkerThreadPool.is_task_completed(_light_task):
+		return
+	_wait_for_light()
+	if _baked_light != null and _inside_sprite.material != null:
+		_inside_sprite.material.set_shader_parameter("light_map", ImageTexture.create_from_image(_baked_light))
+		_inside_sprite.material.set_shader_parameter("baked", true)
+
+
+func _wait_for_light() -> void:
+	if _light_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_light_task)
+		_light_task = -1
+
+
+func _exit_tree() -> void:
+	_wait_for_light()
 
 
 ## How many game pixels wide one pixel of the station's art is drawn.
@@ -130,6 +163,7 @@ func set_roof_off(off: bool) -> void:
 
 
 func _process(delta: float) -> void:
+	_pick_up_light()
 	var wanted: float = 1.0 if _roof_off else 0.0
 	if _roof_gone == wanted:
 		return

@@ -863,3 +863,11 @@ Files: `shaders/palette_light.gdshaderinc`, `shaders/interior_light.gdshader`, `
 - palette ramps: shading by stepping colors down a lookup instead of multiplying toward black
 - ordered (Bayer) dithering
 - uniform arrays filled from GDScript
+
+## 2026-11-14: Lighting, ticket 2: lamps stay in their rooms
+
+Files: `scripts/station/station_light.gd`, `scripts/station/station_layout.gd`, `scripts/station/station_view.gd`, `shaders/interior_light.gdshader`, `docs/DESIGN.md`
+
+- baking: working out something expensive once into a texture
+- WorkerThreadPool: running slow work on another thread and picking up the result
+- blending light like a screen blend (1 - (1-a)(1-b)) so it never passes full

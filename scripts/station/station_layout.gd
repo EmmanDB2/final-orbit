@@ -14,8 +14,11 @@ var spots: Array[Dictionary] = []
 var origin: Vector2i = Vector2i.ZERO
 ## The ports with nothing on them, each with its outer "point" on the picture and its "face".
 var free_ports: Array[Dictionary] = []
-## The ceiling lamps, each with its "point" on the picture and its "reach" in picture pixels.
+## The ceiling lamps, each with its "point" on the picture, its "reach" in picture pixels, and the
+## "room" it hangs in.
 var lamps: Array[Dictionary] = []
+## Each room's insides as placed on the picture: its turned "image" and where its corner is, "at".
+var room_areas: Array[Dictionary] = []
 
 ## Floors smaller than this many pixels, such as doorways, get no lamp of their own.
 const SMALLEST_LIT_FLOOR: int = 300
@@ -45,6 +48,16 @@ func normal_at(point: Vector2, reach: int = 8) -> Vector2:
 			if dx * dx + dy * dy <= reach * reach and not is_solid(point + Vector2(dx, dy)):
 				total += Vector2(dx, dy)
 	return total.normalized()
+
+
+## The picture's size in pixels.
+func picture_size() -> Vector2i:
+	return _size
+
+
+## Which of the picture's pixels someone can stand on, row by row: 1 on a floor, 0 elsewhere.
+func floors() -> PackedByteArray:
+	return _walkable
 
 
 ## True if someone can stand at this point on the picture.
@@ -136,6 +149,7 @@ static func build(design: StationDesign) -> StationLayout:
 				inside.rotate_90(COUNTERCLOCKWISE)
 		layout.interior_image.blend_rect(inside, Rect2i(Vector2i.ZERO, entry["turned_size"]), entry["at"] - low)
 		var offset: Vector2i = entry["at"] - low
+		layout.room_areas.append({"image": inside, "at": offset})
 		for rect: Rect2i in room.walkable:
 			for y in range(rect.position.y, rect.end.y):
 				for x in range(rect.position.x, rect.end.x):
@@ -145,6 +159,7 @@ static func build(design: StationDesign) -> StationLayout:
 			layout.lamps.append({
 				"point": Vector2(offset + _turned_point(lamp["point"], entry["size"], entry["turns"])) + Vector2(0.5, 0.5),
 				"reach": lamp["reach"],
+				"room": i,
 			})
 		for s in range(room.spot_points.size()):
 			layout.spots.append({
