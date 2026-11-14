@@ -887,3 +887,11 @@ Files: `scripts/station/station_light.gd`, `scripts/station/station_view.gd`, `s
 - packing separate data into a texture's color channels
 - animating a shader through uniforms (a pulse and a random sputter) instead of redrawing
 - a debug switch behind a feature flag
+
+## 2026-11-14: Lighting outside, ticket 1: ships lit by the star
+
+Files: `shaders/hull_light.gdshader`, `scripts/ship/hull_light.gd`, `scripts/ship.gd`, `docs/DESIGN.md`
+
+- faking a 3D normal from a 2D sprite (a cylinder per run of pixels)
+- Lambert (dot product) lighting, with wrap so shading rolls round
+- turning a world direction into a sprite's own space by its global rotation

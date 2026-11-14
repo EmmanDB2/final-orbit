@@ -172,6 +172,8 @@ var rcs_fuel: float = 0.0
 var cargo_kg: float = 0.0
 ## Someone rescued, riding in the cockpit, in kilograms.
 var passenger_kg: float = 0.0
+## How much of the star the ship can see, from 0 in a world's shadow to 1, for lighting its hull.
+var sunlight: float = 1.0
 ## Zen Mode: burning and turning use no fuel or RCS propellant. Holed tanks still lose what's in them.
 var endless_fuel: bool = false
 ## Main engine acceleration right now, in world units per second squared.
@@ -313,10 +315,13 @@ func _build() -> void:
 	body.set_parts_out(_legs_out)
 	_wave = DamageWave.new(body)
 	_sprite.texture = _wave.textures[0]
+	# Lit by the star, shaded from its own outline as it's built.
+	_sprite.material = HullLight.material_for(body.layer_image(0))
 	_glow.setup(_wave.textures)
 	for i in range(1, body.layer_count()):
 		var part := Sprite2D.new()
 		part.texture = _wave.textures[i]
+		part.material = HullLight.material_for(body.layer_image(i))
 		add_child(part)
 		move_child(part, _sprite.get_index())
 		_part_sprites.append(part)
@@ -628,6 +633,7 @@ func set_event_moving(moving: Callable, what: String = "") -> void:
 
 # Runs once per rendered frame. Cosmetic only, so it doesn't touch the flight.
 func _process(delta: float) -> void:
+	_light_hull()
 	_flame.set_burn(_engine_reported if _show_sprite else 0.0, minf(_air_density, 1.0), 1.0 - _engine_share, _flame_room)
 	# Small corrections while holding steady don't show, so the nozzles don't flicker.
 	var turning_clockwise: bool = _spin_firing > 0.2
@@ -643,6 +649,14 @@ func _process(delta: float) -> void:
 			_translate_forward < 0.0,
 			_sprite_scale)
 	_icon.frame = 1 if _thrusting else 0
+
+
+# The hull's lit from the star, which sits at the world's middle.
+func _light_hull() -> void:
+	var toward: Vector2 = -Vector2(state.x, state.y).normalized()
+	HullLight.aim(_sprite, toward, sunlight)
+	for part: Sprite2D in _part_sprites:
+		HullLight.aim(part, toward, sunlight)
 
 
 func _switch_engine(on: bool) -> void:
