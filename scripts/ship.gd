@@ -170,6 +170,8 @@ var fuel: float = 0.0
 var rcs_fuel: float = 0.0
 ## Cargo aboard, in kilograms, for a gig. It's mass like anything else.
 var cargo_kg: float = 0.0
+## Someone rescued, riding in the cockpit, in kilograms.
+var passenger_kg: float = 0.0
 ## Zen Mode: burning and turning use no fuel or RCS propellant. Holed tanks still lose what's in them.
 var endless_fuel: bool = false
 ## Main engine acceleration right now, in world units per second squared.
@@ -207,6 +209,8 @@ var pilot_aboard: bool = true
 var _dock_holder: Callable
 # Says how a nearby station is moving at a point and time, if there's one close.
 var _nearby_moving: Callable
+var _event_moving: Callable
+var _event_what: String = ""
 var _flame_at: Vector2 = Vector2.ZERO
 var _flame_room: float = 100000.0
 var _air_density: float = 0.0
@@ -615,6 +619,13 @@ func set_nearby_moving(moving_at: Callable) -> void:
 	_nearby_moving = moving_at
 
 
+## The same for something else close by that isn't a station, such as an astronaut adrift: a way to
+## ask how it's moving, as [x, y] velocity, and what to call it, or an empty one for nothing.
+func set_event_moving(moving: Callable, what: String = "") -> void:
+	_event_moving = moving
+	_event_what = what
+
+
 # Runs once per rendered frame. Cosmetic only, so it doesn't touch the flight.
 func _process(delta: float) -> void:
 	_flame.set_burn(_engine_reported if _show_sprite else 0.0, minf(_air_density, 1.0), 1.0 - _engine_share, _flame_room)
@@ -746,7 +757,7 @@ func _push_through_air(delta: float) -> bool:
 	var along_nose: float = absf(through_x * sin(heading) - through_y * cos(heading)) / speed
 	var across_nose: float = sqrt(maxf(1.0 - along_nose * along_nose, 0.0))
 	var catching: float = body.width * along_nose + body.length * across_nose
-	var mass_now: float = body.mass + fuel + rcs_fuel + cargo_kg
+	var mass_now: float = body.mass + fuel + rcs_fuel + cargo_kg + passenger_kg
 	var slowing: float = 0.5 * density * speed * speed * design.drag_coefficient * catching / mass_now
 	var change: float = minf(slowing * delta, speed)
 	state.velocity_x -= through_x / speed * change
@@ -1541,7 +1552,7 @@ func _check_stranded() -> void:
 func _update_performance() -> void:
 	var now: Dictionary = body.with_fuel(fuel)
 	# The RCS tank is small and near the middle, so it adds mass but barely any spin resistance.
-	_mass_now = now["mass"] + rcs_fuel + cargo_kg
+	_mass_now = now["mass"] + rcs_fuel + cargo_kg + passenger_kg
 	_spin_resistance_now = now["spin_resistance"]
 	thrust_acceleration = design.engine_force * _engine_share / _mass_now
 	turn_acceleration = design.rcs_torque / now["spin_resistance"]
@@ -1559,7 +1570,7 @@ func delta_v() -> float:
 
 ## The same with this much more cargo aboard, in kilograms, for checking a gig before taking it.
 func delta_v_with(extra_kg: float) -> float:
-	var dry: float = body.mass + rcs_fuel + cargo_kg + extra_kg
+	var dry: float = body.mass + rcs_fuel + cargo_kg + passenger_kg + extra_kg
 	return design.exhaust_velocity * log((dry + fuel) / dry)
 
 
@@ -1571,6 +1582,14 @@ func cargo_room() -> float:
 ## Takes cargo aboard, in kilograms.
 func load_cargo(kg: float) -> void:
 	cargo_kg += kg
+	_update_performance()
+	orbit_changed.emit()
+
+
+## Takes someone aboard, or off with a negative mass, in kilograms. They ride in the cockpit and weigh
+## like cargo, but aren't cargo: unloading a gig's cargo leaves them be.
+func carry_passenger(kg: float) -> void:
+	passenger_kg = maxf(passenger_kg + kg, 0.0)
 	_update_performance()
 	orbit_changed.emit()
 
@@ -1689,15 +1708,23 @@ func _local_up_heading() -> float:
 func _report_telemetry() -> void:
 	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
 	var against: Vector2 = Vector2(ground[0], ground[1])
+	var close_to: String = ""
 	if _nearby_moving.is_valid():
 		against = _nearby_moving.call(state.x, state.y, state.time)
+		close_to = "STATION"
+	elif _event_moving.is_valid():
+		var moving: PackedFloat64Array = _event_moving.call()
+		against = Vector2(moving[0], moving[1])
+		close_to = _event_what
 	var relative_x: float = state.velocity_x - against.x
 	var relative_y: float = state.velocity_y - against.y
 	var apsides: PackedFloat64Array = _gravity_model.get_orbit_apsides(state)
 	flight_data_changed.emit({
 		"altitude": _gravity_model.get_altitude(state.x, state.y, state.time) - _rest_height,
 		"speed": sqrt(relative_x * relative_x + relative_y * relative_y),
-		"against_station": _nearby_moving.is_valid(),
+		"against_station": close_to != "",
+		# What speeds are read against, when it isn't the ground: STATION, or an event such as SURVIVOR.
+		"close_to": close_to,
 		"docked": docked,
 		"landed": state.is_on_surface(),
 		"periapsis": apsides[0],

@@ -48,6 +48,24 @@ func _draw() -> void:
 		match event.type.kind:
 			"signal":
 				_draw_signal(event, spot, targeted, palette)
+			"distress":
+				_draw_distress(event, spot, palette)
+
+
+# A red beacon that blinks once a second, while they're adrift. Held or aboard, the pilot has them.
+func _draw_distress(event: FlightEvent, spot: Vector2, palette: AgencyPalette) -> void:
+	if event.rescue != "adrift":
+		return
+	# Up close they're drawn themselves, so the beacon sits off to the side.
+	var close: bool = _view._zoom >= SurvivorView.SHOW_ZOOM
+	var at: Vector2 = spot + (Vector2(0.0, -26.0) if close else Vector2.ZERO)
+	if fmod(_time, 1.0) < 0.5:
+		var red: Color = palette.agency_red
+		draw_rect(Rect2(at.x - 2.0, at.y - 5.0, 5.0, 11.0), palette.hull_darkest)
+		draw_rect(Rect2(at.x - 5.0, at.y - 2.0, 11.0, 5.0), palette.hull_darkest)
+		draw_rect(Rect2(at.x - 1.0, at.y - 4.0, 3.0, 9.0), red)
+		draw_rect(Rect2(at.x - 4.0, at.y - 1.0, 9.0, 3.0), red)
+	_draw_label("DISTRESS", at, palette.agency_red, palette)
 
 
 func _draw_signal(event: FlightEvent, spot: Vector2, targeted: bool, palette: AgencyPalette) -> void:

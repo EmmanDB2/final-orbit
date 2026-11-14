@@ -61,6 +61,8 @@ var feet_below: float = 0.0
 ## toward their feet. Zero when it isn't. And which way it's turning them, clockwise positive.
 var push := Vector2.ZERO
 var turning: float = 0.0
+## Holding someone's hand: 1 reaches the right arm out to the side, -1 the left, 0 neither.
+var holding: int = 0
 ## The view's turn, so the canvas can stay square with the screen.
 var screen_roll: float = 0.0
 
@@ -300,6 +302,15 @@ func _pose(delta: float) -> void:
 			hip_r = 0.7 + 0.45 * reach
 			knee_l = -(1.0 - 0.4 * reach)
 			knee_r = -(1.0 + 0.4 * reach)
+		&"wave":
+			# Adrift and calling for help: drifting like float, with the right arm up and waving.
+			hip_l = 0.25 + sin(_time * 0.7) * 0.18
+			hip_r = 0.05 + sin(_time * 0.55 + 2.0) * 0.18
+			knee_l = -0.5 + sin(_time * 0.9 + 1.0) * 0.2
+			knee_r = -0.4 + sin(_time * 0.8 + 0.4) * 0.2
+			arm_l = 0.3 + sin(_time * 0.6) * 0.25
+			arm_out = 0.55
+			elbow = 0.5
 		&"float":
 			hip_l = 0.25 + sin(_time * 0.7) * 0.18
 			hip_r = 0.05 + sin(_time * 0.55 + 2.0) * 0.18
@@ -316,10 +327,27 @@ func _pose(delta: float) -> void:
 	# The boots stay about level with the ground.
 	_turn_joint(&"ankle_l", Vector3(-(hip_l + knee_l) * 0.8, 0.0, 0.0))
 	_turn_joint(&"ankle_r", Vector3(-(hip_r + knee_r) * 0.8, 0.0, 0.0))
-	_turn_joint(&"shoulder_l", Vector3(arm_l, 0.0, -arm_out))
-	_turn_joint(&"shoulder_r", Vector3(arm_r, 0.0, arm_out))
-	_turn_joint(&"elbow_l", Vector3(elbow, 0.0, 0.0))
-	_turn_joint(&"elbow_r", Vector3(elbow, 0.0, 0.0))
+	var arm_out_l: float = arm_out
+	var arm_out_r: float = arm_out
+	var elbow_l: float = elbow
+	var elbow_r: float = elbow
+	if motion == &"wave":
+		arm_r = 2.7
+		arm_out_r = 0.35 + 0.4 * sin(_time * 5.0)
+		elbow_r = 0.35
+	# A hand held out straight to the side, for someone to hold.
+	if holding > 0:
+		arm_r = 0.15
+		arm_out_r = 1.4
+		elbow_r = 0.1
+	elif holding < 0:
+		arm_l = 0.15
+		arm_out_l = 1.4
+		elbow_l = 0.1
+	_turn_joint(&"shoulder_l", Vector3(arm_l, 0.0, -arm_out_l))
+	_turn_joint(&"shoulder_r", Vector3(arm_r, 0.0, arm_out_r))
+	_turn_joint(&"elbow_l", Vector3(elbow_l, 0.0, 0.0))
+	_turn_joint(&"elbow_r", Vector3(elbow_r, 0.0, 0.0))
 	_turn_joint(&"spine", Vector3(lean * 0.5, 0.0, 0.0))
 	_turn_joint(&"chest", Vector3(lean * 0.5 + breathe, 0.0, 0.0))
 	_model.joint(&"root").position = Vector3(0.0, -drop, 0.0)

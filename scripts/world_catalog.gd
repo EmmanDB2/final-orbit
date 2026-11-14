@@ -209,7 +209,7 @@ func _pilot_info() -> Dictionary:
 	var away := Vector2(_pilot.state.x - _state.x, _pilot.state.y - _state.y).length()
 	var rows: Array = [
 		["JETPACK", "%d%%" % roundi(_pilot.gas / _pilot.data.jet_seconds * 100.0), true],
-		["ΔV", _speed(_pilot.gas * _pilot.data.jet_acceleration), true],
+		["ΔV", _speed(_pilot.gas * _pilot.jet_push()), true],
 		["SHIP", _meters(away), true],
 	]
 	var chip: String = {Pilot.EVA: "ON EVA", Pilot.SURFACE: "ON FOOT"}.get(_pilot.mode, "INSIDE")

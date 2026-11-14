@@ -52,6 +52,11 @@ var state := ShipState.new()
 var gas: float = 0.0
 ## Zen Mode: the jetpack never runs out.
 var endless_gas: bool = false
+## Someone held by the hand, in kilograms: the jetpack pushes the both of them, so less hard.
+var carried_kg: float = 0.0
+## How someone adrift close by is moving, as [x, y] velocity, so speeds read against them while
+## reaching for their hand. Empty when there's no one.
+var near_moving: Callable
 ## Which way the pilot faces, in the world.
 var facing: float = 0.0
 
@@ -173,6 +178,11 @@ func _tick_aboard(delta: float) -> void:
 		_tick_inside(delta)
 
 
+## How hard the jetpack pushes now, in world units per second squared: less with someone held.
+func jet_push() -> float:
+	return data.jet_acceleration * data.mass_kg / (data.mass_kg + carried_kg)
+
+
 func _leave_ship() -> void:
 	var ship_state: ShipState = _ship.state
 	var out: Vector2 = _ship.eva_exit_offset()
@@ -210,8 +220,8 @@ func _tick_eva(delta: float) -> void:
 	if push != Vector2.ZERO and gas > 0.0:
 		_push_local = push
 		_firing = push.rotated(facing)
-		state.velocity_x += _firing.x * data.jet_acceleration * delta
-		state.velocity_y += _firing.y * data.jet_acceleration * delta
+		state.velocity_x += _firing.x * jet_push() * delta
+		state.velocity_y += _firing.y * jet_push() * delta
 		gas = maxf(gas - push.length() * delta, 0.0)
 	_gravity_model.propagate(state, delta)
 	if state.is_on_surface() and FeatureFlags.WALKING_ON_WORLDS and state.get_touchdown_speed() <= data.safe_landing_speed:
@@ -463,8 +473,8 @@ func _tick_surface(delta: float) -> void:
 		_push_local = Vector2.ZERO
 		if _jetting and gas > 0.0:
 			var push := Vector2(sideways, 1.0).limit_length(1.0)
-			_along += push.x * data.jet_acceleration * delta
-			_rising += push.y * data.jet_acceleration * delta
+			_along += push.x * jet_push() * delta
+			_rising += push.y * jet_push() * delta
 			gas = maxf(gas - push.length() * delta, 0.0)
 			_firing = right * push.x + up * push.y
 			_push_local = Vector2(0.0, -1.0)
@@ -849,6 +859,10 @@ func _report() -> void:
 	elif _station.is_nearby(state.x, state.y, state.time):
 		against = _station.moving_at(_station.frame_at(state.time), Vector2(state.x, state.y) - _station_center())
 		near_station = true
+	elif near_moving.is_valid():
+		var moving: PackedFloat64Array = near_moving.call()
+		against = Vector2(moving[0], moving[1])
+		status = "NEAR SURVIVOR"
 	elif Vector2(state.x - ship_state.x, state.y - ship_state.y).length() <= 5000.0:
 		against = Vector2(ship_state.velocity_x, ship_state.velocity_y)
 	else:
@@ -871,7 +885,7 @@ func _report() -> void:
 		"moving": relative.length_squared() >= 0.25,
 		"spin": 0.0,
 		"fuel_share": gas / data.jet_seconds,
-		"delta_v": gas * data.jet_acceleration,
+		"delta_v": gas * jet_push(),
 		"status": "INSIDE THE STATION" if mode == INSIDE else ("NEAR THE STATION" if near_station else status),
 	})
 
@@ -921,6 +935,8 @@ func _show_figure(delta: float) -> void:
 	_figure.screen_roll = _roll
 	_figure.push = _push_local
 	_figure.turning = _turning if mode == EVA else 0.0
+	# A hand out to the side for someone being held, on EVA.
+	_figure.holding = 1 if carried_kg > 0.0 and mode == EVA else 0
 	match mode:
 		SURFACE:
 			_figure.look = AstronautView.Look.SIDE

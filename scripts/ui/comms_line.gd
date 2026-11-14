@@ -61,7 +61,7 @@ func _on_flight_data(data: Dictionary) -> void:
 	elif data["apoapsis"] < 0.0:
 		status = "ESCAPE TRAJECTORY"
 	elif data["against_station"]:
-		status = "STATION CLOSE"
+		status = "%s CLOSE" % data.get("close_to", "STATION")
 	if status != _status:
 		_status = status
 		queue_redraw()

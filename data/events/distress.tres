@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EventType" format=3]
+
+[ext_resource type="Script" path="res://scripts/event/event_type.gd" id="1_type"]
+
+[resource]
+script = ExtResource("1_type")
+kind = "distress"
+label = "DISTRESS BEACON"
+chip = "DISTRESS"
+call = "DISTRESS BEACON"
+things = PackedStringArray("Relay engineer", "Survey tech", "Cargo pilot", "Geologist", "Antenna rigger", "Flight surgeon", "Tug pilot", "Station welder")
+weight = 0.8
+calm = false
+nearest = 140000.0
+pay = 3500
+first_bonus = 0
+mass_kg = 120.0
+lowest_orbit = 22000.0
+highest_orbit = 60000.0

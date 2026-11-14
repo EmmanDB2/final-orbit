@@ -35,8 +35,10 @@ extends Resource
 ## How fast standing still loops, and walking at full speed, in frames per second.
 @export var idle_fps: float = 3.0
 @export var stride_fps: float = 10.0
-## How hard the jetpack pushes, in world units per second squared.
+## How hard the jetpack pushes, in world units per second squared, with no one else to push.
 @export var jet_acceleration: float = 12.0
+## The pilot's mass in their suit with the jetpack, in kilograms. Holding someone, it pushes both.
+@export var mass_kg: float = 120.0
 ## How many seconds of full push the jetpack holds. It fills up aboard the ship or a station.
 @export var jet_seconds: float = 60.0
 ## How fast the pilot gets around inside, in world units per second, and how quickly they get going.

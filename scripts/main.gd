@@ -124,6 +124,13 @@ func _ready() -> void:
 	catalog.set_events(events)
 	$Hud/SafeArea/FlightHud.connect_events(events)
 	events.message_raised.connect($Hud/SafeArea/CommsLine.on_agency_message)
+	# What the events look like in the world, drawn with the pilot.
+	var event_scene := EventScene.new()
+	add_child(event_scene)
+	move_child(event_scene, $Pilot.get_index())
+	event_scene.start(events, $Pilot)
+	$Camera2D.view_rolled.connect(event_scene._on_view_rolled)
+	$Camera2D.view_changed.connect(event_scene._on_view_changed)
 	var warp := TimeWarp.new()
 	add_child(warp)
 	warp.start(gravity_model, $Ship, $Pilot)

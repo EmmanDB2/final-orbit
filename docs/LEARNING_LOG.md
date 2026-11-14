@@ -810,3 +810,12 @@ Files: `scripts/event/event_type.gd`, `scripts/event/flight_event.gd`, `scripts/
 Files: `scripts/main.gd`, `docs/DESIGN.md`
 
 - one rule changed in one place: wiring the same system in both modes instead of branching
+
+## 2026-11-14: Distress beacons: grab their hand and tow them home
+
+Files: `scripts/event/event_director.gd`, `scripts/event/flight_event.gd`, `scripts/event/event_scene.gd`, `scripts/event/survivor_view.gd`, `data/events/distress.tres`, `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_view.gd`, `scripts/ship.gd`, `scripts/ui/comms_line.gd`, `scripts/ui/event_markers.gd`, `scripts/world_catalog.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- circular orbit velocity, sqrt(mu / r), and an orbit's direction from the cross product
+- Newton's second law: the same push on twice the mass gives half the acceleration
+- physics process priority: updating things in the right order within one tick
+- GDScript lambdas capture variables by value (reassigning inside one doesn't change the outside)

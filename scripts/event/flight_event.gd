@@ -77,6 +77,10 @@ static func from_saved(saved: Dictionary) -> FlightEvent:
 	event.place = saved["place"]
 	event.found_at = saved["found_at"]
 	event.rescue = saved.get("rescue", "adrift")
+	# Someone held when the world was saved is back adrift where they were: the flight comes back with
+	# the pilot aboard.
+	if event.rescue == "held":
+		event.rescue = "adrift"
 	event.closest_at = saved.get("closest_at", 0.0)
 	if saved.has("state"):
 		var numbers: Array = saved["state"]
