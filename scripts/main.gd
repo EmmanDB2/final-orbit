@@ -17,6 +17,8 @@ extends Node2D
 ## Places built on worlds.
 @export var sites: Array[SiteData] = [preload("res://data/launch_base.tres"), preload("res://data/moon_base.tres")]
 
+## How long after a death the med bay comes, in seconds.
+const MED_BAY_WAIT: float = 4.5
 ## Which world's save this flight keeps: "normal", or "zen" in Zen Mode.
 var save_slot: String = "normal"
 ## Zen Mode's music.
@@ -39,6 +41,9 @@ var _title: TitleScreen
 var _zen: bool = false
 var _music: MusicPlayer
 var _hangar: Hangar
+# A death not yet got over: what "killed" the pilot as the comms line said it, how bad it was as
+# "severity", and the "bill" once it's charged.
+var _death: Dictionary = {}
 
 
 func _ready() -> void:
@@ -161,6 +166,10 @@ func _ready() -> void:
 	_catalog = catalog
 	$Hud/SafeArea/FlightHud.title_requested.connect(_to_title)
 	$Pilot.died.connect(_on_pilot_died)
+	$Pilot.message_raised.connect(func(text: String) -> void:
+		if text.begins_with("SIGNAL LOST · "):
+			_death["killed"] = text.trim_prefix("SIGNAL LOST · "))
+	$Hud/SafeArea/FlightHud.med_bay_done.connect(_wake_up)
 	$Hud/SafeArea/FlightHud.lights_requested.connect(func() -> void:
 		$Station.set_powered(not $Station.is_powered())
 		$Hud/SafeArea/FlightHud.show_powered($Station.is_powered()))
@@ -181,6 +190,8 @@ func _begin() -> void:
 	_saves.start($Ship, $Pilot, agency, _catalog, $Station, _saved)
 	if _zen:
 		_music.play(music, music.zen_tracks)
+	if not _death.is_empty():
+		_open_med_bay()
 
 
 # Zen Mode's rules: the ship's fuel and the pilot's jetpack never run out, and repairs are free. Gigs
@@ -285,11 +296,13 @@ func _restore(saved: Dictionary, catalog: WorldCatalog) -> void:
 	agency.restore_state(saved.get("agency", {}))
 	catalog.restore_state(saved.get("worlds", {}))
 	events.restore_state(saved.get("events", {}))
+	# Died and closed the app before the med bay: straight there.
+	_death = saved.get("death", {})
 
 
 # The moment the pilot dies, a burst where it happened: dust thrown up from the ground, a puff of frost
 # from the suit in space, or sparks as they burn up.
-func _on_pilot_died(cause: String, _severity: float) -> void:
+func _on_pilot_died(cause: String, severity: float) -> void:
 	var state: ShipState = $Pilot.state
 	var palette: AgencyPalette = UiStyle.palette()
 	var offsets := PackedVector2Array()
@@ -308,6 +321,46 @@ func _on_pilot_died(cause: String, _severity: float) -> void:
 		offsets.append(Vector2.UP.rotated(randf() * TAU) * randf_range(1.0, 9.0))
 		colors.append(shades[i % shades.size()])
 	$Sparks.scatter(offsets, colors, 2, state.x, state.y, state.velocity_x, state.velocity_y, Vector2.ZERO, Vector2.ZERO, blast, dust)
+	_death["severity"] = severity
+	_death["ship_lost"] = $Ship._lost
+	if not _death.has("killed"):
+		_death["killed"] = cause
+	agency.pilot_lost()
+	if _saves != null:
+		_saves.note_death(_death)
+	# A few seconds for it to sink in, then the med bay.
+	get_tree().create_timer(MED_BAY_WAIT).timeout.connect(_open_med_bay)
+
+
+# The bill, charged once: what's paid comes off the credits, and the repo squad settles the rest.
+func _open_med_bay() -> void:
+	if _death.is_empty():
+		return
+	if not _death.has("bill"):
+		var bill: Dictionary = MedBay.bill(service_prices, _death.get("killed", "IMPACT"), _death.get("severity", 0.5),
+				_death.get("ship_lost", false), ship_list.ships[0], agency.credits, _zen)
+		if bill["paid"] > 0:
+			agency.spend(bill["paid"], 0)
+		_death["bill"] = bill
+		if _saves != null:
+			_saves.note_death(_death)
+	$Hud/SafeArea/FlightHud.open_med_bay(_death["bill"])
+
+
+# Back to work: a ship docked at Kapteyn-3, towed home or new, and the pilot in the station by it.
+func _wake_up() -> void:
+	if _death.get("ship_lost", false) or $Ship._lost:
+		$Ship.change_design(ship_list.ships[0])
+	$Ship.engine_on = false
+	$Ship.throttle = 0.0
+	$Hud/SafeArea/FlightHud.show_throttle(0.0)
+	if not $Ship.docked:
+		$Station.restore_state({"docked_port": 0})
+	$Pilot.wake_in_station($Station.docked_port)
+	_death = {}
+	if _saves != null:
+		_saves.death_over()
+	$Hud/SafeArea/CommsLine.on_agency_message("BACK ON YOUR FEET AT KAPTEYN-3", true)
 
 
 # TITLE: saves, and goes back to the title screen over this flight, Zen or not.

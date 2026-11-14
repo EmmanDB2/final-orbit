@@ -23,6 +23,9 @@ var keep_lost_ship: bool = true
 var hangar: Hangar
 ## The mid-flight events that have come up.
 var events: EventDirector
+# A death not yet got over: what killed them, how badly, and the bill once it's been charged. Saved at
+# once, so closing the app can't undo it.
+var _death: Dictionary = {}
 
 var _ship: Node2D
 var _pilot: Pilot
@@ -106,6 +109,20 @@ func start(ship: Node2D, pilot: Pilot, agency: Agency, catalog: WorldCatalog, st
 		events.event_gone.connect(func(_id: int) -> void: _soon = true)
 
 
+## Keeps a death, saving it now.
+func note_death(death: Dictionary) -> void:
+	_death = death.duplicate(true)
+	save_now()
+
+
+## The pilot's back at work: no death to get over, and the flight as it is now, with them in the
+## station and the ship docked.
+func death_over() -> void:
+	_death = {}
+	_take_flight()
+	save_now()
+
+
 ## Stops saving, for a new flight that's about to replace this one.
 func stop() -> void:
 	_stopped = true
@@ -128,6 +145,7 @@ func save_now() -> void:
 		"worlds": _catalog.save_state(),
 		"hangar": hangar.save_state() if hangar != null else {},
 		"events": events.save_state() if events != null else {},
+		"death": _death,
 	}
 	_write(data)
 	_wait = EVERY_SECONDS

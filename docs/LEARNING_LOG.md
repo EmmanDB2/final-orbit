@@ -934,3 +934,11 @@ Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_vie
 - a resource that drains by rate times count (holes) and refills on an event
 - recoil: venting gas pushes the other way (Newton's third law)
 - swapping a 3D mesh's material at runtime
+
+## 2026-11-14: Death, tickets 3 and 4: the med bay and getting a ship back
+
+Files: `scripts/station/med_bay.gd`, `scripts/ui/med_bay_board.gd`, `scripts/station/service_prices.gd`, `scripts/ui/flight_hud.gd`, `scripts/gig/agency.gd`, `scripts/save/save_game.gd`, `scripts/pilot.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- a pure function for a bill (inputs in, a dictionary out) that's easy to test
+- saving a pending event at once so quitting can't undo it, and charging it only once (idempotency)
+- a timer (SceneTree.create_timer) for a delay before the next step

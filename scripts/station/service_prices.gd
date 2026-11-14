@@ -16,3 +16,11 @@ extends Resource
 @export var smallest_repair: int = 50
 ## How far below zero credits the agency lets a pilot go, so nobody is stranded at a station.
 @export var credit_line: int = 5000
+
+@export_group("Med bay")
+## What waking up in the med bay costs: a flat part, and up to this much more the worse the death was,
+## rounded to a hundred credits.
+@export var med_bay_flat: int = 1500
+@export var med_bay_most: int = 6000
+## What towing a ship home to Kapteyn-3 costs, when its pilot can't fly it back.
+@export var tow_price: int = 1500

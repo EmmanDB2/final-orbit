@@ -359,6 +359,17 @@ func can_see_relay() -> bool:
 	return _relay_in_sight()
 
 
+## The pilot died: their gig pays nothing, and what it carried is gone.
+func pilot_lost() -> void:
+	if active == null:
+		return
+	active.state = "failed"
+	active = null
+	_ship.unload_cargo()
+	message_raised.emit("GIG FAILED: PILOT LOST", false)
+	gig_changed.emit(null)
+
+
 # Losing the ship loses what it carried, so the gig pays nothing.
 func _on_ship_lost() -> void:
 	if active == null:

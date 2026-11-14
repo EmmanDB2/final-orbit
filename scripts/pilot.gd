@@ -312,6 +312,18 @@ func _die(cause: String, severity: float, detail: String = "") -> void:
 	died.emit(cause, severity)
 
 
+## Back from the med bay: alive, patched, and inside the station by this port.
+func wake_in_station(port: int) -> void:
+	dead = false
+	death_cause = ""
+	visible = true
+	state.ground_clearance = data.stand_height
+	_spin = 0.0
+	carried_kg = 0.0
+	_set_stranded(false)
+	_enter_station(port)
+
+
 ## How hard the jetpack pushes now, in world units per second squared: less with someone held.
 func jet_push() -> float:
 	return data.jet_acceleration * data.mass_kg / (data.mass_kg + carried_kg)

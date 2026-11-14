@@ -23,6 +23,8 @@ signal widget_touched(widget: UiWidget)
 signal title_requested
 ## The FLIGHT menu's LIGHTS button, for trying the lighting.
 signal lights_requested
+## Emitted when the pilot leaves the med bay's bill, back to work.
+signal med_bay_done
 
 const BAR_HEIGHT: float = 44.0
 const EDGE: float = 8.0
@@ -110,6 +112,7 @@ var _targeted_gig: int = -1
 var _events: EventDirector
 var _event_list: EventList
 var _event_markers: EventMarkers
+var _med_bay: MedBayBoard
 # Where the pilot was on screen against the context menu's target, and how fast that's changing, to
 # keep the label out of where they're walking.
 var _menu_pilot_from := Vector2.ZERO
@@ -466,6 +469,12 @@ func _build() -> void:
 	_service_board.visible = false
 	_service_board.closed.connect(_on_gig_board_closed)
 	add_child(_service_board)
+	_med_bay = MedBayBoard.new()
+	_med_bay.visible = false
+	_med_bay.done.connect(func() -> void:
+		_pilot.input_blocked = false
+		med_bay_done.emit())
+	add_child(_med_bay)
 
 
 func _side_panel() -> SidePanel:
@@ -553,6 +562,8 @@ func _layout() -> void:
 	_gig_board.size = view
 	_service_board.position = Vector2.ZERO
 	_service_board.size = view
+	_med_bay.position = Vector2.ZERO
+	_med_bay.size = view
 	_survey_marker.position = Vector2.ZERO
 	_survey_marker.size = view
 	_gig_tracker.position = Vector2(EDGE, BAR_HEIGHT + 8.0)
@@ -706,6 +717,16 @@ func arrive() -> void:
 
 
 ## Moves the throttle lever to where the ship's throttle is, as when a saved flight's loaded.
+## Wakes the pilot in the med bay with a bill from MedBay.bill(), over everything else.
+func open_med_bay(bill: Dictionary) -> void:
+	_card.visible = false
+	_gig_board.visible = false
+	_service_board.visible = false
+	_release_everything()
+	_pilot.input_blocked = true
+	_med_bay.open(bill)
+
+
 ## Shows on the FLIGHT menu whether the station's power is on.
 func show_powered(powered: bool) -> void:
 	_flight_menu.show_powered(powered)
@@ -978,6 +999,9 @@ func _widgets_in_reach() -> Array[UiWidget]:
 		return widgets
 	if _service_board.visible:
 		widgets.append(_service_board)
+		return widgets
+	if _med_bay.visible:
+		widgets.append(_med_bay)
 		return widgets
 	if _flight_menu.visible:
 		widgets.append_array(_flight_menu.buttons())
