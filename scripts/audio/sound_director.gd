@@ -40,6 +40,8 @@ const LOOPS: Array[String] = ["rumble", "hiss", "servo", "wind", "roar"]
 
 ## Whether the phone buzzes.
 @export var haptics: bool = true
+# Each channel's own level from the sound set, in decibels, before the player's volume.
+var _base_db: Dictionary = {}
 
 @export var sounds: SoundSet = preload("res://data/sound_set.tres")
 
@@ -298,8 +300,23 @@ func _buzz(milliseconds: int, strength: float) -> void:
 		Input.vibrate_handheld(milliseconds, clampf(strength, 0.0, 1.0))
 
 
+## Takes the player's settings: each channel's volume on top of the sound set's own level, and
+## haptics.
+func apply_settings() -> void:
+	var keys: Dictionary = {"Effects": "effects", "UI": "ui", "Radio": "radio", "Music": "music"}
+	for channel: String in CHANNELS:
+		var index: int = AudioServer.get_bus_index(channel)
+		if index < 0:
+			continue
+		var share: float = float(GameSettings.value(keys[channel]))
+		AudioServer.set_bus_volume_db(index, _base_db.get(channel, 0.0) + linear_to_db(maxf(share, 0.0001)))
+		AudioServer.set_bus_mute(index, share <= 0.0)
+	haptics = bool(GameSettings.value("haptics"))
+
+
 func _make_channels() -> void:
 	var volumes: Dictionary = {"Effects": sounds.effects_db, "UI": sounds.ui_db, "Radio": sounds.radio_db, "Music": sounds.music_db}
+	_base_db = volumes
 	for channel: String in CHANNELS:
 		var index: int = AudioServer.get_bus_index(channel)
 		if index < 0:
@@ -308,6 +325,7 @@ func _make_channels() -> void:
 			AudioServer.set_bus_name(index, channel)
 			AudioServer.set_bus_send(index, "Master")
 		AudioServer.set_bus_volume_db(index, volumes[channel])
+	apply_settings()
 	# The ship sounds through its hull: muffled, low.
 	var effects: int = AudioServer.get_bus_index("Effects")
 	if AudioServer.get_bus_effect_count(effects) == 0:

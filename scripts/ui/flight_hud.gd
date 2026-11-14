@@ -25,6 +25,8 @@ signal title_requested
 signal lights_requested
 ## Emitted when the pilot leaves the med bay's bill, back to work.
 signal med_bay_done
+## Emitted when a setting changes, so the rest of the game can take it.
+signal settings_changed
 
 const BAR_HEIGHT: float = 44.0
 const EDGE: float = 8.0
@@ -113,6 +115,7 @@ var _events: EventDirector
 var _event_list: EventList
 var _event_markers: EventMarkers
 var _med_bay: MedBayBoard
+var _settings: SettingsScreen
 # Where the pilot was on screen against the context menu's target, and how fast that's changing, to
 # keep the label out of where they're walking.
 var _menu_pilot_from := Vector2.ZERO
@@ -449,6 +452,7 @@ func _build() -> void:
 	_flight_menu.pause_pressed.connect(_toggle_pause)
 	_flight_menu.title_pressed.connect(_to_title)
 	_flight_menu.lights_pressed.connect(func() -> void: lights_requested.emit())
+	_flight_menu.settings_pressed.connect(_open_settings)
 	add_child(_flight_menu)
 	_event_markers = EventMarkers.new()
 	add_child(_event_markers)
@@ -475,6 +479,14 @@ func _build() -> void:
 		_pilot.input_blocked = false
 		med_bay_done.emit())
 	add_child(_med_bay)
+	_settings = SettingsScreen.new()
+	_settings.visible = false
+	_settings.changed.connect(func() -> void:
+		auto_hide = bool(GameSettings.value("auto_hide"))
+		settings_changed.emit())
+	_settings.closed.connect(func() -> void: _pilot.input_blocked = false)
+	add_child(_settings)
+	auto_hide = bool(GameSettings.value("auto_hide"))
 
 
 func _side_panel() -> SidePanel:
@@ -564,6 +576,8 @@ func _layout() -> void:
 	_service_board.size = view
 	_med_bay.position = Vector2.ZERO
 	_med_bay.size = view
+	_settings.position = Vector2.ZERO
+	_settings.size = view
 	_survey_marker.position = Vector2.ZERO
 	_survey_marker.size = view
 	_gig_tracker.position = Vector2(EDGE, BAR_HEIGHT + 8.0)
@@ -717,6 +731,15 @@ func arrive() -> void:
 
 
 ## Moves the throttle lever to where the ship's throttle is, as when a saved flight's loaded.
+# SETTINGS from the FLIGHT menu, over the flight, which goes on behind it.
+func _open_settings() -> void:
+	_flight_menu.visible = false
+	_card.visible = false
+	_release_everything()
+	_pilot.input_blocked = true
+	_settings.open()
+
+
 ## Wakes the pilot in the med bay with a bill from MedBay.bill(), over everything else.
 func open_med_bay(bill: Dictionary) -> void:
 	_card.visible = false
@@ -1002,6 +1025,9 @@ func _widgets_in_reach() -> Array[UiWidget]:
 		return widgets
 	if _med_bay.visible:
 		widgets.append(_med_bay)
+		return widgets
+	if _settings.visible:
+		widgets.append(_settings)
 		return widgets
 	if _flight_menu.visible:
 		widgets.append_array(_flight_menu.buttons())

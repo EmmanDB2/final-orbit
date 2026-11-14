@@ -8,6 +8,7 @@ signal pause_pressed
 signal title_pressed
 ## For trying the lighting: cuts the station's power, or brings it back.
 signal lights_pressed
+signal settings_pressed
 
 const WIDTH: float = 124.0
 const ROW: float = 44.0
@@ -15,6 +16,7 @@ const ROW: float = 44.0
 var _pause: UiButton
 var _title: UiButton
 var _lights: UiButton
+var _settings: UiButton
 
 
 func _init() -> void:
@@ -26,6 +28,9 @@ func _init() -> void:
 	_title.tapped.connect(func() -> void: title_pressed.emit())
 	add_child(_pause)
 	add_child(_title)
+	_settings = UiButton.new().setup("SETTINGS", cyan)
+	_settings.tapped.connect(func() -> void: settings_pressed.emit())
+	add_child(_settings)
 	if FeatureFlags.LIGHTS_SWITCH:
 		_lights = UiButton.new().setup("LIGHTS OUT", UiStyle.palette().agency_red)
 		_lights.tapped.connect(func() -> void: lights_pressed.emit())
@@ -34,21 +39,18 @@ func _init() -> void:
 
 ## Hangs it from this top right corner.
 func place(top_right: Vector2) -> void:
-	size = Vector2(WIDTH, ROW * (3.0 if _lights != null else 2.0))
+	var rows: Array[UiWidget] = buttons()
+	size = Vector2(WIDTH, ROW * rows.size())
 	position = top_right - Vector2(WIDTH, 0.0)
-	_pause.position = Vector2.ZERO
-	_title.position = Vector2(0.0, ROW)
-	_pause.size = Vector2(WIDTH, ROW - 4.0)
-	_title.size = Vector2(WIDTH, ROW - 4.0)
-	if _lights != null:
-		_lights.position = Vector2(0.0, ROW * 2.0)
-		_lights.size = Vector2(WIDTH, ROW - 4.0)
+	for i in range(rows.size()):
+		rows[i].position = Vector2(0.0, ROW * i)
+		rows[i].size = Vector2(WIDTH, ROW - 4.0)
 
 
 func buttons() -> Array[UiWidget]:
 	if _lights != null:
-		return [_pause, _title, _lights]
-	return [_pause, _title]
+		return [_pause, _settings, _title, _lights]
+	return [_pause, _settings, _title]
 
 
 ## Says on the LIGHTS button what it'll do next.

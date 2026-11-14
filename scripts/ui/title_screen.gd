@@ -12,6 +12,8 @@ extends Control
 signal entered(item: String)
 ## Emitted once the view's pulled out and gone dark, for another world behind the menu.
 signal world_wanted(world: String)
+## Emitted on a second tap of SETTINGS, to open the settings over the title.
+signal settings_wanted
 
 ## What the next load of the game does: whether the title opens, which world it builds behind it
 ## ("continue", "new", or "zen"), what's selected, and whether the view arrives from far out, after a change
@@ -25,7 +27,7 @@ static var on_in_tests: bool = false
 
 const ITEMS: Array[String] = ["CONTINUE", "NEW FLIGHT", "ZEN MODE", "SETTINGS"]
 ## Not built yet, so shown dimmed and not selectable.
-const NOT_YET: Array[String] = ["SETTINGS"]
+const NOT_YET: Array[String] = []
 const WORLD_OF: Dictionary = {"CONTINUE": "continue", "NEW FLIGHT": "new", "ZEN MODE": "zen"}
 const SUBTITLE: String = "KEPLA SYSTEM · AGENCY FLIGHT OPERATIONS"
 const EDGE: float = 24.0
@@ -173,8 +175,12 @@ func _tap(item: String) -> void:
 		_selected = item
 		selected_item = item
 		queue_redraw()
-		if WORLD_OF[item] != world:
+		if WORLD_OF.get(item, world) != world:
 			_change_world(WORLD_OF[item])
+		return
+	# SETTINGS opens over the title, without going in.
+	if item == "SETTINGS":
+		settings_wanted.emit()
 		return
 	_leaving = true
 	_leave = 0.0

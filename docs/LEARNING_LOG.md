@@ -948,3 +948,12 @@ Files: `scripts/station/med_bay.gd`, `scripts/ui/med_bay_board.gd`, `scripts/sta
 Files: `scripts/pilot.gd`, `scripts/main.gd`, `docs/DESIGN.md`
 
 - one code path for several ways in (both deaths reach the med bay through one function)
+
+## 2026-11-14: Settings
+
+Files: `scripts/game_settings.gd`, `scripts/ui/settings_screen.gd`, `scripts/ui/title_screen.gd`, `scripts/ui/flight_menu.gd`, `scripts/ui/flight_hud.gd`, `scripts/audio/sound_director.gd`, `scripts/pilot.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- ConfigFile for small settings files in user://
+- audio buses: volume in decibels from a linear share (linear_to_db), and muting
+- static variables as a simple shared store without an autoload
+- set_input_as_handled so a screen on top takes the touches

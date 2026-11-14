@@ -1215,10 +1215,17 @@ func _light_inside() -> void:
 	_figure.light_from = Vector2(-1.0, -1.4)
 	_figure.sun_level = 1.0
 	var room: float = _station.light_at(_local)
-	if helmet_lamp and room > LAMP_OFF_ABOVE:
-		helmet_lamp = false
-	elif not helmet_lamp and room < LAMP_ON_BELOW:
-		helmet_lamp = true
+	# The player's setting: always on, always off, or by itself where it's dark.
+	match String(GameSettings.value("helmet_lamp")):
+		"ON":
+			helmet_lamp = true
+		"OFF":
+			helmet_lamp = false
+		_:
+			if helmet_lamp and room > LAMP_OFF_ABOVE:
+				helmet_lamp = false
+			elif not helmet_lamp and room < LAMP_ON_BELOW:
+				helmet_lamp = true
 	_station.light_helmet(_local, _local_facing, helmet_lamp)
 	# Their own lamp lights them a little too.
 	_figure.light_level = maxf(room, 0.55) if helmet_lamp else room

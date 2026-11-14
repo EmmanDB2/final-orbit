@@ -41,6 +41,7 @@ var _title: TitleScreen
 var _zen: bool = false
 var _music: MusicPlayer
 var _hangar: Hangar
+var _sound: SoundDirector
 # A death not yet got over: what "killed" the pilot as the comms line said it, how bad it was as
 # "severity", and the "bill" once it's charged.
 var _death: Dictionary = {}
@@ -160,6 +161,7 @@ func _ready() -> void:
 		_restore(saved, catalog)
 	# Sound starts after the save's put back, so loading doesn't clunk or crunch.
 	var sound := SoundDirector.new()
+	_sound = sound
 	add_child(sound)
 	sound.start($Hud/SafeArea/FlightHud, $Hud/SafeArea/CommsLine, $Ship, $Pilot)
 	_saved = saved
@@ -170,6 +172,7 @@ func _ready() -> void:
 		if text.begins_with("SIGNAL LOST · "):
 			_death["killed"] = text.trim_prefix("SIGNAL LOST · "))
 	$Hud/SafeArea/FlightHud.med_bay_done.connect(_wake_up)
+	$Hud/SafeArea/FlightHud.settings_changed.connect(func() -> void: _sound.apply_settings())
 	$Hud/SafeArea/FlightHud.lights_requested.connect(func() -> void:
 		$Station.set_powered(not $Station.is_powered())
 		$Hud/SafeArea/FlightHud.show_powered($Station.is_powered()))
@@ -217,6 +220,14 @@ func _open_title(home: int, has_save: bool) -> void:
 	$ScreenFit.screen_fitted.connect(_title._on_screen_fitted)
 	$ScreenFit.refit()
 	_title.entered.connect(_on_title_entered)
+	_title.settings_wanted.connect(func() -> void:
+		var settings := SettingsScreen.new()
+		settings.own_input = true
+		settings.size = _title.size
+		layer.add_child(settings)
+		settings.changed.connect(func() -> void: _sound.apply_settings())
+		settings.closed.connect(settings.queue_free)
+		settings.open())
 	_title.world_wanted.connect(_on_title_world_wanted)
 	_title.start($Camera2D, home)
 

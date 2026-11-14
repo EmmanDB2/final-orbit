@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-14 | Settings built, on Manny's pick: SETTINGS on the title, no longer marked SOON, and on the FLIGHT menu, opens one screen: each sound channel's volume in tenths, haptics, the helmet lamp (AUTO, ON, or OFF), and hiding the controls when idle, off by default. Kept in their own file, for normal play and Zen alike \[Leaning\] |
 | 2026-11-14 | Lighting begun, on Manny's call, for tense derelicts: art is shaded by stepping each pixel down its own ramp in the agency palette, dithered between steps, so it never leaves the palette; lights and screens glow. Ticket 1 built: Kapteyn-3's insides lit by ceiling lamps. A derelict's lamps are off. Walls blocking light, the helmet lamp, and hiding what's out of sight come next. Gemini's pitch to shade hulls the same way is answered under Lighting \[Leaning\] |
 | 2026-11-14 | The pilot is the same size inside a station as outside, on Manny's call: inside they'd been drawn at the station's art pixel size, twice their real size. Walking inside already used their real size. Their pixels are now half the size of the station's \[Leaning\] |
 | 2026-11-14 | Death settled further, on Manny's calls: losing the ship counts as death only when the pilot dies with it, and the med bay's bill depends on how badly they died. The creature became the goo: a huge black mass that absorbs and digests what it touches, chases, stalks, grabs, and pulls itself along walls in large derelicts \[Leaning\] |
@@ -764,6 +765,16 @@ Decided 2026-11-10, on Manny's call. \[Leaning\]
 - Every sound the game makes itself is made at start on another thread, so nothing waits for one mid-flight.
 - Time warp doesn't change sounds' pitch.
 
+## Settings
+
+Built 2026-11-14, on Manny's pick. \[Leaning\]
+
+- SETTINGS opens one screen, from the title (two taps, like everything there, opening over the title without going in) or from the FLIGHT menu (over the flight, which goes on behind it).
+- Sound: EFFECTS, COCKPIT, RADIO, and MUSIC, each in tenths with − and +, on top of each channel's own level in the sound set. At nothing, a channel's muted.
+- HAPTICS on or off. HELMET LAMP: AUTO (on by itself where a station's dark), ON, or OFF. HIDE CONTROLS WHEN IDLE, off by default, as Manny has it.
+- Every change is kept at once, in a file of its own apart from any world's save, so it holds for normal play and Zen Mode alike. A test run never reads or writes it.
+- Later: controls, the screen's layout per fold state, and the dev switches (the LIGHTS test switch is still a feature flag).
+
 ## Prices
 
 Decided 2026-11-12, on Manny's call, from his sketch of the service terminal. \[Leaning\]
@@ -795,7 +806,7 @@ Saving:
 Title screen:
 
 - It opens on the game itself, frozen at the saved moment and framed like the ORBIT view on the body the ship last landed on or began orbiting: the body in a corner and the ship on its path. Frozen, so a ship saved mid-descent doesn't crash behind the menu.
-- Drawn from Manny's mockup: FINAL ORBIT in big stencil letters with an orange orbit arc through it, "KEPLA SYSTEM · AGENCY FLIGHT OPERATIONS" under it, the mission clock top right, a comms line along the bottom, and the version. The menu runs down the left: CONTINUE, with where the ship is and the credits under it, then NEW FLIGHT, ZEN MODE, and SETTINGS, as thin outlined boxes over space like the flight HUD. SETTINGS is there for the settings screen that's coming.
+- Drawn from Manny's mockup: FINAL ORBIT in big stencil letters with an orange orbit arc through it, "KEPLA SYSTEM · AGENCY FLIGHT OPERATIONS" under it, the mission clock top right, a comms line along the bottom, and the version. The menu runs down the left: CONTINUE, with where the ship is and the credits under it, then NEW FLIGHT, ZEN MODE, and SETTINGS, as thin outlined boxes over space like the flight HUD. SETTINGS opens the settings over the title (see Settings).
 - Everything takes two taps: the first selects, widening the box and turning it orange with corner brackets, and the second goes. It keeps NEW FLIGHT from wiping a save by accident, and gives the background time to change: selecting ZEN MODE pulls the camera out to the whole star system and pushes in to the Zen ship, since both worlds are the same system, and selecting NEW FLIGHT shows the fresh start in orbit near Kapteyn-3.
 - CONTINUE is selected when the screen opens, so a returning player is one tap from flying. With no save it's hidden, and NEW FLIGHT starts selected.
 - Going in, the menu, title, and clock slide off to their nearest side, left or right; the camera zooms into the ship, as the SHIP button does; the world starts moving; and the flight HUD slides in.
