@@ -842,3 +842,9 @@ Files: `scripts/event/event_director.gd`, `docs/DESIGN.md`
 
 - weighted random choice, with weights that change with what's already happened
 - soak testing: running a long simulated flight fast to catch rare errors
+
+## 2026-11-14: Steady orbit lines for events
+
+Files: `scripts/event/event_director.gd`
+
+- reference frames: keeping a path relative to the body it orbits, then adding the body's position when drawing

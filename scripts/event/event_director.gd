@@ -232,20 +232,35 @@ func info_of(id: int) -> Dictionary:
 
 
 ## Where something on a path is going, as x, y pairs in the world, for drawing: a comet until well past
-## its closest pass, or someone adrift for one lap. Worked out at most twice a second.
+## its closest pass, or someone adrift for one lap. An orbit doesn't change against its world, so it's
+## worked out once, kept against that world, and drawn wherever the world is now, so it holds still
+## while the world moves on, warp or no warp. A comet's is worked out again every few seconds.
 func path_of(id: int) -> PackedFloat64Array:
 	var event: FlightEvent = find(id)
 	if event == null or event.state == null or event.type.kind == "signal" or event.rescue != "adrift":
 		return PackedFloat64Array()
-	var now: float = Time.get_ticks_msec() / 1000.0
+	var world: int = _gravity_model.get_dominant_body(event.state.x, event.state.y, event.state.time)
 	var kept: Dictionary = _paths.get(id, {})
-	if not kept.is_empty() and now - kept["at"] < 0.5:
-		return kept["points"]
+	var stale: bool = kept.is_empty() or kept["world"] != world
+	if not stale and event.type.kind == "comet":
+		stale = Time.get_ticks_msec() / 1000.0 - kept["at"] > 5.0
+	if stale:
+		kept = _work_out_path(event, world)
+		_paths[id] = kept
+	var origin: PackedFloat64Array = _gravity_model.get_body_position(world, _ship.state.time)
+	var points: PackedFloat64Array = kept["points"].duplicate()
+	for i in range(0, points.size(), 2):
+		points[i] += origin[0]
+		points[i + 1] += origin[1]
+	return points
+
+
+# The path from where it is, as points against its world.
+func _work_out_path(event: FlightEvent, world: int) -> Dictionary:
 	var horizon: float = 600.0
 	if event.type.kind == "comet":
 		horizon = clampf((event.closest_at - _ship.state.time) * 2.0, 300.0, 2400.0)
 	else:
-		var world: int = _gravity_model.get_dominant_body(event.state.x, event.state.y, event.state.time)
 		if _bodies.has(world):
 			var mu: float = (_bodies[world] as BodyData).get_mu()
 			var center: PackedFloat64Array = _gravity_model.get_body_position(world, event.state.time)
@@ -255,9 +270,13 @@ func path_of(id: int) -> PackedFloat64Array:
 			var across: float = 2.0 / r - v * v / mu
 			if across > 0.0:
 				horizon = minf(TAU * sqrt(pow(1.0 / across, 3.0) / mu), 1200.0)
+	# The points come back round the world as it is at the start, so that's taken off.
 	var points: PackedFloat64Array = _gravity_model.predict_trajectory(event.state, horizon, 160)
-	_paths[id] = {"at": now, "points": points}
-	return points
+	var origin: PackedFloat64Array = _gravity_model.get_body_position(world, event.state.time)
+	for i in range(0, points.size(), 2):
+		points[i] -= origin[0]
+		points[i + 1] -= origin[1]
+	return {"at": Time.get_ticks_msec() / 1000.0, "world": world, "points": points}
 
 
 ## How it's moving, as [x, y] velocity.
@@ -646,6 +665,8 @@ func _let_go(id: int) -> void:
 		return
 	event.rescue = "adrift"
 	_pilot.carried_kg = maxf(_pilot.carried_kg - event.type.mass_kg, 0.0)
+	# Let go, they're on a new orbit.
+	_paths.erase(id)
 	message_raised.emit("LET GO", false)
 	event_changed.emit(event)
 
