@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-14 | Lighting begun, on Manny's call, for tense derelicts: art is shaded by stepping each pixel down its own ramp in the agency palette, dithered between steps, so it never leaves the palette; lights and screens glow. Ticket 1 built: Kapteyn-3's insides lit by ceiling lamps. A derelict's lamps are off. Walls blocking light, the helmet lamp, and hiding what's out of sight come next. Gemini's pitch to shade hulls the same way is answered under Lighting \[Leaning\] |
 | 2026-11-14 | The pilot is the same size inside a station as outside, on Manny's call: inside they'd been drawn at the station's art pixel size, twice their real size. Walking inside already used their real size. Their pixels are now half the size of the station's \[Leaning\] |
 | 2026-11-14 | Death settled further, on Manny's calls: losing the ship counts as death only when the pilot dies with it, and the med bay's bill depends on how badly they died. The creature became the goo: a huge black mass that absorbs and digests what it touches, chases, stalks, grabs, and pulls itself along walls in large derelicts \[Leaning\] |
 | 2026-11-14 | Death and the med bay planned, on Manny's call: dying never wipes the world, since starting over is a motivation killer. The pilot wakes in a med bay and gets the bill; whatever the credits can't cover, the agency's repo squad settles by selling the player's ships, so they leave debt free with whatever's left. EVA deaths are driven by physics: impact bands, burning up in air, the star, hard hits, and a suit breach that leaks air against an O2 gauge. The pilot feels air like debris does. The visor crack from the first sketch is dropped: at 37 px the visor is a few pixels, so frost, a plume of frozen air, and going limp carry it instead \[Leaning\] |
@@ -846,6 +847,17 @@ Art pipeline: \[Leaning\]
 4. Ship modules are drawn on the fixed module grid, one PNG each, since their pixels are collision and damage. Small gaps in the art are fine, since they get welded when the ship is measured.
 5. Inside art is drawn at the same size as the hull: a systems drawing and a bare frame drawing. Only what sits under the hull is used, since the hull's outline is the ship's.
 6. Planets and space are shaders and code, not hand-drawn sprites.
+
+## Lighting
+
+Begun 2026-11-14, on Manny's call: derelicts and the goo need tension, and that won't happen if you can see everything. \[Leaning\]
+
+- Shade never mixes in black. Each pixel steps down its own ramp in the agency palette: white hull through the grays to near black, and orange, gold, blue, red, and glass each down their own, falling into the hull's darkest at the end. Where one step meets the next, a 4x4 Bayer pattern dithers them, like the sky's bands. So lit art stays in the locked palette and stays crisp.
+- Lights, screens, and flames (the telemetry and thrust colors) glow and never darken, so in the dark a derelict is its status lights and screens.
+- One shared shader include, `shaders/palette_light.gdshaderinc`, does the stepping; each lit thing's own shader only works out how much light reaches a pixel. The ramps are set in one place, `scripts/palette_light.gd`.
+- Built, ticket 1: a station's insides are lit by ceiling lamps, each a pool of light fading toward its edge, over a little light everywhere. A room can set its lamps; one that doesn't gets a lamp over each floor big enough, and a row of them down a long corridor, every 40 pixels. Each station says whether it's powered, how bright its lamps are, and how much light there is with no lamp near. Kapteyn-3 is powered and lit; a derelict's lamps are off.
+- Next: walls block light (traced on the GPU through the picture's solid pixels); the helmet lamp, a cone where the pilot faces, which is most of the light in a derelict; what's out of sight is dark and not drawn, and rooms not yet entered are black; then emergency strips, flicker, and sparks. The pilot isn't shaded by a room's light yet.
+- Outside, proposed (Gemini's pitch, answered 2026-11-14): hulls shaded by the star the same way, through the same include, so the Lander Mk II, drawn flat for the engine to shade, gets its volume. Rather than one cylinder across the whole sprite or a hand-painted mask, each row of the ship's whole silhouette is split into runs of solid pixels, and each run is its own cylinder, so side pods, legs, and the bell each curve on their own, for any ship, with no extra art. That's worked out when the ship's built and kept in a small texture beside its art, from the undamaged ship so holes don't change the shading. The light comes from the star's side, with a little from the front so the far side isn't black, and goes dark in a planet's shadow. The original lander has shading painted in, so it'd need repainting flat or a lighter touch. The hangar's ship picture would use a fixed light. \[Open: waiting on Manny\]
 
 ## Tech
 

@@ -14,6 +14,13 @@ var spots: Array[Dictionary] = []
 var origin: Vector2i = Vector2i.ZERO
 ## The ports with nothing on them, each with its outer "point" on the picture and its "face".
 var free_ports: Array[Dictionary] = []
+## The ceiling lamps, each with its "point" on the picture and its "reach" in picture pixels.
+var lamps: Array[Dictionary] = []
+
+## Floors smaller than this many pixels, such as doorways, get no lamp of their own.
+const SMALLEST_LIT_FLOOR: int = 300
+## How far apart lamps go down a long corridor, in picture pixels.
+const LAMP_SPACING: float = 40.0
 
 var _size := Vector2i.ZERO
 var _solid := PackedByteArray()
@@ -47,6 +54,26 @@ func is_walkable(point: Vector2) -> bool:
 	if x < 0 or y < 0 or x >= _size.x or y >= _size.y:
 		return false
 	return _walkable[y * _size.x + x] == 1
+
+
+# A room's lamps: the ones it sets, or else one over each floor big enough, and a row down a corridor.
+static func _lamps_of(room: StationRoom) -> Array[Dictionary]:
+	var found: Array[Dictionary] = []
+	if not room.lamp_points.is_empty():
+		for i in range(room.lamp_points.size()):
+			found.append({"point": room.lamp_points[i], "reach": room.lamp_reaches[i] if i < room.lamp_reaches.size() else 40.0})
+		return found
+	for rect: Rect2i in room.walkable:
+		if rect.get_area() < SMALLEST_LIT_FLOOR:
+			continue
+		var long: float = maxf(rect.size.x, rect.size.y)
+		var count: int = maxi(roundi(long / LAMP_SPACING), 1)
+		var along := Vector2(1.0, 0.0) if rect.size.x >= rect.size.y else Vector2(0.0, 1.0)
+		var reach: float = minf(rect.size.x, rect.size.y) * 0.5 + minf(long / count, LAMP_SPACING) * 0.75 + 8.0
+		for i in range(count):
+			var point: Vector2 = Vector2(rect.position) + (Vector2(rect.size) * (Vector2.ONE - along)) * 0.5 + along * long * (i + 0.5) / count
+			found.append({"point": point.floor(), "reach": reach})
+	return found
 
 
 static func build(design: StationDesign) -> StationLayout:
@@ -114,6 +141,11 @@ static func build(design: StationDesign) -> StationLayout:
 				for x in range(rect.position.x, rect.end.x):
 					var cell: Vector2i = offset + _turned_point(Vector2(x, y), entry["size"], entry["turns"])
 					layout._walkable[cell.y * (high.x - low.x) + cell.x] = 1
+		for lamp: Dictionary in _lamps_of(room):
+			layout.lamps.append({
+				"point": Vector2(offset + _turned_point(lamp["point"], entry["size"], entry["turns"])) + Vector2(0.5, 0.5),
+				"reach": lamp["reach"],
+			})
 		for s in range(room.spot_points.size()):
 			layout.spots.append({
 				"point": offset + _turned_point(room.spot_points[s], entry["size"], entry["turns"]),

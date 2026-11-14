@@ -20,3 +20,8 @@ extends Resource
 ## Which of that room's ports it bolts onto, and which of its own ports does the bolting.
 @export var bolts_to_port: int = 0
 @export var own_port: int = 0
+## Where its ceiling lamps are on the sprite, each with how far its light reaches in sprite pixels.
+## With none set, the room's floors light themselves: a lamp over each one, and a row of them down a
+## long corridor.
+@export var lamp_points: PackedVector2Array = PackedVector2Array()
+@export var lamp_reaches: PackedFloat32Array = PackedFloat32Array()

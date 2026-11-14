@@ -33,6 +33,8 @@ signal message_raised(text: String)
 @export var message_seconds: float = 3.0
 ## How far inside a port's outer edge its inner door is, in world units.
 @export var port_door_depth: float = 44.0
+## The most lamps the insides' shader takes.
+const INTERIOR_LAMPS: int = 64
 ## How long the roof takes to come off, in seconds.
 @export var roof_seconds: float = 0.3
 
@@ -87,12 +89,28 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 	_sprite.centered = false
 	_sprite.offset = -Vector2(layout.origin)
 	_inside_sprite.texture = ImageTexture.create_from_image(layout.interior_image)
+	_light_inside()
 	_inside_sprite.centered = false
 	_inside_sprite.offset = -Vector2(layout.origin)
 	_inside_sprite.visible = false
 	# Under the roof, which fades off it.
 	add_child(_inside_sprite)
 	add_child(_sprite)
+
+
+# The insides lit by the station's lamps, or only faintly with the power off.
+func _light_inside() -> void:
+	var material: ShaderMaterial = PaletteLight.material_for(preload("res://shaders/interior_light.gdshader"))
+	var lamps := PackedVector4Array()
+	if _design.powered:
+		for lamp: Dictionary in layout.lamps:
+			lamps.append(Vector4(lamp["point"].x, lamp["point"].y, lamp["reach"], _design.lamp_brightness))
+	var count: int = mini(lamps.size(), INTERIOR_LAMPS)
+	lamps.resize(INTERIOR_LAMPS)
+	material.set_shader_parameter("lamps", lamps)
+	material.set_shader_parameter("lamp_count", count)
+	material.set_shader_parameter("ambient", _design.ambient_light)
+	_inside_sprite.material = material
 
 
 ## How many game pixels wide one pixel of the station's art is drawn.

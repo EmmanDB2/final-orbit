@@ -854,3 +854,12 @@ Files: `scripts/event/event_director.gd`
 Files: `scripts/pilot.gd`, `docs/DESIGN.md`
 
 - keeping what's drawn and what collides at the same scale
+
+## 2026-11-14: Lighting, ticket 1: lamps in stations
+
+Files: `shaders/palette_light.gdshaderinc`, `shaders/interior_light.gdshader`, `scripts/palette_light.gd`, `scripts/station/station_design.gd`, `scripts/station/station_room.gd`, `scripts/station/station_layout.gd`, `scripts/station/station_view.gd`, `docs/DESIGN.md`
+
+- shader includes (.gdshaderinc) to share code between shaders
+- palette ramps: shading by stepping colors down a lookup instead of multiplying toward black
+- ordered (Bayer) dithering
+- uniform arrays filled from GDScript

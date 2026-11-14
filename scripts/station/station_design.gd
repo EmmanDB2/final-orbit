@@ -13,6 +13,13 @@ extends Resource
 ## How wide one of its art pixels is, in world units.
 @export var art_pixel_size: float = 2.0
 
+@export_group("Lighting")
+## Whether its lamps are on. A derelict's aren't.
+@export var powered: bool = true
+## The light everywhere inside, with no lamp near, from 0 to 1, and how bright each lamp is.
+@export var ambient_light: float = 0.32
+@export var lamp_brightness: float = 0.85
+
 @export_group("Docking")
 ## How close a ship's hatch has to get to a free port's middle to dock: along the port's line, and
 ## off to the side of it, in world units.
