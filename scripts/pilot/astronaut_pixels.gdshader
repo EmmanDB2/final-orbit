@@ -20,6 +20,22 @@ uniform float step_to_line = 0.04;
 // the way pixel artists shade the far arm and leg.
 uniform float far_side = 0.48;
 uniform float far_shade = 0.72;
+// Burning up: how far the suit has gone to the re-entry glow colors (hottest first below) and how
+// far it has broken up, each from 0 to 1, through a 4 x 4 ordered dither.
+uniform float flare = 0.0;
+uniform float dissolve = 0.0;
+uniform vec3 glow_white = vec3(1.0);
+uniform vec3 glow_yellow = vec3(1.0, 0.7, 0.3);
+uniform vec3 glow_red = vec3(0.9, 0.3, 0.1);
+uniform vec3 glow_dull = vec3(0.5, 0.2, 0.1);
+
+// 4 x 4 Bayer threshold for a pixel, from 0 to 1.
+float bayer(ivec2 pixel) {
+	int x = pixel.x & 3;
+	int y = pixel.y & 3;
+	int m[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+	return (float(m[y * 4 + x]) + 0.5) / 16.0;
+}
 
 vec3 to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
@@ -72,5 +88,17 @@ void fragment() {
 			}
 		}
 		COLOR = behind ? outline_color : vec4(chosen, 1.0);
+	}
+	// Burning up: pixels go to glow colors, lighter ones hotter, then drop out, both in dither order.
+	if (COLOR.a > 0.5 && (flare > 0.0 || dissolve > 0.0)) {
+		ivec2 pixel = ivec2(floor(UV / TEXTURE_PIXEL_SIZE));
+		if (flare > bayer(pixel + ivec2(2, 1))) {
+			float lum = dot(COLOR.rgb, vec3(0.3, 0.59, 0.11));
+			float heat = clamp(lum * 0.7 + flare * 0.45, 0.0, 1.0);
+			COLOR.rgb = heat > 0.8 ? glow_white : (heat > 0.55 ? glow_yellow : (heat > 0.3 ? glow_red : glow_dull));
+		}
+		if (dissolve > bayer(pixel)) {
+			COLOR = vec4(0.0);
+		}
 	}
 }

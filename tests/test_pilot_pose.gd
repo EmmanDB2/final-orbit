@@ -12,6 +12,8 @@ func _initialize() -> void:
 	_test_spring()
 	_test_fall_view()
 	_test_flail()
+	_test_topple()
+	_test_settle()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -103,3 +105,78 @@ func _test_flail() -> void:
 	_check("full at 300", Pilot.flail_share(300.0, data.flail_from_speed, data.flail_full_speed), 1.0, 0.0001)
 	_check("no flail going up", Pilot.flail_share(-50.0, data.flail_from_speed, data.flail_full_speed), 0.0, 0.0001)
 	_check_true("the data's view height is 2 km", is_equal_approx(data.fall_view_height, 40000.0))
+
+
+# Tips a body from upright for this long and says: [when it first reached flat, how many bounces,
+# the tilt and spin at the end].
+func _tip(g: float, seconds: float) -> Array:
+	var tilt: float = PI / 2.0
+	var spin: float = 0.0
+	var first_flat: float = -1.0
+	var bounces: int = 0
+	var t: float = 0.0
+	while t < seconds:
+		var before: float = spin
+		var next: Vector2 = AstronautView.topple_step(tilt, spin, g, 1.0 / 60.0)
+		tilt = next.x
+		spin = next.y
+		t += 1.0 / 60.0
+		if tilt <= 0.0 and first_flat < 0.0:
+			first_flat = t
+		if before >= 0.0 and spin < 0.0:
+			bounces += 1
+	return [first_flat, bounces, tilt, spin]
+
+
+func _test_topple() -> void:
+	var planet: Array = _tip(200.0, 6.0)
+	var moon: Array = _tip(60.0, 8.0)
+	_check_true("on the planet it reaches flat in under 1 s (got %s)" % planet[0], planet[0] > 0.0 and planet[0] < 1.0)
+	_check_true("on the moon it takes longer than on the planet (got %s)" % moon[0], moon[0] > planet[0])
+	_check_true("on the planet it bounces once (got %d)" % planet[1], planet[1] == 1)
+	_check_true("on the moon it bounces once (got %d)" % moon[1], moon[1] == 1)
+	_check("the planet's body comes to rest flat", planet[2], 0.0, 0.0001)
+	_check("the planet's body comes to rest still", planet[3], 0.0, 0.0001)
+	_check("the moon's body comes to rest flat", moon[2], 0.0, 0.0001)
+	_check("the moon's body comes to rest still", moon[3], 0.0, 0.0001)
+	# One already nearly down gets there too, and a standing body at no pull doesn't move.
+	_check_true("a body nearly flat settles", _tip_from(0.1, 200.0) < 0.0001)
+	_check("no pull, no tipping", AstronautView.topple_step(1.0, 0.0, 0.0, 0.1).x, 1.0, 0.0001)
+
+
+func _tip_from(tilt: float, g: float) -> float:
+	var spin: float = 0.0
+	for i in range(600):
+		var next: Vector2 = AstronautView.topple_step(tilt, spin, g, 1.0 / 60.0)
+		tilt = next.x
+		spin = next.y
+	return tilt
+
+
+# A dead body's middle settling while it tips, from either height it can start at, hit at any speed up
+# to 400 units/s: it never rises and never moves more than a pixel a frame, and ends lying.
+func _test_settle() -> void:
+	for g: float in [200.0, 60.0]:
+		for start: float in [AstronautView.STANDING_MIDDLE, 26.0]:
+			for impact: float in [0.0, 100.0, 160.0, 250.0, 400.0]:
+				var tilt: float = PI / 2.0
+				var spin: float = 0.0
+				var middle: float = start
+				var falling: float = start
+				var fall_speed: float = minf(impact, AstronautView.SETTLE_MAX_SPEED)
+				var highest_step: float = 0.0
+				var rose: bool = false
+				for i in range(600):
+					var tipped: Vector2 = AstronautView.topple_step(tilt, spin, g, 1.0 / 60.0)
+					tilt = tipped.x
+					spin = tipped.y
+					var next: Vector3 = AstronautView.settle_step(middle, falling, fall_speed, PI / 2.0 - tilt, g, 1.0 / 60.0)
+					highest_step = maxf(highest_step, middle - next.x)
+					rose = rose or next.x > middle + 0.00001
+					middle = next.x
+					falling = next.y
+					fall_speed = next.z
+				var label: String = "g %s from %s at %s" % [g, start, impact]
+				_check_true("the middle never rises (%s)" % label, not rose)
+				_check_true("the middle never moves more than a pixel a frame (%s, got %s)" % [label, highest_step], highest_step <= 1.0)
+				_check("the middle ends lying flat (%s)" % label, middle, AstronautView.LYING_MIDDLE, 0.01)

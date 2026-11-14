@@ -59,6 +59,16 @@ const LEAN: int = 10
 const DROP: int = 11
 const BREATHE: int = 12
 const POSE_COUNT: int = 13
+## A body lying flat has its middle this high above the ground, in pixels, and standing, this high.
+const LYING_MIDDLE: float = 6.0
+const STANDING_MIDDLE: float = 18.6
+## A tipping body bounces back at this share of its speed when it reaches flat, but only if it was going
+## faster than this, in radians per second, so it bounces once and comes to rest.
+const BOUNCE_SHARE: float = 0.2
+const BOUNCE_MIN_SPIN: float = 1.0
+## The dead body's middle sags to the ground no faster than this, in pixels per second, so it settles
+## rather than jumps.
+const SETTLE_MAX_SPEED: float = 60.0
 ## The size of a puff of gas, in pixels: how far it reaches and its half width at each end.
 const PUFF_LENGTH: float = 12.0
 const PUFF_START_WIDTH: float = 0.5
@@ -107,6 +117,11 @@ var sun_level: float = 1.0
 var leaks: PackedFloat32Array = PackedFloat32Array()
 ## How far the visor's frosted over, from 0 to 1, as the suit's air runs out.
 var frost: float = 0.0
+## How strong the leaking gas is, from 0 to 1: after the air runs out, it thins and dies away.
+var leak_strength: float = 1.0
+## Burning up: 0 is whole, 1 is gone. The suit flares to the re-entry glow's colors, then breaks up
+## through an ordered dither.
+var burn: float = 0.0
 var _frost_shown: int = 0
 var _light: DirectionalLight3D
 var _environment: Environment
@@ -205,6 +220,11 @@ func _ready() -> void:
 	material.set_shader_parameter("step_to_line", LINE_STEP / (DEPTH_REACH * 2.0))
 	material.set_shader_parameter("far_side", _far_side())
 	material.set_shader_parameter("outline_color", palette.hull_darkest)
+	# Burning up, the suit goes to the ship's re-entry glow, hottest first.
+	for glow: Array in [["glow_white", palette.thrust_white], ["glow_yellow", palette.thrust_yellow],
+			["glow_red", palette.thrust_red], ["glow_dull", palette.agency_orange_dark]]:
+		var glow_color: Color = glow[1]
+		material.set_shader_parameter(glow[0], Vector3(glow_color.r, glow_color.g, glow_color.b))
 	_sprite.material = material
 	_material = material
 	# Behind this node's own drawing, so the flames show in front.
@@ -256,6 +276,8 @@ func _process(delta: float) -> void:
 	_turn(delta)
 	_pose(delta)
 	_material.set_shader_parameter("far_side", _far_side())
+	_material.set_shader_parameter("flare", smoothstep(0.0, 0.6, burn))
+	_material.set_shader_parameter("dissolve", smoothstep(0.3, 1.0, burn))
 	# Square with the screen, with the body's middle where the feet put it.
 	global_rotation = screen_roll
 	var up := Vector2.UP.rotated(body_angle)
@@ -336,6 +358,37 @@ static func spring_step(value: float, velocity: float, target: float, omega: flo
 		velocity += (-omega * omega * (value - target) - 2.0 * zeta * omega * velocity) * slice
 		value += velocity * slice
 	return Vector2(value, velocity)
+
+
+## One step of a stiff body tipping over about its feet onto the ground, like a plank falling. tilt is
+## how far it still has to go to lie flat, in radians, and spin how fast it's going there. g is the
+## world's pull, in units per second squared, so the moon tips slowly and the planet fast. Reaching
+## flat, it bounces back once at a fifth of its speed and settles. Returns the new tilt in x and spin in y.
+static func topple_step(tilt: float, spin: float, g: float, delta: float) -> Vector2:
+	var accel: float = 1.5 * g / 37.0 * maxf(sin(tilt), 0.3)
+	spin += accel * delta
+	tilt -= spin * delta
+	if tilt <= 0.0:
+		tilt = 0.0
+		spin = -spin * BOUNCE_SHARE if spin > BOUNCE_MIN_SPIN else 0.0
+	return Vector2(tilt, spin)
+
+
+## How high the body's middle is above the ground when it's resting at this angle from upright, in
+## pixels: 6 lying down, 18.6 standing.
+static func rest_middle(angle_from_upright: float) -> float:
+	return LYING_MIDDLE + (STANDING_MIDDLE - LYING_MIDDLE) * absf(cos(angle_from_upright))
+
+
+## One step of a dead body's middle settling to the ground, never jumping and never rising. middle is
+## the height drawn now, falling the height the sinking body would be at and fall_speed how fast it's
+## sinking, angle the body's angle from upright, g the world's pull, in units per second squared.
+## The middle is the higher of where the body rests and where it's sunk to, and never higher than
+## it was. Returns the new middle, falling height, and falling speed, in x, y, and z.
+static func settle_step(middle: float, falling: float, fall_speed: float, angle_from_upright: float, g: float, delta: float) -> Vector3:
+	fall_speed = minf(fall_speed + g * delta, SETTLE_MAX_SPEED)
+	falling -= fall_speed * delta
+	return Vector3(minf(middle, maxf(rest_middle(angle_from_upright), falling)), falling, fall_speed)
 
 
 ## Flings the limbs: a hit or a blast kicks the arms up, the hips and knees folding, and the back
@@ -538,7 +591,7 @@ func _draw() -> void:
 	# Gas venting from holes in the suit, each a plume from the body the way it goes.
 	for angle: float in leaks:
 		var way: Vector2 = Vector2.UP.rotated(body_angle + angle)
-		_draw_puff(_sprite.position + way * 5.0, way)
+		_draw_puff(_sprite.position + way * 5.0, way, leak_strength)
 	if push == Vector2.ZERO and turning == 0.0:
 		return
 	var pack: Node3D = _model.joint(&"backpack")
@@ -572,14 +625,15 @@ func _draw() -> void:
 
 # A small cone of gas that widens as it leaves the thruster and breaks up at the far end, in the
 # ship's RCS colors.
-func _draw_puff(from: Vector2, direction: Vector2) -> void:
+func _draw_puff(from: Vector2, direction: Vector2, strength: float = 1.0) -> void:
+	var length: float = PUFF_LENGTH * strength
 	var colors: Array[Color] = [palette.hull_lightest, palette.hull_lightest, palette.hull_lighter, palette.hull_light]
 	var across_way: Vector2 = direction.orthogonal()
 	var frame: int = int(_flicker * 30.0)
 	var along: float = 1.0
-	while along < PUFF_LENGTH:
-		var share: float = along / PUFF_LENGTH
-		var half_width: float = lerpf(PUFF_START_WIDTH, PUFF_END_WIDTH, share)
+	while along < length:
+		var share: float = along / length
+		var half_width: float = lerpf(PUFF_START_WIDTH, PUFF_END_WIDTH, share) * strength
 		var color: Color = colors[int(share * colors.size())]
 		var across: float = -half_width
 		while across <= half_width:

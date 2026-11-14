@@ -71,6 +71,11 @@ const LANDING_EASE_SECONDS: float = 0.1
 ## Falling to a world, they turn the other way when they're moving this fast sideways that way, in
 ## world units per second.
 const FALL_TURN_SPEED: float = 20.0
+## How long a burning pilot takes to flare and dissolve, how long the leak plumes take to die away
+## after the air runs out, and how long a pilot out of air stays standing before they topple, in seconds.
+const BURN_SECONDS: float = 0.4
+const PLUME_FADE_SECONDS: float = 1.5
+const SLUMP_SECONDS: float = 0.35
 ## Below this much light the helmet lamp comes on, and above that it goes off, from 0 to 1.
 const LAMP_ON_BELOW: float = 0.5
 const LAMP_OFF_ABOVE: float = 0.62
@@ -130,6 +135,21 @@ var _stride: float = 0.0
 # face then, true for right.
 var _falling_to_world: bool = false
 var _fall_facing_right: bool = true
+# A dead body: how long it's been dead, whether it's come to rest on a world, which way it falls over
+# (-1 onto its left, as the screen has it, 1 onto its right), how far it has still to tip and how fast
+# it's tipping, and how long it waits before it starts. And the height its middle is drawn at, and the
+# sinking height and speed that settle it, in pixels.
+var _dead_time: float = 0.0
+var _resting: bool = false
+var _topple_way: float = 1.0
+var _topple_lying: float = 0.0
+var _topple_toward: float = 1.0
+var _topple_tilt: float = 0.0
+var _topple_spin: float = 0.0
+var _topple_wait: float = 0.0
+var _settle_middle: float = 0.0
+var _settle_falling: float = 0.0
+var _settle_speed: float = 0.0
 # How far the body's middle is drawn off where it'll settle, in pixels along the world's up, easing
 # to nothing after a landing or a take-off.
 var _lift_ease: float = 0.0
@@ -231,19 +251,84 @@ func _tick_aboard(delta: float) -> void:
 
 
 # Dead: the body drifts, tumbles, falls, and comes to rest like anything else, lying where it stops.
-# The air still drags on it, and can still burn it up.
+# The air still drags on it, and can still burn it up. Landing on a world, it tips over onto its back.
 func _tick_dead(delta: float) -> void:
-	# Gone with the ship, or burned away: there's no body to move.
-	if death_cause == "BURNED UP" or mode == ABOARD:
+	if mode == ABOARD:
+		return
+	_dead_time += delta
+	# Burned up: what's left flares and breaks up over a moment, carried on as it was, then it's gone.
+	if death_cause == "BURNED UP":
+		if _dead_time >= BURN_SECONDS:
+			visible = false
+		else:
+			_gravity_model.propagate(state, delta)
 		return
 	if _feel_air(delta):
 		_burn_up()
 		return
 	_gravity_model.propagate(state, delta)
 	if state.is_on_surface():
-		_spin = move_toward(_spin, 0.0, 4.0 * delta)
+		if not _resting:
+			# Falling dead, it's just reached the ground.
+			_rest_body(true, _gravity_model.get_altitude(state.x, state.y, state.time), state.get_touchdown_speed())
+		_tick_rest(delta)
 	else:
 		facing = wrapf(facing + _spin * delta, -PI, PI)
+		# A dead body doesn't turn over to face the way it's drifting.
+		_update_fall_view(false)
+
+
+# The body comes to rest on a world, lying on the ground: put 6 above it, moving with it, and set
+# to tip over. from_air says it landed after tumbling, so it keeps its spin; middle is how high its
+# middle was drawn, in pixels, and speed how hard it hit.
+func _rest_body(from_air: bool, middle: float, speed: float) -> void:
+	_resting = true
+	_world = _gravity_model.get_dominant_body(state.x, state.y, state.time)
+	var center: PackedFloat64Array = _gravity_model.get_body_position(_world, state.time)
+	var angle: float = atan2(state.y - center[1], state.x - center[0])
+	state.ground_clearance = 6.0
+	var reach: float = _ground_radius(center, angle, state.time) + state.ground_clearance
+	state.x = center[0] + cos(angle) * reach
+	state.y = center[1] + sin(angle) * reach
+	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+	state.velocity_x = ground[0]
+	state.velocity_y = ground[1]
+	_up_heading = atan2(cos(angle), -sin(angle))
+	# Which way it falls: onto its back, unless it's already well over to the other side.
+	var tipped: float = angle_difference(_up_heading, facing)
+	_topple_way = -1.0 if _fall_facing_right else 1.0
+	if absf(tipped) > 0.6 and signf(tipped) != _topple_way:
+		_topple_way = signf(tipped)
+	_topple_lying = _topple_way * PI / 2.0
+	_topple_tilt = absf(_topple_lying - tipped)
+	_topple_toward = signf(_topple_lying - tipped) if tipped != _topple_lying else _topple_way
+	_topple_spin = maxf(_spin * _topple_toward, 0.0) if from_air else 0.0
+	_spin = 0.0
+	_topple_wait = SLUMP_SECONDS if death_cause == "AIR RAN OUT" else 0.0
+	_settle_middle = middle
+	_settle_falling = middle
+	_settle_speed = minf(speed, AstronautView.SETTLE_MAX_SPEED)
+
+
+# A body at rest on a world: tips over, and its middle settles to the ground.
+func _tick_rest(delta: float) -> void:
+	var center: PackedFloat64Array = _gravity_model.get_body_position(_world, state.time)
+	_up_heading = atan2(state.x - center[0], center[1] - state.y)
+	var pull: PackedFloat64Array = _gravity_model.get_acceleration(state.x, state.y, state.time)
+	var gravity: float = sqrt(pull[0] * pull[0] + pull[1] * pull[1])
+	if _topple_wait > 0.0:
+		_topple_wait -= delta
+	else:
+		var tipped: Vector2 = AstronautView.topple_step(_topple_tilt, _topple_spin, gravity, delta)
+		_topple_tilt = tipped.x
+		_topple_spin = tipped.y
+	# The angle from upright it's at now: lying, less what it has still to tip.
+	var from_upright: float = _topple_lying - _topple_toward * _topple_tilt
+	facing = wrapf(_up_heading + from_upright, -PI, PI)
+	var settled: Vector3 = AstronautView.settle_step(_settle_middle, _settle_falling, _settle_speed, from_upright, gravity, delta)
+	_settle_middle = settled.x
+	_settle_falling = settled.y
+	_settle_speed = settled.z
 
 
 # The ship's lost when its cockpit's destroyed, and a pilot in it goes with it: burned up near the star,
@@ -290,7 +375,7 @@ func _die_of_impact(speed: float) -> void:
 		var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
 		state.velocity_x = ground[0]
 		state.velocity_y = ground[1]
-	_die("IMPACT", 0.3 + 0.7 * over, " %s" % Units.speed_text(speed))
+	_die("IMPACT", 0.3 + 0.7 * over, " %s" % Units.speed_text(speed), speed)
 
 
 func _burn_up() -> void:
@@ -334,11 +419,13 @@ func _patch_suit() -> void:
 	air = data.air_seconds
 
 
-func _die(cause: String, severity: float, detail: String = "") -> void:
+func _die(cause: String, severity: float, detail: String = "", impact_speed: float = 0.0) -> void:
 	if dead:
 		return
 	dead = true
 	death_cause = cause
+	_dead_time = 0.0
+	_resting = false
 	_firing = Vector2.ZERO
 	_push_local = Vector2.ZERO
 	_set_action("")
@@ -346,9 +433,28 @@ func _die(cause: String, severity: float, detail: String = "") -> void:
 	if helmet_lamp:
 		helmet_lamp = false
 		_station.light_helmet(Vector2.ZERO, 0.0, false)
-	# Lying down, the body sits lower than standing, and settles there.
-	state.ground_clearance = 6.0
-	if cause == "BURNED UP":
+	if mode == SURFACE:
+		_fall_facing_right = _facing_right
+	# Already on the ground: it's a body there at once, lying 6 above it, and settles down from where its
+	# middle was drawn. Otherwise it keeps its height until it lands, and then does.
+	var on_ground: bool = _grounded if mode == SURFACE else (mode == EVA and state.is_on_surface())
+	if cause != "BURNED UP" and on_ground:
+		var middle: float = AstronautView.STANDING_MIDDLE if mode == SURFACE else _gravity_model.get_altitude(state.x, state.y, state.time)
+		_rest_body(false, middle + _lift_ease, impact_speed)
+	elif mode == SURFACE:
+		# In the air from a jump: the middle was drawn lower than it will be, so it eases up.
+		_lift_ease = -(data.stand_height - AstronautView.STANDING_MIDDLE)
+	if _figure != null:
+		# How the body takes it: a hit crumples loosely, with the limbs flung; running out of air is a
+		# slow slump.
+		if cause == "IMPACT":
+			var on_world: bool = on_ground or _falling_to_world or mode == SURFACE
+			_figure.pose_spring = Vector2(16.0, 0.35) if on_world else Vector2(12.0, 0.5)
+			_figure.jolt(clampf(impact_speed / data.fatal_landing_speed, 1.0, 3.0) / 3.0)
+		elif cause == "AIR RAN OUT":
+			_figure.pose_spring = Vector2(3.5, 1.0)
+	# Burning up flares and breaks up first, which needs the 3D pilot; without it, it's gone at once.
+	if cause == "BURNED UP" and (_figure == null or mode == ABOARD):
 		visible = false
 	message_raised.emit("SIGNAL LOST · %s%s" % [cause, detail])
 	died.emit(cause, severity)
@@ -361,6 +467,14 @@ func wake_in_station(port: int) -> void:
 	visible = true
 	state.ground_clearance = data.stand_height
 	_spin = 0.0
+	_resting = false
+	_dead_time = 0.0
+	_lift_ease = 0.0
+	if _figure != null:
+		_figure.pose_spring = AstronautView.DEFAULT_SPRING
+		_figure.burn = 0.0
+		_figure.leak_strength = 1.0
+		_figure.lift = 0.0
 	carried_kg = 0.0
 	_set_stranded(false)
 	_enter_station(port)
@@ -436,8 +550,9 @@ func _tick_eva(delta: float) -> void:
 
 
 # Once a tick on EVA: whether they're falling to a world (so they're seen from the side), and which way
-# they face while they do: the way they last moved sideways against the ground, a little at a time.
-func _update_fall_view() -> void:
+# they face while they do: the way they last moved sideways against the ground, once past a speed
+# (unless turn is false, as for a dead body).
+func _update_fall_view(turn: bool = true) -> void:
 	_falling_to_world = false
 	var world: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
 	if world == 0:
@@ -448,9 +563,9 @@ func _update_fall_view() -> void:
 	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
 	var against := Vector2(state.velocity_x - ground[0], state.velocity_y - ground[1])
 	var sideways: float = against.dot(Vector2(-up.y, up.x))
-	if sideways > FALL_TURN_SPEED:
+	if turn and sideways > FALL_TURN_SPEED:
 		_fall_facing_right = true
-	elif sideways < -FALL_TURN_SPEED:
+	elif turn and sideways < -FALL_TURN_SPEED:
 		_fall_facing_right = false
 	var altitude: float = _gravity_model.get_altitude(state.x, state.y, state.time)
 	if altitude >= data.fall_view_height:
@@ -1217,11 +1332,17 @@ func _show_figure(delta: float) -> void:
 	# A hand out to the side for someone being held, on EVA.
 	_figure.holding = 1 if carried_kg > 0.0 and mode == EVA else 0
 	# Holes in the suit vent, and the visor frosts as the air goes.
-	_figure.leaks = suit_holes if not dead else PackedFloat32Array()
+	# After the air runs out, the plumes thin and die away rather than stopping at once.
+	var plume: bool = not dead or (death_cause == "AIR RAN OUT" and _dead_time < PLUME_FADE_SECONDS)
+	_figure.leaks = suit_holes if plume else PackedFloat32Array()
+	_figure.leak_strength = clampf(1.0 - _dead_time / PLUME_FADE_SECONDS, 0.0, 1.0) if dead else 1.0
+	_figure.burn = clampf(_dead_time / BURN_SECONDS, 0.0, 1.0) if dead and death_cause == "BURNED UP" else 0.0
 	_figure.frost = 1.0 - air / data.air_seconds if not suit_holes.is_empty() or dead else 0.0
 	_light_inside()
 	if dead:
-		_show_body(delta)
+		# A burning pilot keeps the pose they had, and flares and breaks up.
+		if death_cause != "BURNED UP":
+			_show_body(delta)
 		return
 	_figure.flail = 0.0
 	_lift_ease = move_toward(_lift_ease, 0.0, absf(data.stand_height - AstronautView.MIDDLE / AstronautView.METERS_PER_PIXEL) / LANDING_EASE_SECONDS * delta)
@@ -1296,22 +1417,31 @@ func _show_figure(delta: float) -> void:
 			_figure.motion = &"walk" if _walking.length() > 5.0 else &"idle"
 
 
-# Dead: limp, tumbling in space, or lying along the ground where the body came to rest.
+# Dead: limp, tumbling from the side near a world and from above in space, and on the ground tipping
+# over onto its back and settling, its middle sinking to the ground rather than jumping.
 func _show_body(delta: float) -> void:
 	_figure.motion = &"limp"
 	_figure.push = Vector2.ZERO
 	_figure.turning = 0.0
 	_figure.holding = 0
+	_figure.flail = 0.0
 	_figure.feet_below = 0.0
-	if state.is_on_surface():
-		var world: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
-		var center: PackedFloat64Array = _gravity_model.get_body_position(world, state.time)
-		var up_heading: float = atan2(state.x - center[0], center[1] - state.y)
+	_figure.body_angle = wrapf(facing - _roll, -PI, PI)
+	if _resting:
 		_figure.look = AstronautView.Look.SIDE
-		_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(up_heading + PI / 2.0 - _roll, -PI, PI), 6.0 * delta)
+		_figure.facing_right = _fall_facing_right
+		_figure.ground_up = wrapf(_up_heading - _roll, -PI, PI)
+		_figure.lift = _settle_middle - state.ground_clearance
+		return
+	# In the air: from the side near a world, as when alive, and from above in space.
+	_lift_ease = move_toward(_lift_ease, 0.0, absf(data.stand_height - AstronautView.STANDING_MIDDLE) / LANDING_EASE_SECONDS * delta)
+	_figure.lift = _lift_ease
+	if _falling_to_world:
+		_figure.look = AstronautView.Look.SIDE
+		_figure.facing_right = _fall_facing_right
+		_figure.ground_up = _sky_heading(_gravity_model.get_dominant_body(state.x, state.y, state.time))
 	else:
 		_figure.look = AstronautView.Look.EVA
-		_figure.body_angle = wrapf(facing - _roll, -PI, PI)
 
 
 # Inside a station, the pilot's lit by the lamps where they stand, and the helmet lamp comes on where

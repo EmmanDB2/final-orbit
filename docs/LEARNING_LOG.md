@@ -1023,3 +1023,13 @@ Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_vie
 - smoothstep as an honest 0 to 1 share from a speed range
 - latching a value (which way they face) and only changing it past a threshold
 - easing a pixel offset to nothing, so a change of view doesn't pop
+
+## 2026-11-14: Falling and dying ticket 3, dying blends
+
+Files: `scripts/pilot.gd`, `scripts/pilot/astronaut_view.gd`, `scripts/pilot/astronaut_pixels.gdshader`, `tests/test_pilot_pose.gd`, `docs/LEARNING_LOG.md`
+
+- a toppling plank as angular acceleration scaled by gravity, with one bounce at a fifth of the speed
+- taking the higher of two heights (resting and sinking) and never letting it rise, to settle without a jump
+- ordered (Bayer 4 x 4) dither in a canvas_item shader, to flare to glow colors and dissolve a sprite
+- a timer-driven fade (plume strength) and a state flag (resting) set once when a body first touches down
+- a fixed-step simulation in a test to check a per-frame limit
