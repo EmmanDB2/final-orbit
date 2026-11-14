@@ -154,7 +154,8 @@ func _tip_from(tilt: float, g: float) -> float:
 
 
 # A dead body's middle settling while it tips, from either height it can start at, hit at any speed up
-# to 400 units/s: it never rises and never moves more than a pixel a frame, and ends lying.
+# to 400 units/s: it never rises, never steps more than the free fall from the impact speed would (or a
+# pixel, where it's following the tipping body), and ends lying.
 func _test_settle() -> void:
 	for g: float in [200.0, 60.0]:
 		for start: float in [AstronautView.STANDING_MIDDLE, 26.0]:
@@ -163,20 +164,22 @@ func _test_settle() -> void:
 				var spin: float = 0.0
 				var middle: float = start
 				var falling: float = start
-				var fall_speed: float = minf(impact, AstronautView.SETTLE_MAX_SPEED)
-				var highest_step: float = 0.0
+				var fall_speed: float = impact
+				var worst_excess: float = 0.0
 				var rose: bool = false
 				for i in range(600):
 					var tipped: Vector2 = AstronautView.topple_step(tilt, spin, g, 1.0 / 60.0)
 					tilt = tipped.x
 					spin = tipped.y
 					var next: Vector3 = AstronautView.settle_step(middle, falling, fall_speed, PI / 2.0 - tilt, g, 1.0 / 60.0)
-					highest_step = maxf(highest_step, middle - next.x)
+					# The free fall's step this frame, from the speed it had.
+					var free_step: float = (fall_speed + g / 60.0) / 60.0
+					worst_excess = maxf(worst_excess, (middle - next.x) - maxf(free_step, 1.0))
 					rose = rose or next.x > middle + 0.00001
 					middle = next.x
 					falling = next.y
 					fall_speed = next.z
 				var label: String = "g %s from %s at %s" % [g, start, impact]
 				_check_true("the middle never rises (%s)" % label, not rose)
-				_check_true("the middle never moves more than a pixel a frame (%s, got %s)" % [label, highest_step], highest_step <= 1.0)
+				_check_true("the middle never steps more than the fall itself (%s, over by %s)" % [label, worst_excess], worst_excess <= 0.0001)
 				_check("the middle ends lying flat (%s)" % label, middle, AstronautView.LYING_MIDDLE, 0.01)

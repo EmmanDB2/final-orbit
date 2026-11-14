@@ -66,9 +66,6 @@ const STANDING_MIDDLE: float = 18.6
 ## faster than this, in radians per second, so it bounces once and comes to rest.
 const BOUNCE_SHARE: float = 0.2
 const BOUNCE_MIN_SPIN: float = 1.0
-## The dead body's middle sags to the ground no faster than this, in pixels per second, so it settles
-## rather than jumps.
-const SETTLE_MAX_SPEED: float = 60.0
 ## The size of a puff of gas, in pixels: how far it reaches and its half width at each end.
 const PUFF_LENGTH: float = 12.0
 const PUFF_START_WIDTH: float = 0.5
@@ -304,7 +301,9 @@ func _turn(delta: float) -> void:
 	_yaw = move_toward(_yaw, wanted_yaw, 9.0 * delta)
 	if _yaw <= -TAU + 0.0001:
 		_yaw += TAU
-	var roll := Basis(Vector3.BACK, -body_angle)
+	# Flailing, the whole body rocks a little about its middle too.
+	var rock: float = 0.22 * flail * sin(_flail_phase * 0.5) if motion == &"fall" and look == Look.SIDE else 0.0
+	var roll := Basis(Vector3.BACK, -(body_angle + rock))
 	# Upright seen from above: the top of the helmet toward the camera, the face up the screen
 	# before turning.
 	var upright := Basis(Vector3.RIGHT, PI / 2.0)
@@ -380,13 +379,14 @@ static func rest_middle(angle_from_upright: float) -> float:
 	return LYING_MIDDLE + (STANDING_MIDDLE - LYING_MIDDLE) * absf(cos(angle_from_upright))
 
 
-## One step of a dead body's middle settling to the ground, never jumping and never rising. middle is
-## the height drawn now, falling the height the sinking body would be at and fall_speed how fast it's
-## sinking, angle the body's angle from upright, g the world's pull, in units per second squared.
-## The middle is the higher of where the body rests and where it's sunk to, and never higher than
-## it was. Returns the new middle, falling height, and falling speed, in x, y, and z.
+## One step of a dead body's middle settling to the ground, never rising. middle is the height drawn
+## now, falling the height the sinking body would be at and fall_speed how fast it's sinking (it starts
+## at the impact speed and speeds up at g), angle the body's angle from upright, g the world's pull, in
+## units per second squared. The middle is the higher of where the body rests and where it's sunk to,
+## and never higher than it was, so it keeps falling like the body did until it meets the ground.
+## Returns the new middle, falling height, and falling speed, in x, y, and z.
 static func settle_step(middle: float, falling: float, fall_speed: float, angle_from_upright: float, g: float, delta: float) -> Vector3:
-	fall_speed = minf(fall_speed + g * delta, SETTLE_MAX_SPEED)
+	fall_speed += g * delta
 	falling -= fall_speed * delta
 	return Vector3(minf(middle, maxf(rest_middle(angle_from_upright), falling)), falling, fall_speed)
 
@@ -448,19 +448,20 @@ func _pose(delta: float) -> void:
 			elbow = 0.5
 		&"fall":
 			# Falling: from the air pose with the legs a little bent and the arms a little out, to
-			# panic: arms windmilling out of step and legs pedaling, back arched, no breath.
-			_flail_phase = fmod(_flail_phase + delta * lerpf(4.0, 9.0, flail), TAU * 10.0)
+			# panic: both arms flung forward and up in big arcs in the screen plane, out of step, legs kicking
+			# with deep knee bends, back arching and swaying, no breath.
+			_flail_phase = fmod(_flail_phase + delta * lerpf(5.0, 12.0, flail), TAU * 10.0)
 			var p: float = _flail_phase
 			var kick: float = cos(p * 1.3)
-			hip_l = lerpf(0.2, 0.4 + 0.5 * sin(p * 1.3), flail)
-			hip_r = lerpf(0.05, 0.4 - 0.5 * sin(p * 1.3), flail)
-			knee_l = lerpf(-0.35, -(0.4 + 0.6 * maxf(kick, 0.0)), flail)
-			knee_r = lerpf(-0.25, -(0.4 + 0.6 * maxf(-kick, 0.0)), flail)
-			arm_l = lerpf(0.3, 1.4 + 1.4 * sin(p), flail)
-			arm_r = lerpf(0.1, 1.4 + 1.4 * sin(p + 2.5), flail)
-			arm_out = lerpf(0.45, 0.22 + 0.12 * sin(p * 0.7), flail)
-			elbow = lerpf(0.5, 0.25 + 0.2 * sin(p + 1.0), flail)
-			lean = lerpf(0.0, -0.15, flail)
+			hip_l = lerpf(0.2, 0.55 + 0.65 * sin(p * 1.3), flail)
+			hip_r = lerpf(0.05, 0.55 - 0.65 * sin(p * 1.3), flail)
+			knee_l = lerpf(-0.35, -(0.5 + 0.9 * maxf(kick, 0.0)), flail)
+			knee_r = lerpf(-0.25, -(0.5 + 0.9 * maxf(-kick, 0.0)), flail)
+			arm_l = lerpf(0.3, 2.1 + 0.95 * sin(p), flail)
+			arm_r = lerpf(0.1, 2.1 + 0.95 * sin(p + 2.8), flail)
+			arm_out = lerpf(0.45, 0.2 + 0.1 * sin(p * 0.7), flail)
+			elbow = lerpf(0.5, 0.05 + 0.1 * sin(p + 1.0), flail)
+			lean = lerpf(0.0, -0.25 + 0.3 * sin(p * 0.8), flail)
 			breathe = lerpf(breathe, 0.0, flail)
 		&"land", &"push":
 			hip_l = 0.75

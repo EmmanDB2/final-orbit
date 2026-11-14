@@ -150,6 +150,10 @@ var _topple_wait: float = 0.0
 var _settle_middle: float = 0.0
 var _settle_falling: float = 0.0
 var _settle_speed: float = 0.0
+# How far the falling body is drawn lowered along the world's up, in pixels (zero or less): the contact
+# is found with the middle 26 above the ground, but an upright body's soles are lower than that, so
+# it's lowered by the gap, less as it turns flat. It eases in when the fall view starts.
+var _fall_lower: float = 0.0
 # How far the body's middle is drawn off where it'll settle, in pixels along the world's up, easing
 # to nothing after a landing or a take-off.
 var _lift_ease: float = 0.0
@@ -270,7 +274,7 @@ func _tick_dead(delta: float) -> void:
 	if state.is_on_surface():
 		if not _resting:
 			# Falling dead, it's just reached the ground.
-			_rest_body(true, _gravity_model.get_altitude(state.x, state.y, state.time), state.get_touchdown_speed())
+			_rest_body(true, _gravity_model.get_altitude(state.x, state.y, state.time) + _fall_lower, state.get_touchdown_speed())
 		_tick_rest(delta)
 	else:
 		facing = wrapf(facing + _spin * delta, -PI, PI)
@@ -307,7 +311,7 @@ func _rest_body(from_air: bool, middle: float, speed: float) -> void:
 	_topple_wait = SLUMP_SECONDS if death_cause == "AIR RAN OUT" else 0.0
 	_settle_middle = middle
 	_settle_falling = middle
-	_settle_speed = minf(speed, AstronautView.SETTLE_MAX_SPEED)
+	_settle_speed = speed
 
 
 # A body at rest on a world: tips over, and its middle settles to the ground.
@@ -439,11 +443,11 @@ func _die(cause: String, severity: float, detail: String = "", impact_speed: flo
 	# middle was drawn. Otherwise it keeps its height until it lands, and then does.
 	var on_ground: bool = _grounded if mode == SURFACE else (mode == EVA and state.is_on_surface())
 	if cause != "BURNED UP" and on_ground:
-		var middle: float = AstronautView.STANDING_MIDDLE if mode == SURFACE else _gravity_model.get_altitude(state.x, state.y, state.time)
+		var middle: float = AstronautView.STANDING_MIDDLE if mode == SURFACE else _gravity_model.get_altitude(state.x, state.y, state.time) + _fall_lower
 		_rest_body(false, middle + _lift_ease, impact_speed)
 	elif mode == SURFACE:
-		# In the air from a jump: the middle was drawn lower than it will be, so it eases up.
-		_lift_ease = -(data.stand_height - AstronautView.STANDING_MIDDLE)
+		# In the air from a jump: the middle was drawn this much lower, and stays so.
+		_fall_lower = -(data.stand_height - AstronautView.STANDING_MIDDLE)
 	if _figure != null:
 		# How the body takes it: a hit crumples loosely, with the limbs flung; running out of air is a
 		# slow slump.
@@ -576,6 +580,17 @@ func _update_fall_view(turn: bool = true) -> void:
 	var body_moving: PackedFloat64Array = _gravity_model.get_body_velocity(world, state.time)
 	var coming_in: bool = out.x * (state.velocity_x - body_moving[0]) + out.y * (state.velocity_y - body_moving[1]) < 0.0
 	_falling_to_world = falls_to_world(world, apsides[0], reach, altitude, data.fall_view_height, apsides[1] < 0.0, coming_in)
+
+
+# Eases the lowering of a falling body: in the fall view it's the gap between where the contact is
+# found and the soles, as far as the body is upright; otherwise nothing.
+func _ease_fall_lower(delta: float, falling: bool) -> void:
+	var gap: float = data.stand_height - AstronautView.STANDING_MIDDLE
+	var target: float = 0.0
+	if falling:
+		var world: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
+		target = -gap * absf(cos(angle_difference(_sky_heading(world), _figure.body_angle)))
+	_fall_lower = move_toward(_fall_lower, target, gap / LANDING_EASE_SECONDS * delta)
 
 
 # How fast they're dropping toward the middle of the world they're over, against the ground's own
@@ -1160,12 +1175,16 @@ func _set_mode(new_mode: String) -> void:
 	# them eases rather than jumps.
 	var settle: float = data.stand_height - AstronautView.MIDDLE / AstronautView.METERS_PER_PIXEL
 	if old_mode == EVA and new_mode == SURFACE:
-		_lift_ease = settle
+		# What's drawn lowered in the fall stays where it is, and eases to the standing height.
+		_lift_ease = settle + _fall_lower
+		_fall_lower = 0.0
 	elif old_mode == SURFACE and new_mode == EVA:
-		_lift_ease = -settle
+		_lift_ease = 0.0
+		_fall_lower = -settle
 		_fall_facing_right = _facing_right
 	else:
 		_lift_ease = 0.0
+		_fall_lower = 0.0
 	if helmet_lamp and mode != INSIDE:
 		helmet_lamp = false
 		_station.light_helmet(Vector2.ZERO, 0.0, false)
@@ -1379,6 +1398,8 @@ func _show_figure(delta: float) -> void:
 			_figure.feet_below = 0.0
 			_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(facing - _roll, -PI, PI), 10.0 * delta)
 			var jetting: bool = _firing != Vector2.ZERO or _turning != 0.0
+			_ease_fall_lower(delta, _falling_to_world)
+			_figure.lift = _lift_ease + _fall_lower
 			if _falling_to_world:
 				# Falling to a world: seen from the side, turning about their middle, and flailing
 				# harder the faster they drop, unless the jetpack's firing.
@@ -1393,7 +1414,7 @@ func _show_figure(delta: float) -> void:
 			else:
 				_figure.look = AstronautView.Look.EVA
 				_figure.motion = &"jet" if jetting else &"float"
-				if _lift_ease != 0.0:
+				if _lift_ease != 0.0 or _fall_lower != 0.0:
 					_figure.ground_up = _sky_heading(_gravity_model.get_dominant_body(state.x, state.y, state.time))
 		INDOORS:
 			_figure.feet_below = data.stand_height
@@ -1435,7 +1456,8 @@ func _show_body(delta: float) -> void:
 		return
 	# In the air: from the side near a world, as when alive, and from above in space.
 	_lift_ease = move_toward(_lift_ease, 0.0, absf(data.stand_height - AstronautView.STANDING_MIDDLE) / LANDING_EASE_SECONDS * delta)
-	_figure.lift = _lift_ease
+	_ease_fall_lower(delta, _falling_to_world)
+	_figure.lift = _lift_ease + _fall_lower
 	if _falling_to_world:
 		_figure.look = AstronautView.Look.SIDE
 		_figure.facing_right = _fall_facing_right

@@ -1033,3 +1033,13 @@ Files: `scripts/pilot.gd`, `scripts/pilot/astronaut_view.gd`, `scripts/pilot/ast
 - ordered (Bayer 4 x 4) dither in a canvas_item shader, to flare to glow colors and dissolve a sprite
 - a timer-driven fade (plume strength) and a state flag (resting) set once when a body first touches down
 - a fixed-step simulation in a test to check a per-frame limit
+
+## 2026-11-14: Falling and dying fix pass, soles at contact, free-fall settle, bigger flail
+
+Files: `scripts/pilot.gd`, `scripts/pilot/astronaut_view.gd`, `tests/test_pilot_pose.gd`, `docs/LEARNING_LOG.md`
+
+- free fall as speed plus g times time, so a settling body keeps its impact speed instead of braking
+- lowering a drawn sprite by the gap between where contact is detected and where the soles are, scaled by cosine of the tilt
+- carrying an easing offset across a mode change so the drawn position stays continuous
+- why a headless harness can mislead: a hidden node doesn't run its process, so a phase never advanced
+- exaggerating a pose for a small sprite (bigger arcs, a body rock) and checking it by screenshot
