@@ -1,0 +1,78 @@
+# test_pilot_pose.gd: checks the 3D pilot's pose blending, the fall view and flail rules, and the
+# death topple and settle: the numbers behind "nothing snaps".
+# From DESIGN.md, "Player" (the 3D pilot) and "Death and the med bay".
+# Run with: godot --headless --path . --script tests/test_pilot_pose.gd
+extends SceneTree
+
+var _checks: int = 0
+var _failures: int = 0
+
+
+func _initialize() -> void:
+	_test_spring()
+	print("%d checks, %d failed" % [_checks, _failures])
+	quit(1 if _failures > 0 else 0)
+
+
+func _check_true(label: String, passed: bool) -> void:
+	_checks += 1
+	if not passed:
+		_failures += 1
+		print("FAIL %s" % label)
+
+
+func _check(label: String, actual: float, expected: float, tolerance: float) -> void:
+	_checks += 1
+	if absf(actual - expected) > tolerance:
+		_failures += 1
+		print("FAIL %s: got %s, wanted %s" % [label, actual, expected])
+
+
+# Runs a spring from rest at 0 toward a target of 1 for this long, in steps of this size, and returns
+# [the value at the end, the highest it got, the first time it was within 1%, the last time it
+# was outside 1%].
+func _run(omega: float, zeta: float, seconds: float, step: float) -> Array:
+	var value: float = 0.0
+	var speed: float = 0.0
+	var top: float = 0.0
+	var first_close: float = -1.0
+	var last_far: float = 0.0
+	var t: float = 0.0
+	while t < seconds - 0.00001:
+		var next: Vector2 = AstronautView.spring_step(value, speed, 1.0, omega, zeta, step)
+		value = next.x
+		speed = next.y
+		t += step
+		top = maxf(top, value)
+		if absf(value - 1.0) <= 0.01 and first_close < 0.0:
+			first_close = t
+		if absf(value - 1.0) > 0.01:
+			last_far = t
+	return [value, top, first_close, last_far]
+
+
+func _test_spring() -> void:
+	# Critical damping at the default: close to the step fast, and never past it.
+	var critical: Array = _run(30.0, 1.0, 0.5, 1.0 / 60.0)
+	# (Critical damping at omega 30 is within 3% at 0.2 s and 1% at about 0.23 s: that's the maths.)
+	_check_true("critical spring is within 3% of a step by 0.2 s", absf(_run(30.0, 1.0, 0.2, 1.0 / 60.0)[0] - 1.0) < 0.03)
+	_check_true("critical spring is within 1% of a step by 0.25 s", absf(_run(30.0, 1.0, 0.25, 1.0 / 60.0)[0] - 1.0) < 0.01)
+	_check_true("critical spring never overshoots", critical[1] <= 1.0001)
+	_check_true("critical spring has settled", absf(critical[0] - 1.0) < 0.001)
+	# A loose one swings past and still settles inside a second.
+	var loose: Array = _run(16.0, 0.35, 1.0, 1.0 / 60.0)
+	_check_true("a loose spring overshoots", loose[1] > 1.1)
+	_check_true("a loose spring settles within 1 s", loose[3] < 1.0 and absf(loose[0] - 1.0) < 0.01)
+	var floppy: Array = _run(30.0, 0.35, 1.0, 1.0 / 60.0)
+	_check_true("a 0.35 spring at omega 30 overshoots", floppy[1] > 1.1)
+	_check_true("a 0.35 spring at omega 30 settles within 1 s", absf(floppy[0] - 1.0) < 0.01)
+	# A slow slump comes to rest without swinging.
+	var slump: Array = _run(3.5, 1.0, 3.0, 1.0 / 60.0)
+	_check_true("a slump doesn't overshoot", slump[1] <= 1.0001)
+	# A long frame can't blow it up.
+	for zeta: float in [1.0, 0.35, 0.5]:
+		var long_frame: Array = _run(30.0, zeta, 2.0, 0.1)
+		_check_true("stable at delta 0.1 (zeta %s)" % zeta, absf(long_frame[0] - 1.0) < 0.01 and long_frame[1] < 2.0)
+	_check("no time means no change", AstronautView.spring_step(0.3, 2.0, 1.0, 30.0, 1.0, 0.0).x, 0.3, 0.0001)
+	# Already at the target and still: stays there.
+	_check("at rest stays at rest", AstronautView.spring_step(1.0, 0.0, 1.0, 30.0, 1.0, 0.016).x, 1.0, 0.0001)

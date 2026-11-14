@@ -4,8 +4,10 @@
 # every frame from what the pilot's doing, and draws the cold gas puffing from the jetpack's
 # thrusters, like the ship's RCS. Seen from the side on worlds and from above inside stations. On
 # EVA they float upright, seen from above, and lean into a push until they're nearly flat, seen
-# from the back with the head the way they're going.
-# From DESIGN.md, "Player" (the 3D pilot being tried against the sprite sheets).
+# from the back with the head the way they're going. Nothing snaps: every joint is sprung toward the
+# pose its motion calls for, and a change of look turns from the old angle to the new one.
+# From DESIGN.md, "Player" (the 3D pilot being tried against the sprite sheets) and "Death and the
+# med bay".
 class_name AstronautView
 extends Node2D
 
@@ -38,6 +40,25 @@ const PACK_JOINT := Vector3(0.0, 1.10, 0.41)
 const MOST_LEAN: float = 1.35
 const LEAN_SPEED: float = 3.0
 const STRAIGHTEN_SPEED: float = 2.0
+## How long a change of look takes to turn from the old view to the new one, in seconds.
+const LOOK_BLEND_SECONDS: float = 0.35
+## The default pose spring: how fast it settles (radians per second) and how damped it is.
+const DEFAULT_SPRING := Vector2(30.0, 1.0)
+## The numbers a pose is made of, in the order they're kept.
+const HIP_L: int = 0
+const HIP_R: int = 1
+const KNEE_L: int = 2
+const KNEE_R: int = 3
+const ARM_L: int = 4
+const ARM_R: int = 5
+const OUT_L: int = 6
+const OUT_R: int = 7
+const ELBOW_L: int = 8
+const ELBOW_R: int = 9
+const LEAN: int = 10
+const DROP: int = 11
+const BREATHE: int = 12
+const POSE_COUNT: int = 13
 ## The size of a puff of gas, in pixels: how far it reaches and its half width at each end.
 const PUFF_LENGTH: float = 12.0
 const PUFF_START_WIDTH: float = 0.5
@@ -57,6 +78,14 @@ var rise_share: float = 0.0
 ## How far below the point this node marks the boot soles are, in pixels, when they stand
 ## on something. Zero puts the body's middle on the point.
 var feet_below: float = 0.0
+## How far, in pixels along the world's up on screen, the body's middle is drawn above where the
+## other rules put it: eases a landing and settles a body on the ground. And which way up is, as an
+## angle clockwise from up on screen.
+var lift: float = 0.0
+var ground_up: float = 0.0
+## How springy the pose is: x is how fast it settles, in radians per second, and y how damped it is
+## (1 is critical; less overshoots).
+var pose_spring: Vector2 = DEFAULT_SPRING
 ## Which way the jetpack is pushing, in the pilot's own frame: x toward their right hand and y
 ## toward their feet. Zero when it isn't. And which way it's turning them, clockwise positive.
 var push := Vector2.ZERO
@@ -100,6 +129,16 @@ var _lean := Vector2.ZERO
 var _phase: float = 0.0
 var _time: float = 0.0
 var _flicker: float = 0.0
+# What each pose number is showing now and how fast it's moving, in the order of HIP_L to BREATHE.
+var _shown := PackedFloat32Array()
+var _speed := PackedFloat32Array()
+var _posed: bool = false
+# The look last drawn, the angle it was turned to when a change began, and how far the turn's got.
+var _looked: int = -1
+var _blend_from := Quaternion.IDENTITY
+var _blend_share: float = 1.0
+# Whether the far side of the body is shaded: it follows the look, at the middle of a blend.
+var _shade_far: bool = true
 
 
 func _ready() -> void:
@@ -217,6 +256,7 @@ func _process(delta: float) -> void:
 	global_rotation = screen_roll
 	var up := Vector2.UP.rotated(body_angle)
 	_sprite.position = up * (MIDDLE / METERS_PER_PIXEL - feet_below) if feet_below > 0.0 else Vector2.ZERO
+	_sprite.position += Vector2.UP.rotated(ground_up) * lift
 	queue_redraw()
 
 
@@ -242,8 +282,9 @@ func _turn(delta: float) -> void:
 	# Upright seen from above: the top of the helmet toward the camera, the face up the screen
 	# before turning.
 	var upright := Basis(Vector3.RIGHT, PI / 2.0)
+	var wanted_basis: Basis
 	if look == Look.ABOVE:
-		_pivot.basis = roll * upright
+		wanted_basis = roll * upright
 	elif look == Look.EVA:
 		# Into a push, not a turn: the head tips the way the push goes. Let go, and they straighten.
 		var wanted := Vector2.ZERO
@@ -253,10 +294,63 @@ func _turn(delta: float) -> void:
 		var tilt := Basis.IDENTITY
 		if _lean.length() > 0.001:
 			tilt = Basis(Vector3.BACK.cross(Vector3(_lean.x, _lean.y, 0.0)).normalized(), _lean.length())
-		_pivot.basis = roll * tilt * upright
+		wanted_basis = roll * tilt * upright
 	else:
-		_pivot.basis = roll * Basis(Vector3.UP, _yaw)
+		wanted_basis = roll * Basis(Vector3.UP, _yaw)
+	_pivot.basis = _blended(wanted_basis, delta)
 	_depth_pivot.basis = _pivot.basis
+
+
+# The basis to show: the look's own, or while it's changing, a turn from the angle shown a moment ago
+# to it, eased. A change in the middle of a turn starts a new one from what's shown.
+func _blended(wanted: Basis, delta: float) -> Basis:
+	if _looked != look:
+		if _looked >= 0:
+			_blend_from = _pivot.basis.orthonormalized().get_rotation_quaternion()
+			_blend_share = 0.0
+		_looked = look
+	if _blend_share >= 1.0:
+		_shade_far = look == Look.SIDE
+		return wanted
+	_blend_share = minf(_blend_share + delta / LOOK_BLEND_SECONDS, 1.0)
+	# The shading flips at the middle of the turn, where nothing's near a limb's edge.
+	if _blend_share >= 0.5:
+		_shade_far = look == Look.SIDE
+	return Basis(_blend_from.slerp(wanted.orthonormalized().get_rotation_quaternion(), smoothstep(0.0, 1.0, _blend_share)))
+
+
+## Moves a number toward its target like a damped spring, and returns the new value in x and its
+## new velocity in y. omega is how fast it settles, in radians per second, and zeta how damped:
+## 1 comes to rest without overshooting, less swings past and back. Steps in small slices inside, so
+## a long frame can't make it blow up.
+static func spring_step(value: float, velocity: float, target: float, omega: float, zeta: float, delta: float) -> Vector2:
+	if omega <= 0.0 or delta <= 0.0:
+		return Vector2(value, velocity)
+	var slices: int = maxi(1, ceili(delta * omega / 0.2))
+	var slice: float = delta / slices
+	for i in range(slices):
+		velocity += (-omega * omega * (value - target) - 2.0 * zeta * omega * velocity) * slice
+		value += velocity * slice
+	return Vector2(value, velocity)
+
+
+## Flings the limbs: a hit or a blast kicks the arms up, the hips and knees folding, and the back
+## arching, and the pose spring carries them back. kick is 1 for a good fling.
+func jolt(kick: float) -> void:
+	_ready_pose()
+	_speed[ARM_L] += 8.0 * kick
+	_speed[ARM_R] += 8.0 * kick
+	_speed[HIP_L] += 5.0 * kick
+	_speed[HIP_R] += 5.0 * kick
+	_speed[KNEE_L] -= 6.0 * kick
+	_speed[KNEE_R] -= 6.0 * kick
+	_speed[LEAN] -= 3.0 * kick
+
+
+func _ready_pose() -> void:
+	if _shown.is_empty():
+		_shown.resize(POSE_COUNT)
+		_speed.resize(POSE_COUNT)
 
 
 func _pose(delta: float) -> void:
@@ -355,13 +449,6 @@ func _pose(delta: float) -> void:
 			arm_r = 0.1 + sin(_time * 0.5 + 1.5) * 0.25
 			arm_out = 0.55 + sin(_time * 0.45) * 0.15
 			elbow = 0.5 + sin(_time * 0.7 + 0.5) * 0.2
-	_turn_joint(&"hip_l", Vector3(hip_l, 0.0, 0.0))
-	_turn_joint(&"hip_r", Vector3(hip_r, 0.0, 0.0))
-	_turn_joint(&"knee_l", Vector3(knee_l, 0.0, 0.0))
-	_turn_joint(&"knee_r", Vector3(knee_r, 0.0, 0.0))
-	# The boots stay about level with the ground.
-	_turn_joint(&"ankle_l", Vector3(-(hip_l + knee_l) * 0.8, 0.0, 0.0))
-	_turn_joint(&"ankle_r", Vector3(-(hip_r + knee_r) * 0.8, 0.0, 0.0))
 	var arm_out_l: float = arm_out
 	var arm_out_r: float = arm_out
 	var elbow_l: float = elbow
@@ -379,14 +466,33 @@ func _pose(delta: float) -> void:
 		arm_l = 0.15
 		arm_out_l = 1.4
 		elbow_l = 0.1
-	_turn_joint(&"shoulder_l", Vector3(arm_l, 0.0, -arm_out_l))
-	_turn_joint(&"shoulder_r", Vector3(arm_r, 0.0, arm_out_r))
-	_turn_joint(&"elbow_l", Vector3(elbow_l, 0.0, 0.0))
-	_turn_joint(&"elbow_r", Vector3(elbow_r, 0.0, 0.0))
-	_turn_joint(&"spine", Vector3(lean * 0.5, 0.0, 0.0))
-	_turn_joint(&"chest", Vector3(lean * 0.5 + breathe, 0.0, 0.0))
-	_model.joint(&"root").position = Vector3(0.0, -drop, 0.0)
-	_depth_model.joint(&"root").position = Vector3(0.0, -drop, 0.0)
+	# What the motion calls for is only the target: each number eases toward it, so nothing snaps.
+	var targets := PackedFloat32Array([hip_l, hip_r, knee_l, knee_r, arm_l, arm_r, arm_out_l, arm_out_r,
+			elbow_l, elbow_r, lean, drop, breathe])
+	_ready_pose()
+	if not _posed:
+		_posed = true
+		_shown = targets.duplicate()
+	else:
+		for i in range(POSE_COUNT):
+			var stepped: Vector2 = spring_step(_shown[i], _speed[i], targets[i], pose_spring.x, pose_spring.y, delta)
+			_shown[i] = stepped.x
+			_speed[i] = stepped.y
+	_turn_joint(&"hip_l", Vector3(_shown[HIP_L], 0.0, 0.0))
+	_turn_joint(&"hip_r", Vector3(_shown[HIP_R], 0.0, 0.0))
+	_turn_joint(&"knee_l", Vector3(_shown[KNEE_L], 0.0, 0.0))
+	_turn_joint(&"knee_r", Vector3(_shown[KNEE_R], 0.0, 0.0))
+	# The boots stay about level with the ground.
+	_turn_joint(&"ankle_l", Vector3(-(_shown[HIP_L] + _shown[KNEE_L]) * 0.8, 0.0, 0.0))
+	_turn_joint(&"ankle_r", Vector3(-(_shown[HIP_R] + _shown[KNEE_R]) * 0.8, 0.0, 0.0))
+	_turn_joint(&"shoulder_l", Vector3(_shown[ARM_L], 0.0, -_shown[OUT_L]))
+	_turn_joint(&"shoulder_r", Vector3(_shown[ARM_R], 0.0, _shown[OUT_R]))
+	_turn_joint(&"elbow_l", Vector3(_shown[ELBOW_L], 0.0, 0.0))
+	_turn_joint(&"elbow_r", Vector3(_shown[ELBOW_R], 0.0, 0.0))
+	_turn_joint(&"spine", Vector3(_shown[LEAN] * 0.5, 0.0, 0.0))
+	_turn_joint(&"chest", Vector3(_shown[LEAN] * 0.5 + _shown[BREATHE], 0.0, 0.0))
+	_model.joint(&"root").position = Vector3(0.0, -_shown[DROP], 0.0)
+	_depth_model.joint(&"root").position = Vector3(0.0, -_shown[DROP], 0.0)
 
 
 func _turn_joint(joint_name: StringName, angles: Vector3) -> void:
@@ -471,7 +577,7 @@ func _on_canvas(point: Vector3) -> Vector2:
 # The far arm and leg are darker only from the side. Leaning on EVA or seen from above, what's far
 # is the lower body, which would go dark.
 func _far_side() -> float:
-	return 0.5 + FAR_SIDE / (DEPTH_REACH * 2.0) if look == Look.SIDE else 2.0
+	return 0.5 + FAR_SIDE / (DEPTH_REACH * 2.0) if _shade_far else 2.0
 
 
 func _to_oklab(color: Color) -> Vector3:

@@ -1004,3 +1004,12 @@ Files: `scripts/event/comet_view.gd`, `docs/LEARNING_LOG.md`
 
 - fading by zoom on a log scale (`log`, `lerpf`, `clampf`)
 - a static function so a rule can be checked without a scene
+
+## 2026-11-14: Falling and dying ticket 1, blend poses and looks
+
+Files: `scripts/pilot/astronaut_view.gd`, `tests/test_pilot_pose.gd`, `docs/LEARNING_LOG.md`
+
+- a damped spring (omega, zeta) stepping a value toward a target, in small slices so a long frame stays stable
+- critical damping (zeta 1) against underdamping (zeta below 1) for overshoot and wobble
+- quaternion slerp with a smoothstep ease, to blend between two camera angles
+- target value versus shown value: computing a pose, then easing the joints toward it
