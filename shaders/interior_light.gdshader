@@ -20,6 +20,56 @@ uniform sampler2D light_map : filter_nearest;
 uniform bool baked = false;
 // Where someone can stand: white on floors. Lights that move are stopped by everything else.
 uniform sampler2D floor_mask : filter_nearest;
+// The pilot's helmet lamp: whether it's on, where the pilot is on the picture, which way they face,
+// how far it reaches in picture pixels, how wide its cone is as the cosine of half its angle, and how
+// bright it is. Shining from head height, it's stopped by anything that isn't floor.
+uniform bool helmet_on = false;
+uniform vec2 helmet_at = vec2(0.0);
+uniform vec2 helmet_facing = vec2(0.0, -1.0);
+uniform float helmet_reach = 110.0;
+uniform float helmet_cone = 0.8;
+uniform float helmet_brightness = 0.9;
+// A little light round the pilot, so they can see their own feet, in picture pixels.
+uniform float helmet_glow = 9.0;
+// How far the beam goes into what isn't floor before it's stopped, in picture pixels.
+uniform float helmet_into_walls = 5.0;
+
+#define HELMET_STEPS 48
+
+// How much of the helmet lamp reaches this pixel, from 0 to 1.
+float helmet_light(vec2 pixel, vec2 texel) {
+	vec2 apart = pixel - helmet_at;
+	float distance_to = length(apart);
+	float glow = clamp(1.0 - distance_to / helmet_glow, 0.0, 1.0) * 0.6;
+	if (distance_to >= helmet_reach || distance_to < 0.5) {
+		return max(glow, distance_to < 0.5 ? 0.6 : 0.0);
+	}
+	float across = dot(apart / distance_to, helmet_facing);
+	// The cone's edge softens over a few degrees.
+	float cone = smoothstep(helmet_cone - 0.08, helmet_cone + 0.04, across);
+	if (cone <= 0.0) {
+		return glow;
+	}
+	// What stands off the floor throws a shadow, once the beam has gone a few pixels into it, so the
+	// side of whatever it hits is lit, and a thin edge of floor the map leaves out isn't lost.
+	int steps = min(int(distance_to / 1.5), HELMET_STEPS);
+	float step_length = distance_to / float(max(steps, 1));
+	float through = 0.0;
+	for (int i = 1; i < HELMET_STEPS; i++) {
+		if (i >= steps) {
+			break;
+		}
+		vec2 sample_at = helmet_at + apart * (float(i) / float(steps));
+		if (texture(floor_mask, sample_at * texel).r < 0.5) {
+			through += step_length;
+			if (through > helmet_into_walls) {
+				return glow;
+			}
+		}
+	}
+	float share = 1.0 - distance_to / helmet_reach;
+	return max(glow, helmet_brightness * cone * share * (2.0 - share));
+}
 
 void fragment() {
 	vec2 pixel = floor(UV / TEXTURE_PIXEL_SIZE) + 0.5;
@@ -34,6 +84,9 @@ void fragment() {
 	}
 	if (baked) {
 		light = texture(light_map, UV).r;
+	}
+	if (helmet_on) {
+		light = 1.0 - (1.0 - light) * (1.0 - helmet_light(pixel, TEXTURE_PIXEL_SIZE));
 	}
 	COLOR = palette_lit(texture(TEXTURE, UV), light, pixel);
 }

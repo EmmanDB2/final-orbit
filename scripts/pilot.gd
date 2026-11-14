@@ -57,6 +57,12 @@ var carried_kg: float = 0.0
 ## How someone adrift close by is moving, as [x, y] velocity, so speeds read against them while
 ## reaching for their hand. Empty when there's no one.
 var near_moving: Callable
+## Whether the helmet lamp's on. Inside a station it comes on by itself where the lamps leave it dark,
+## and goes off again where they don't.
+var helmet_lamp: bool = false
+## Below this much light the helmet lamp comes on, and above that it goes off, from 0 to 1.
+const LAMP_ON_BELOW: float = 0.5
+const LAMP_OFF_ABOVE: float = 0.62
 ## Which way the pilot faces, in the world.
 var facing: float = 0.0
 
@@ -777,6 +783,9 @@ func guide_radius() -> float:
 
 func _set_mode(new_mode: String) -> void:
 	mode = new_mode
+	if helmet_lamp and mode != INSIDE:
+		helmet_lamp = false
+		_station.light_helmet(Vector2.ZERO, 0.0, false)
 	_has_drag = false
 	_jump_held = false
 	_jetting = false
@@ -937,6 +946,7 @@ func _show_figure(delta: float) -> void:
 	_figure.turning = _turning if mode == EVA else 0.0
 	# A hand out to the side for someone being held, on EVA.
 	_figure.holding = 1 if carried_kg > 0.0 and mode == EVA else 0
+	_light_inside()
 	match mode:
 		SURFACE:
 			_figure.look = AstronautView.Look.SIDE
@@ -983,6 +993,25 @@ func _show_figure(delta: float) -> void:
 			_figure.body_angle = wrapf(facing - _roll, -PI, PI)
 			_figure.speed_share = _walking.length() / data.walk_speed
 			_figure.motion = &"walk" if _walking.length() > 5.0 else &"idle"
+
+
+# Inside a station, the pilot's lit by the lamps where they stand, and the helmet lamp comes on where
+# that's dark. Anywhere else, it's out.
+func _light_inside() -> void:
+	if mode != INSIDE:
+		if helmet_lamp:
+			helmet_lamp = false
+			_station.light_helmet(Vector2.ZERO, 0.0, false)
+		_figure.light_level = 1.0
+		return
+	var room: float = _station.light_at(_local)
+	if helmet_lamp and room > LAMP_OFF_ABOVE:
+		helmet_lamp = false
+	elif not helmet_lamp and room < LAMP_ON_BELOW:
+		helmet_lamp = true
+	_station.light_helmet(_local, _local_facing, helmet_lamp)
+	# Their own lamp lights them a little too.
+	_figure.light_level = maxf(room, 0.55) if helmet_lamp else room
 
 
 # From the side, standing up straight on the ground, facing the way they last walked.

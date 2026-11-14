@@ -871,3 +871,11 @@ Files: `scripts/station/station_light.gd`, `scripts/station/station_layout.gd`, 
 - baking: working out something expensive once into a texture
 - WorkerThreadPool: running slow work on another thread and picking up the result
 - blending light like a screen blend (1 - (1-a)(1-b)) so it never passes full
+
+## 2026-11-14: Lighting, ticket 3: the helmet lamp
+
+Files: `shaders/interior_light.gdshader`, `scripts/station/station_view.gd`, `scripts/pilot.gd`, `scripts/pilot/astronaut_view.gd`, `docs/DESIGN.md`
+
+- ray marching through a mask texture in a fragment shader for shadows
+- a cone test with the dot product and smoothstep for soft edges
+- hysteresis: separate on and off thresholds so a switch doesn't flicker

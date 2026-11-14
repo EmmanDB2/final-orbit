@@ -63,6 +63,11 @@ var push := Vector2.ZERO
 var turning: float = 0.0
 ## Holding someone's hand: 1 reaches the right arm out to the side, -1 the left, 0 neither.
 var holding: int = 0
+## How much light falls on them, from 0 to 1: dimmer in a dark room, and the palette shading takes
+## them down its steps.
+var light_level: float = 1.0
+var _light: DirectionalLight3D
+var _environment: Environment
 ## The view's turn, so the canvas can stay square with the screen.
 var screen_roll: float = 0.0
 
@@ -102,6 +107,7 @@ func _ready() -> void:
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color.WHITE
 	environment.ambient_light_energy = 0.3
+	_environment = environment
 	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	_camera.environment = environment
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -114,6 +120,7 @@ func _ready() -> void:
 	# Lit from the upper left, a little from the front, wherever the pilot turns.
 	var light := DirectionalLight3D.new()
 	light.light_energy = 0.9
+	_light = light
 	_viewport.add_child(light)
 	light.look_at_from_position(Vector3(-1.0, 1.4, 1.2), Vector3.ZERO)
 
@@ -186,6 +193,8 @@ func _process(delta: float) -> void:
 		return
 	_time += delta
 	_flicker += delta
+	_light.light_energy = 0.9 * light_level
+	_environment.ambient_light_energy = 0.3 * light_level
 	_turn(delta)
 	_pose(delta)
 	_material.set_shader_parameter("far_side", _far_side())

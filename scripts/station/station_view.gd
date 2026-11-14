@@ -146,6 +146,28 @@ func _exit_tree() -> void:
 	_wait_for_light()
 
 
+## How much light the lamps leave at a point in the station's frame, from 0 to 1.
+func light_at(local: Vector2) -> float:
+	var point: Vector2 = local / _design.art_pixel_size + Vector2(layout.origin)
+	if _baked_light == null:
+		return _design.ambient_light if not _design.powered else 1.0
+	var x: int = clampi(floori(point.x), 0, _baked_light.get_width() - 1)
+	var y: int = clampi(floori(point.y), 0, _baked_light.get_height() - 1)
+	return _baked_light.get_pixel(x, y).r
+
+
+## Shines the pilot's helmet lamp from a point in the station's frame, facing this way in it, or puts
+## it out.
+func light_helmet(local: Vector2, facing: float, on: bool) -> void:
+	var material: ShaderMaterial = _inside_sprite.material
+	if material == null:
+		return
+	material.set_shader_parameter("helmet_on", on)
+	if on:
+		material.set_shader_parameter("helmet_at", local / _design.art_pixel_size + Vector2(layout.origin))
+		material.set_shader_parameter("helmet_facing", Vector2(sin(facing), -cos(facing)))
+
+
 ## How many game pixels wide one pixel of the station's art is drawn.
 func art_pixel_size() -> float:
 	return _design.art_pixel_size
