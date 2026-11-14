@@ -1061,3 +1061,11 @@ Files: `scripts/ui/gig_tracker.gd`, `scripts/ui/flight_hud.gd`, `docs/LEARNING_L
 - a signal from a child widget (gig_picked) so the HUD, not the widget, talks to the agency
 - a pool of marker nodes, one per slot, shown or hidden each frame instead of made and freed
 - telling "just taken" from "already held" by remembering the ids held at the last change
+
+## 2026-11-14: Several gigs ticket 3, the board for several gigs
+
+Files: `scripts/ui/gig_board.gd`, `tests/test_gigs.gd`, `docs/LEARNING_LOG.md`
+
+- a "just did it" flag that locks a button until the player does something else, so a double tap can't repeat it
+- re-reading a list from its source (refresh) after changing it, so a replaced row shows at once
+- a UI widget that only lays itself out when it draws, and what that means for driving it in a headless test

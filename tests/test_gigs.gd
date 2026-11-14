@@ -31,6 +31,7 @@ func _initialize() -> void:
 	_test_losing_them_all()
 	_test_save_and_restore()
 	_test_old_save_upgrades()
+	_test_board_stays_open(main)
 	main.queue_free()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -281,4 +282,34 @@ func _test_old_save_upgrades() -> void:
 	var bare: Dictionary = SaveGame._upgrade({"version": 1})
 	_check("a version 1 save steps all the way up", bare["version"] == 3 and bare["agency"]["gigs"].is_empty())
 	_agency.credits = 0
+	_reset()
+
+
+# Taking a gig keeps the board open; the button waits for another pick, so a double tap takes only one.
+func _test_board_stays_open(main: Node) -> void:
+	_reset()
+	var hud: Node = main.get_node("Hud/SafeArea/FlightHud")
+	var board: GigBoard = hud._gig_board
+	hud._open_gig_board({"kind": "station", "index": 0})
+	board.refresh()
+	var shown: Array[Gig] = _agency.board({"kind": "station", "index": 0})
+	# Make the first row something that's surely takeable: a small cargo gig.
+	var easy: Gig = _cargo(100.0)
+	easy.origin = {"kind": "station", "index": 0}
+	var slots: Array = _agency._boards[Agency.place_key({"kind": "station", "index": 0})]
+	slots[0] = easy
+	board.refresh()
+	board._picked = 0
+	board._accept()
+	_check("the gig is taken", _agency.held_count() == 1 and _agency.gigs[0] == easy)
+	_check("the board stays open", board.visible)
+	_check("the button waits", board._just_taken)
+	_check("the row was replaced", _agency.board({"kind": "station", "index": 0})[0] != easy)
+	board._accept()
+	_check("a second tap takes nothing", _agency.held_count() == 1)
+	board._picked = 1
+	board._just_taken = false
+	board._accept()
+	_check("after picking a row, the next can be taken", _agency.held_count() == 2 or not board._can_take(shown[1]))
+	board.close()
 	_reset()

@@ -1,7 +1,9 @@
 # gig_board.gd: the agency gig board a terminal shows: the gigs that start here down the left, the one
 # picked described on the right with its pay, destination, hazards, and requirements, met in green and
-# unmet in red, and ACCEPT GIG once they're all met. It covers the flight while it's up. From DESIGN.md,
-# "Gigs" (boards), drawn to Manny's 2026-11-10 mockup.
+# unmet in red, and ACCEPT GIG once they're all met. Taking a gig leaves the board up, so up to three
+# can be taken in a row; the button reads GIG TAKEN until another row is picked, so a double tap can't
+# take the gig that replaced it. The bottom line says how many gigs are held. It covers the flight
+# while it's up. From DESIGN.md, "Gigs" (boards), drawn to Manny's 2026-11-10 mockup.
 class_name GigBoard
 extends UiWidget
 
@@ -22,6 +24,9 @@ var _picked: int = 0
 var _panel := Rect2()
 var _finger := Vector2.ZERO
 var _pressed: String = ""
+# Set when a gig's just been taken, and cleared by picking a row, so a second tap on the button can't
+# take the gig that replaced it.
+var _just_taken: bool = false
 # The press that opened the board, a tap on USE TERMINAL or F, is still down when it opens. The keys
 # only count once everything's been let go since, so that press can't take a gig too.
 var _keys_ready: bool = false
@@ -35,6 +40,7 @@ func open(agency: Agency, place: Dictionary) -> void:
 	_agency = agency
 	_place = place
 	_picked = 0
+	_just_taken = false
 	_keys_ready = false
 	visible = true
 	refresh()
@@ -79,6 +85,7 @@ func finger_up() -> void:
 			_accept()
 		elif part.begins_with("row"):
 			_picked = int(part.substr(3))
+			_just_taken = false
 	_pressed = ""
 	queue_redraw()
 
@@ -92,9 +99,11 @@ func _process(_delta: float) -> void:
 	# On the Mac: up and down pick, F takes it, and Escape closes.
 	if Input.is_action_just_pressed("translate_forward"):
 		_picked = maxi(_picked - 1, 0)
+		_just_taken = false
 		queue_redraw()
 	if Input.is_action_just_pressed("translate_back"):
 		_picked = mini(_picked + 1, maxi(_gigs.size() - 1, 0))
+		_just_taken = false
 		queue_redraw()
 	if Input.is_action_just_pressed("interact"):
 		_accept()
@@ -102,11 +111,14 @@ func _process(_delta: float) -> void:
 		close()
 
 
+# Takes the picked gig and stays open: its row is replaced by a new gig, still picked, and the button
+# waits for another pick.
 func _accept() -> void:
-	if _gigs.is_empty() or not _can_take(_gigs[_picked]):
+	if _just_taken or _gigs.is_empty() or not _can_take(_gigs[_picked]):
 		return
 	if _agency.accept(_gigs[_picked]):
-		close()
+		_just_taken = true
+		refresh()
 
 
 func _can_take(gig: Gig) -> bool:
@@ -202,6 +214,8 @@ func _draw() -> void:
 	_draw_detail(_gigs[_picked])
 	var balance: String = "BALANCE %s Cr" % Units.grouped(_agency.credits)
 	UiStyle.draw_text(self, balance, Vector2(_panel.position.x + MARGIN, _panel.end.y - MARGIN - 7.0), palette.gold_light, 1)
+	var held: String = "GIGS HELD %d/%d" % [_agency.held_count(), Agency.MAX_GIGS]
+	UiStyle.draw_text(self, held, Vector2(_panel.position.x + MARGIN + UiStyle.text_width(balance, 1) + 20.0, _panel.end.y - MARGIN - 7.0), palette.hull_lightest, 1)
 
 
 func _draw_row(i: int) -> void:
@@ -273,11 +287,11 @@ func _draw_detail(gig: Gig) -> void:
 		y += 13.0
 
 	var button: Rect2 = _accept_rect()
-	var ready: bool = _can_take(gig)
+	var ready: bool = _can_take(gig) and not _just_taken
 	var line_color: Color = palette.agency_orange_light if ready else palette.hull_mid
 	var fill: Color = palette.agency_orange_dark if ready and _pressed == "accept" else UiStyle.box_fill()
 	UiStyle.draw_box(self, button, line_color, fill, 2)
-	var label: String = "[ ACCEPT GIG ]"
+	var label: String = "[ GIG TAKEN ]" if _just_taken else "[ ACCEPT GIG ]"
 	UiStyle.draw_text(self, label, Vector2(button.position.x + floorf((button.size.x - UiStyle.text_width(label)) / 2.0), button.position.y + 15.0), palette.agency_orange_light if ready else palette.hull_light)
 
 
