@@ -653,6 +653,8 @@ func _process(delta: float) -> void:
 
 # The hull's lit from the star, which sits at the world's middle.
 func _light_hull() -> void:
+	if _gravity_model != null:
+		sunlight = Sunlight.at(_gravity_model, state.x, state.y, state.time)
 	var toward: Vector2 = -Vector2(state.x, state.y).normalized()
 	HullLight.aim(_sprite, toward, sunlight)
 	for part: Sprite2D in _part_sprites:

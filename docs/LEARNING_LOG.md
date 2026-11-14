@@ -895,3 +895,10 @@ Files: `shaders/hull_light.gdshader`, `scripts/ship/hull_light.gd`, `scripts/shi
 - faking a 3D normal from a 2D sprite (a cylinder per run of pixels)
 - Lambert (dot product) lighting, with wrap so shading rolls round
 - turning a world direction into a sprite's own space by its global rotation
+
+## 2026-11-14: Lighting outside, ticket 2: a world's shadow
+
+Files: `scripts/sunlight.gd`, `scripts/ship.gd`, `docs/DESIGN.md`
+
+- a shadow as a cylinder behind a sphere: projecting onto the star's direction (dot) and measuring the distance off that axis (cross)
+- smoothstep for a soft edge (a penumbra)
