@@ -89,3 +89,9 @@ extends Resource
 @export var heat_limit: float = 1.2e10
 ## Higher than this above the ground, the pilot's flying on EVA again, in world units.
 @export var ground_reach: float = 400.0
+## Falling to a world on EVA, the pilot is seen from the side from this height above its ground, in
+## world units (2 km), and flails harder the faster they drop: nothing at the first speed, the full
+## windmill at the second, in world units per second (3 and 10 m/s).
+@export var fall_view_height: float = 40000.0
+@export var flail_from_speed: float = 60.0
+@export var flail_full_speed: float = 200.0

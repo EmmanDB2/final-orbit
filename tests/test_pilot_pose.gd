@@ -10,6 +10,8 @@ var _failures: int = 0
 
 func _initialize() -> void:
 	_test_spring()
+	_test_fall_view()
+	_test_flail()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -76,3 +78,28 @@ func _test_spring() -> void:
 	_check("no time means no change", AstronautView.spring_step(0.3, 2.0, 1.0, 30.0, 1.0, 0.0).x, 0.3, 0.0001)
 	# Already at the target and still: stays there.
 	_check("at rest stays at rest", AstronautView.spring_step(1.0, 0.0, 1.0, 30.0, 1.0, 0.016).x, 1.0, 0.0001)
+
+
+# The fall view's rule: (world, low point, ground plus clearance, altitude, view height, open path,
+# coming in).
+func _test_fall_view() -> void:
+	_check_true("the star never shows the fall view", not Pilot.falls_to_world(0, -5000.0, 100.0, 500.0, 40000.0, false, true))
+	_check_true("a low point under the ground and under 2 km falls", Pilot.falls_to_world(1, -500.0, 130.0, 400.0, 40000.0, false, true))
+	_check_true("in orbit it doesn't", not Pilot.falls_to_world(1, 9000.0, 130.0, 400.0, 40000.0, false, true))
+	_check_true("above 2 km it doesn't", not Pilot.falls_to_world(1, -500.0, 130.0, 50000.0, 40000.0, false, true))
+	_check_true("just under 2 km it does", Pilot.falls_to_world(1, -500.0, 130.0, 39999.0, 40000.0, false, true))
+	_check_true("a low point at the ground's edge doesn't", not Pilot.falls_to_world(1, 130.0, 130.0, 400.0, 40000.0, false, true))
+	_check_true("an open path coming in falls", Pilot.falls_to_world(1, -500.0, 130.0, 400.0, 40000.0, true, true))
+	_check_true("an open path already past its low point doesn't", not Pilot.falls_to_world(1, -500.0, 130.0, 400.0, 40000.0, true, false))
+	_check_true("a closed path going away from its low point still falls", Pilot.falls_to_world(1, -500.0, 130.0, 400.0, 40000.0, false, false))
+
+
+func _test_flail() -> void:
+	var data := PilotData.new()
+	_check("no flail at rest", Pilot.flail_share(0.0, data.flail_from_speed, data.flail_full_speed), 0.0, 0.0001)
+	_check("no flail at 60", Pilot.flail_share(60.0, data.flail_from_speed, data.flail_full_speed), 0.0, 0.0001)
+	_check("half at 130", Pilot.flail_share(130.0, data.flail_from_speed, data.flail_full_speed), 0.5, 0.0001)
+	_check("full at 200", Pilot.flail_share(200.0, data.flail_from_speed, data.flail_full_speed), 1.0, 0.0001)
+	_check("full at 300", Pilot.flail_share(300.0, data.flail_from_speed, data.flail_full_speed), 1.0, 0.0001)
+	_check("no flail going up", Pilot.flail_share(-50.0, data.flail_from_speed, data.flail_full_speed), 0.0, 0.0001)
+	_check_true("the data's view height is 2 km", is_equal_approx(data.fall_view_height, 40000.0))

@@ -7,8 +7,9 @@
 # which go around with it. On a world they're seen from the side: they walk along the ground as it
 # turns, jump, and fall back under its gravity, which is too strong for the jetpack to do more than
 # stretch a jump, on a second press in the air. At a building's door they can go in, and the front
-# wall fades off: they walk its floors, climb its ladders, and use its terminals. From DESIGN.md, "Player" (EVA, walking on worlds, and the same sprite scale inside
-# and outside), "Places on worlds", and "Camera, zoom, and landing" (interiors). Behind
+# wall fades off: they walk its floors, climb its ladders, and use its terminals. Falling toward a
+# world on EVA, they're seen from the side and flail harder the faster they drop. From DESIGN.md,
+# "Player" (EVA, walking on worlds, and the same sprite scale inside and outside), "Places on worlds", and "Camera, zoom, and landing" (interiors). Behind
 # FeatureFlags.EVA, FeatureFlags.INTERIORS, and FeatureFlags.WALKING_ON_WORLDS.
 class_name Pilot
 extends Node2D
@@ -65,6 +66,11 @@ var near_moving: Callable
 var helmet_lamp: bool = false
 ## Inside this distance from the star's middle, hulls burn, in world units, from DESIGN.md's hazards.
 const STAR_HEAT_REACH: float = 6000000.0
+## How long the middle of the body takes to settle to its standing height on landing, in seconds.
+const LANDING_EASE_SECONDS: float = 0.1
+## Falling to a world, they turn the other way when they're moving this fast sideways that way, in
+## world units per second.
+const FALL_TURN_SPEED: float = 20.0
 ## Below this much light the helmet lamp comes on, and above that it goes off, from 0 to 1.
 const LAMP_ON_BELOW: float = 0.5
 const LAMP_OFF_ABOVE: float = 0.62
@@ -120,6 +126,13 @@ var _jump_held: bool = false
 var _jetting: bool = false
 var _up_heading: float = 0.0
 var _stride: float = 0.0
+# On EVA near a world: whether they're falling to it, so they're seen from the side, and which way they
+# face then, true for right.
+var _falling_to_world: bool = false
+var _fall_facing_right: bool = true
+# How far the body's middle is drawn off where it'll settle, in pixels along the world's up, easing
+# to nothing after a landing or a take-off.
+var _lift_ease: float = 0.0
 # A frame held for a moment, like the crouch on landing, and for how much longer.
 var _pose: int = 0
 var _pose_left: float = 0.0
@@ -157,6 +170,21 @@ func start_pilot(gravity_model: GravityModel, ship: Node2D, station: StationView
 		_figure = AstronautView.new()
 		add_child(_figure)
 	visible = false
+
+
+## Whether a pilot on EVA is falling to a world, so they're seen from the side: the world's not the star
+## (index 0), the low point of their path is below the highest ground there plus their clearance, they're
+## lower than the view height, and a path that never comes back (open_path) has yet to pass its low
+## point (coming_in). All of it in world units.
+static func falls_to_world(world: int, low_point: float, reach: float, altitude: float, view_height: float, open_path: bool, coming_in: bool) -> bool:
+	if world == 0 or altitude >= view_height or low_point >= reach:
+		return false
+	return coming_in or not open_path
+
+
+## How hard they flail falling this fast, from 0 to 1: nothing below the first speed, full at the second.
+static func flail_share(descent: float, from_speed: float, full_speed: float) -> float:
+	return smoothstep(from_speed, full_speed, descent)
 
 
 func _physics_process(delta: float) -> void:
@@ -354,6 +382,11 @@ func _leave_ship() -> void:
 	state.velocity_y = moving.y
 	state.time = ship_state.time
 	facing = _ship.heading
+	# Falling from the ship, they face the hatch's side, as stepping out onto the ground does.
+	var world: int = _gravity_model.get_dominant_body(ship_state.x, ship_state.y, ship_state.time)
+	var center: PackedFloat64Array = _gravity_model.get_body_position(world, ship_state.time)
+	var angle: float = atan2(ship_state.y - center[1], ship_state.x - center[0])
+	_fall_facing_right = out.dot(Vector2(-sin(angle), cos(angle))) >= 0.0
 	_ship.set_pilot_aboard(false)
 	_set_mode(EVA)
 
@@ -398,7 +431,53 @@ func _tick_eva(delta: float) -> void:
 		if speed > data.safe_landing_speed:
 			_land_hard(speed)
 		return
+	_update_fall_view()
 	_bump_station()
+
+
+# Once a tick on EVA: whether they're falling to a world (so they're seen from the side), and which way
+# they face while they do: the way they last moved sideways against the ground, a little at a time.
+func _update_fall_view() -> void:
+	_falling_to_world = false
+	var world: int = _gravity_model.get_dominant_body(state.x, state.y, state.time)
+	if world == 0:
+		return
+	var center: PackedFloat64Array = _gravity_model.get_body_position(world, state.time)
+	var out := Vector2(state.x - center[0], state.y - center[1])
+	var up: Vector2 = out.normalized()
+	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+	var against := Vector2(state.velocity_x - ground[0], state.velocity_y - ground[1])
+	var sideways: float = against.dot(Vector2(-up.y, up.x))
+	if sideways > FALL_TURN_SPEED:
+		_fall_facing_right = true
+	elif sideways < -FALL_TURN_SPEED:
+		_fall_facing_right = false
+	var altitude: float = _gravity_model.get_altitude(state.x, state.y, state.time)
+	if altitude >= data.fall_view_height:
+		return
+	var apsides: PackedFloat64Array = _gravity_model.get_orbit_apsides(state)
+	var reach: float = _gravity_model.get_highest_ground(world) + state.ground_clearance
+	# On a path that never comes back, it only comes down if it hasn't passed its low point yet.
+	var body_moving: PackedFloat64Array = _gravity_model.get_body_velocity(world, state.time)
+	var coming_in: bool = out.x * (state.velocity_x - body_moving[0]) + out.y * (state.velocity_y - body_moving[1]) < 0.0
+	_falling_to_world = falls_to_world(world, apsides[0], reach, altitude, data.fall_view_height, apsides[1] < 0.0, coming_in)
+
+
+# How fast they're dropping toward the middle of the world they're over, against the ground's own
+# motion, in world units per second. Negative going up.
+func _descent() -> float:
+	var world: int = _world if mode == SURFACE else _gravity_model.get_dominant_body(state.x, state.y, state.time)
+	var center: PackedFloat64Array = _gravity_model.get_body_position(world, state.time)
+	var out := Vector2(state.x - center[0], state.y - center[1])
+	var ground: PackedFloat64Array = _gravity_model.get_surface_velocity(state.x, state.y, state.time)
+	var against := Vector2(state.velocity_x - ground[0], state.velocity_y - ground[1])
+	return -against.dot(out.normalized())
+
+
+# Which way is up on screen over a world, clockwise from the top of the screen.
+func _sky_heading(world: int) -> float:
+	var center: PackedFloat64Array = _gravity_model.get_body_position(world, state.time)
+	return wrapf(atan2(state.x - center[0], center[1] - state.y) - _roll, -PI, PI)
 
 
 # The rotate buttons spin the pilot, and letting go stops the spin, as the ship does with ASSIST on.
@@ -592,6 +671,8 @@ func _land_on_ground() -> void:
 	_along = 0.0
 	_rising = 0.0
 	_grounded = true
+	# They land facing the way they were falling, so nothing flips.
+	_facing_right = _fall_facing_right
 	_place_on_ground(center, angle, _ground_radius(center, angle, state.time))
 	_set_mode(SURFACE)
 	_show_pose(data.jump_side[5], 0.25)
@@ -957,7 +1038,19 @@ func guide_radius() -> float:
 
 
 func _set_mode(new_mode: String) -> void:
+	var old_mode: String = mode
 	mode = new_mode
+	_falling_to_world = false
+	# The standing body's middle is lower than the floating one's, by this much, so changing between
+	# them eases rather than jumps.
+	var settle: float = data.stand_height - AstronautView.MIDDLE / AstronautView.METERS_PER_PIXEL
+	if old_mode == EVA and new_mode == SURFACE:
+		_lift_ease = settle
+	elif old_mode == SURFACE and new_mode == EVA:
+		_lift_ease = -settle
+		_fall_facing_right = _facing_right
+	else:
+		_lift_ease = 0.0
 	if helmet_lamp and mode != INSIDE:
 		helmet_lamp = false
 		_station.light_helmet(Vector2.ZERO, 0.0, false)
@@ -1130,10 +1223,14 @@ func _show_figure(delta: float) -> void:
 	if dead:
 		_show_body(delta)
 		return
+	_figure.flail = 0.0
+	_lift_ease = move_toward(_lift_ease, 0.0, absf(data.stand_height - AstronautView.MIDDLE / AstronautView.METERS_PER_PIXEL) / LANDING_EASE_SECONDS * delta)
+	_figure.lift = _lift_ease
 	match mode:
 		SURFACE:
 			_figure.look = AstronautView.Look.SIDE
 			_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(_up_heading - _roll, -PI, PI), 10.0 * delta)
+			_figure.ground_up = wrapf(_up_heading - _roll, -PI, PI)
 			_figure.facing_right = _facing_right
 			_figure.feet_below = data.stand_height
 			_figure.speed_share = absf(_along) / data.ground_walk_speed
@@ -1144,7 +1241,13 @@ func _show_figure(delta: float) -> void:
 			elif _firing != Vector2.ZERO:
 				_figure.motion = &"jet"
 			elif not _grounded:
-				_figure.motion = &"air"
+				# Dropping fast, they flail: an honest body reacting, not a forecast.
+				var descent: float = _descent()
+				if descent > data.flail_from_speed:
+					_figure.motion = &"fall"
+					_figure.flail = flail_share(descent, data.flail_from_speed, data.flail_full_speed)
+				else:
+					_figure.motion = &"air"
 			elif absf(_along) > 4.0:
 				_figure.motion = &"walk"
 			else:
@@ -1152,10 +1255,25 @@ func _show_figure(delta: float) -> void:
 		EVA:
 			# Upright when drifting, leaning into a push until they're nearly flat, seen from the back
 			# with the head the way they face, like the ship's nose.
-			_figure.look = AstronautView.Look.EVA
 			_figure.feet_below = 0.0
 			_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(facing - _roll, -PI, PI), 10.0 * delta)
-			_figure.motion = &"jet" if _firing != Vector2.ZERO or _turning != 0.0 else &"float"
+			var jetting: bool = _firing != Vector2.ZERO or _turning != 0.0
+			if _falling_to_world:
+				# Falling to a world: seen from the side, turning about their middle, and flailing
+				# harder the faster they drop, unless the jetpack's firing.
+				_figure.look = AstronautView.Look.SIDE
+				_figure.facing_right = _fall_facing_right
+				_figure.ground_up = _sky_heading(_gravity_model.get_dominant_body(state.x, state.y, state.time))
+				if jetting:
+					_figure.motion = &"jet"
+				else:
+					_figure.motion = &"fall"
+					_figure.flail = flail_share(_descent(), data.flail_from_speed, data.flail_full_speed)
+			else:
+				_figure.look = AstronautView.Look.EVA
+				_figure.motion = &"jet" if jetting else &"float"
+				if _lift_ease != 0.0:
+					_figure.ground_up = _sky_heading(_gravity_model.get_dominant_body(state.x, state.y, state.time))
 		INDOORS:
 			_figure.feet_below = data.stand_height
 			_figure.body_angle = rotate_toward(_figure.body_angle, wrapf(_up_heading - _roll, -PI, PI), 10.0 * delta)

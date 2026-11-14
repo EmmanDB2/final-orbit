@@ -1013,3 +1013,13 @@ Files: `scripts/pilot/astronaut_view.gd`, `tests/test_pilot_pose.gd`, `docs/LEAR
 - critical damping (zeta 1) against underdamping (zeta below 1) for overshoot and wobble
 - quaternion slerp with a smoothstep ease, to blend between two camera angles
 - target value versus shown value: computing a pose, then easing the joints toward it
+
+## 2026-11-14: Falling and dying ticket 2, the fall view and the flail
+
+Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_view.gd`, `tests/test_pilot_pose.gd`, `docs/LEARNING_LOG.md`
+
+- a static function that takes plain numbers, so a rule (the fall view) can be tested without a scene
+- orbit apsides as a "will this hit the ground" test, and a path that never comes back
+- smoothstep as an honest 0 to 1 share from a speed range
+- latching a value (which way they face) and only changing it past a threshold
+- easing a pixel offset to nothing, so a change of view doesn't pop

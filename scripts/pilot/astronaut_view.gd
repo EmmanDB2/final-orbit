@@ -69,12 +69,15 @@ var look: Look = Look.SIDE
 var body_angle: float = 0.0
 ## Which way they face on screen when seen from the side.
 var facing_right: bool = true
-## What they're doing: &"idle", &"walk", &"air", &"jet", &"float", &"land", &"push", or &"climb".
+## What they're doing: &"idle", &"walk", &"air", &"fall", &"jet", &"float", &"land", &"push", or
+## &"climb".
 var motion: StringName = &"idle"
 ## Walking speed as a share of full speed, and in the air, how fast they're rising as a share of
 ## a jump's speed (negative falling).
 var speed_share: float = 0.0
 var rise_share: float = 0.0
+## Falling: how hard they flail, from 0 (a loose tuck) to 1 (arms windmilling, legs pedaling).
+var flail: float = 0.0
 ## How far below the point this node marks the boot soles are, in pixels, when they stand
 ## on something. Zero puts the body's middle on the point.
 var feet_below: float = 0.0
@@ -127,6 +130,7 @@ var _yaw: float = -PI / 2.0
 # toward +y, and its length is the angle.
 var _lean := Vector2.ZERO
 var _phase: float = 0.0
+var _flail_phase: float = 0.0
 var _time: float = 0.0
 var _flicker: float = 0.0
 # What each pose number is showing now and how fast it's moving, in the order of HIP_L to BREATHE.
@@ -389,6 +393,22 @@ func _pose(delta: float) -> void:
 			arm_r = 0.1 + 0.4 * maxf(rise_share, 0.0)
 			arm_out = 0.45
 			elbow = 0.5
+		&"fall":
+			# Falling: from the air pose with the legs a little bent and the arms a little out, to
+			# panic: arms windmilling out of step and legs pedaling, back arched, no breath.
+			_flail_phase = fmod(_flail_phase + delta * lerpf(4.0, 9.0, flail), TAU * 10.0)
+			var p: float = _flail_phase
+			var kick: float = cos(p * 1.3)
+			hip_l = lerpf(0.2, 0.4 + 0.5 * sin(p * 1.3), flail)
+			hip_r = lerpf(0.05, 0.4 - 0.5 * sin(p * 1.3), flail)
+			knee_l = lerpf(-0.35, -(0.4 + 0.6 * maxf(kick, 0.0)), flail)
+			knee_r = lerpf(-0.25, -(0.4 + 0.6 * maxf(-kick, 0.0)), flail)
+			arm_l = lerpf(0.3, 1.4 + 1.4 * sin(p), flail)
+			arm_r = lerpf(0.1, 1.4 + 1.4 * sin(p + 2.5), flail)
+			arm_out = lerpf(0.45, 0.22 + 0.12 * sin(p * 0.7), flail)
+			elbow = lerpf(0.5, 0.25 + 0.2 * sin(p + 1.0), flail)
+			lean = lerpf(0.0, -0.15, flail)
+			breathe = lerpf(breathe, 0.0, flail)
 		&"land", &"push":
 			hip_l = 0.75
 			hip_r = 0.65
