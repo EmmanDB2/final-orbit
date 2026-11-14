@@ -804,3 +804,9 @@ Files: `scripts/event/event_type.gd`, `scripts/event/flight_event.gd`, `scripts/
 - a growing chance (pity timer) so long dry spells don't happen
 - delegating by "kind" so one camera, card, and marker system handles a new type of thing
 - upgrading a versioned save one step at a time
+
+## 2026-11-14: Gigs back in Zen Mode
+
+Files: `scripts/main.gd`, `docs/DESIGN.md`
+
+- one rule changed in one place: wiring the same system in both modes instead of branching

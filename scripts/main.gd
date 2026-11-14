@@ -35,7 +35,7 @@ var _saves: SaveGame
 var _saved: Dictionary = {}
 var _catalog: WorldCatalog
 var _title: TitleScreen
-# Zen Mode: no gigs or pay, fuel and gas that never run out, and ambient music.
+# Zen Mode: fuel and gas that never run out, free services, only calm events, and ambient music.
 var _zen: bool = false
 var _music: MusicPlayer
 var _hangar: Hangar
@@ -130,8 +130,7 @@ func _ready() -> void:
 	$Hud/SafeArea/FlightHud.connect_warp(warp)
 	if _zen:
 		_start_zen()
-	else:
-		$Hud/SafeArea/FlightHud.connect_agency(agency)
+	$Hud/SafeArea/FlightHud.connect_agency(agency)
 	var services := ShipServices.new($Ship, agency, service_prices)
 	services.free = _zen
 	_hangar = Hangar.new(ship_list)
@@ -171,14 +170,11 @@ func _begin() -> void:
 		_music.play(music, music.zen_tracks)
 
 
-# Zen Mode's rules: the ship's fuel and the pilot's jetpack never run out, repairs are free, and with no
-# gigs the gig terminals have nothing to offer, which the comms line says.
+# Zen Mode's rules: the ship's fuel and the pilot's jetpack never run out, and repairs are free. Gigs
+# and pay work as they do anywhere, on Manny's call, so Zen lets the player do as they like, stress free.
 func _start_zen() -> void:
 	$Ship.endless_fuel = true
 	$Pilot.endless_gas = true
-	$Pilot.terminal_used.connect(func(place: Dictionary) -> void:
-		if place.get("kind", "") != "service":
-			$Hud/SafeArea/CommsLine.on_agency_message("NO GIGS IN ZEN MODE", true))
 	_music = MusicPlayer.new()
 	add_child(_music)
 
@@ -216,7 +212,7 @@ func _title_info(home: int, has_save: bool) -> Dictionary:
 	var version: String = ProjectSettings.get_setting("application/config/version", "")
 	var comms: String = "COMMS: ALL SYSTEMS NOMINAL"
 	if _zen:
-		comms = "COMMS: ZEN MODE · NO GIGS, NO LIMITS"
+		comms = "COMMS: ZEN MODE · NO LIMITS"
 	elif TitleScreen.world == "new":
 		comms = "COMMS: READY FOR A NEW FLIGHT"
 	elif lost:
@@ -248,7 +244,7 @@ func _on_title_entered(item: String) -> void:
 		$Hud.visible = true
 		$Hud/SafeArea/FlightHud.arrive())
 	if _zen:
-		$Hud/SafeArea/CommsLine.on_agency_message("ZEN MODE: NO GIGS, NO LIMITS", true)
+		$Hud/SafeArea/CommsLine.on_agency_message("ZEN MODE: NO LIMITS", true)
 	_begin()
 
 
