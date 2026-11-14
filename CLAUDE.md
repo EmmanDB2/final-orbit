@@ -51,8 +51,10 @@ work down:
   screenshots, and reports in a few lines, so images and long output stay out of the main session.
 - **explorer** (`.claude/agents/explorer.md`, Haiku): answers "where is" and "how does" questions about
   the code without reading it all into the main session.
-- **Gemini, through Manny:** sprites (the brief's Art section is the prompt), a second opinion on
-  screenshots, and brainstorming. Fable cleans sprites up in the Asset Editor.
+- **Sprites:** drawn in the Asset Editor by Fable, from a brief, so they come out on the pixel grid,
+  in the palette, with layers, materials, and components. Never edit the editor's project from here.
+- **Gemini, through Manny's Gemini app:** concept art and reference images for Fable to work from, a
+  second opinion on screenshots, and brainstorming. Not the final sprites.
 
 Keep the main session to one feature at a time, and start a fresh one for the next: this file,
 `docs/DESIGN.md`, the brief, and the learning log carry everything over. Small one-line changes can

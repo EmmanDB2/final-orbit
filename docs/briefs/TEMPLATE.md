@@ -31,7 +31,8 @@ Each is about an evening of work and one commit.
 
 ## Art
 
-Anything that needs drawing goes to Gemini through Manny. For each piece: what it is, its size at
+Anything that needs drawing goes to Fable in the Asset Editor, through its own brief; Gemini, in
+Manny's Gemini app, can make concept art for it first. For each piece: what it is, its size at
 5 cm a pixel, the view (side or top-down), the colors from the agency palette by hex (human-made things
 only; nature's colors are free but never telemetry cyan 7FE3D6 or agency orange D9541E), a 1 px dark
 outline (0E0F12) on human-made things, and a template image for scale if there is one. Until it's
