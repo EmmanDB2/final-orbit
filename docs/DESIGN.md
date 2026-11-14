@@ -21,6 +21,7 @@ Change log (newest first):
 
 | Date | Change |
 | --- | --- |
+| 2026-11-14 | Death settled further, on Manny's calls: losing the ship counts as death only when the pilot dies with it, and the med bay's bill depends on how badly they died. The creature became the goo: a huge black mass that absorbs and digests what it touches, chases, stalks, grabs, and pulls itself along walls in large derelicts \[Leaning\] |
 | 2026-11-14 | Death and the med bay planned, on Manny's call: dying never wipes the world, since starting over is a motivation killer. The pilot wakes in a med bay and gets the bill; whatever the credits can't cover, the agency's repo squad settles by selling the player's ships, so they leave debt free with whatever's left. EVA deaths are driven by physics: impact bands, burning up in air, the star, hard hits, and a suit breach that leaks air against an O2 gauge. The pilot feels air like debris does. The visor crack from the first sketch is dropped: at 37 px the visor is a few pixels, so frost, a plume of frozen air, and going limp carry it instead \[Leaning\] |
 | 2026-11-14 | Rare station-dwelling alien creatures parked as Manny's idea for a first threat: one procedural, tentacled creature in one derelict, for investigation, pursuit, and escape rather than combat, with warning signs and behavior that can be learned. Waits for derelicts \[Leaning\] |
 | 2026-11-14 | Zen Mode gets gigs and pay back, on Manny's call: "Zen mode should let the player do as they want just stress free". Fuel, propellant, gas, repairs, and the hangar stay free, and only the calm events come up: signals and comets. Replaces "no gigs, no pay" in the locked Zen line \[Locked\] |
@@ -321,8 +322,9 @@ Death and the med bay, decided 2026-11-14 on Manny's call. Nothing built yet. \[
 - Suit breaches, from hard landings, debris, or later creatures: a white plume from the hole that pushes like a leaking thruster, and an O2 gauge counting down while the visor frosts over. At zero the thrusters stop, they go limp, and the plume dies away. Getting inside the ship, the station, or a base stops it. A crack shows on the HUD's suit gauge, not on the visor, which is a few pixels at 37 px.
 - Out of jetpack gas is still stranded, not dead.
 - Every death ends the same: radio static, SIGNAL LOST and the cause on the comms line (IMPACT 12 M/S, BURNED UP, AIR RAN OUT), the HUD fading, and the camera pulling out slowly.
-- Whether losing the ship with the pilot aboard counts as death and goes to the med bay. \[Open\]
-- What the bill costs, and what happens with no ships left to sell. \[Open\]
+- Losing the ship counts as death only when the pilot dies with it: a destroyed cockpit, the way a ship's lost now, or the star. Manny's call. \[Leaning\]
+- The bill depends on how badly they died, on Manny's call. \[Leaning\] How it's measured, proposed: the med bay rebuilds the pilot, so the less that's left, the more it costs. At the moment of death the physics already knows how bad it was, and that sets a share from 0 to 1: air running out leaves the body whole, the cheapest; an impact scales with how far over the fatal speed it was, or the hit's energy for a crushed cockpit; burning up or the star leaves nothing, the dearest. The bill is a flat part plus that share of a top-up, in data with the other prices, and it comes itemized in the agency's cheerful voice. \[Open: waiting on Manny\]
+- What happens with no ships left to sell. \[Open\]
 - A fall forecast for the pilot (SAFE, HARD, or FATAL), like the ship's landing forecast. \[Not built: a piloting aid, only if Manny wants it\]
 
 ## Ships
@@ -906,7 +908,8 @@ Open questions:
 
 Parking lot:
 
-- Rare station-dwelling alien creatures, Manny's idea for a first threat, after ICEWAKE's procedural tentacled creature. A rare organism in abandoned stations, with a plausible reason to live there: leftover warmth, moisture, food, dormancy, or an escaped specimen. Built for investigation, pursuit, escape, and using the station against it, not combat, with warning signs and behavior that can be learned. A bounded procedural body is feasible; finding its way, doors, grabbing, seeing, and damage are the bigger jobs. Start with one creature in one derelict; growth and wrecking stations come later. Waits for derelicts (Tier 2). \[Leaning\]
+- The goo, Manny's idea for a first threat: like Venom, but a lot more of him. A huge black mass that absorbs and digests whatever it touches. It chases, stalks, and reaches out to grab, and gets around by grabbing walls and pulling itself along. It lives in large derelict ships and stations. One creature in one derelict to start; growth comes later. Waits for derelicts (Tier 2). \[Leaning\]
+  - Proposed fits with what's built: digesting is the damage the game already has, eating a ship's or station's pixels layer by layer, so it can eat through a hull, and touching the pilot breaches the suit, starting the O2 clock instead of killing outright. A grab is the rescue's GRAB HAND turned round: it pulls, and the jetpack pulls back. Pulling itself along is tentacles anchored to solid pixels. Warning signs: eaten holes in walls, dark residue, and groans and knocks through the hull, which the sound system already makes. It's nature's, so it gets its own near-black colors with a sheen, so it still reads against space. \[Open: ideas for Manny\]
 - A story or mystery that surfaces through uncharted signals and derelict logs \[Cut for now: pure sandbox\]
 - Multiplayer or co-op \[Cut: single player\]
 - Half-folded Mission Control console \[Cut: no Flex Mode on Fold 8; revisit for Fold 8 Ultra or later\]
