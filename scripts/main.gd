@@ -135,6 +135,8 @@ func _ready() -> void:
 	add_child(warp)
 	warp.start(gravity_model, $Ship, $Pilot)
 	$Hud/SafeArea/FlightHud.connect_warp(warp)
+	# Something new turning up drops the warp, so its call isn't gone by before it's heard.
+	events.event_found.connect(func(_event: FlightEvent) -> void: warp.reset())
 	if _zen:
 		_start_zen()
 	$Hud/SafeArea/FlightHud.connect_agency(agency)

@@ -247,8 +247,18 @@ func _update_event_list() -> void:
 			"status": _events.status_of(event),
 			"targeted": _markers.is_target(event.thing_dict()),
 		})
-	_event_list.rows = rows
 	_place_event_list()
+	# Only as many as fit, with the target among them.
+	_event_list.total = rows.size()
+	var room: int = maxi(_event_list.most_rows, 1)
+	if rows.size() > room:
+		var targeted: Array = rows.filter(func(row: Dictionary) -> bool: return row["targeted"])
+		var shown: Array = targeted.slice(0, 1)
+		for row: Dictionary in rows:
+			if shown.size() < room and not shown.has(row):
+				shown.append(row)
+		rows = shown
+	_event_list.rows = rows
 	_event_list.queue_redraw()
 
 
@@ -258,6 +268,9 @@ func _place_event_list() -> void:
 	if tracker.has_area():
 		top += tracker.size.y + 8.0
 	_event_list.position = Vector2(EDGE, top)
+	# Open, it stops above the tab on the left edge, so that tab can still be reached.
+	var room: float = _left_tab.position.y - 6.0 - top - EventList.HEADER - 8.0
+	_event_list.most_rows = maxi(floori(room / EventList.ROW), 1)
 
 
 ## Connects the station's ship services, for the docking room's terminal, and sends each terminal to

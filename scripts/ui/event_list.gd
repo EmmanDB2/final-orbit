@@ -17,6 +17,11 @@ const TAB_SIZE: Vector2 = Vector2(18.0, 58.0)
 
 ## One per open event: its "id", "kind", "title", "distance", "status", and whether it's "targeted".
 var rows: Array = []
+## How many rows there's room for, so it stays clear of what's below it. The count in the header says
+## how many there are in all.
+var most_rows: int = 4
+## How many open events there are, shown or not.
+var total: int = 0
 ## Whether it's open, rather than folded to its tab. Only a tap changes it.
 var wanted_open: bool = true
 # What a finger's on: -1 for the header, a row's number, or -2 for nothing.
@@ -86,7 +91,7 @@ func _draw() -> void:
 	UiStyle.draw_text(self, "EVENTS", Vector2(PADDING + 16.0, 8.0), palette.telemetry_amber, 1)
 	var arrow_x: float = PADDING + 16.0 + UiStyle.text_width("EVENTS ", 1)
 	draw_colored_polygon(PackedVector2Array([Vector2(arrow_x, 9.0), Vector2(arrow_x + 6.0, 9.0), Vector2(arrow_x + 3.0, 13.0)]), palette.telemetry_amber)
-	var count: String = str(rows.size())
+	var count: String = str(total) if total == rows.size() else "%d OF %d" % [rows.size(), total]
 	UiStyle.draw_text(self, count, Vector2(WIDTH - PADDING - UiStyle.text_width(count, 1), 8.0), palette.hull_lighter, 1)
 	var y: float = HEADER + 4.0
 	for i in range(rows.size()):
