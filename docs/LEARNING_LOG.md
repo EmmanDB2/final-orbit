@@ -971,3 +971,11 @@ Files: `tools/ship_numbers.gd`, `docs/LEARNING_LOG.md`
 
 - a headless command-line script (SceneTree, OS.get_cmdline_user_args after `--`)
 - delta-v from the rocket equation, exhaust velocity times ln of full over dry mass
+
+## 2026-11-14: Moon Hopper ticket 3, bring in the Moon Hopper
+
+Files: `art/moon_hopper/*.png`, `data/moon_hopper_design.tres`, `data/ship_list.tres`, `tests/test_moon_hopper.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- materials read from art color, so the game's mass differs from the editor's explicit one
+- setting engine and RCS numbers from measured mass (thrust over weight, delta-v)
+- awaiting a frame in a test so a scene's nodes are ready

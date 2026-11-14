@@ -4,7 +4,8 @@
 [ext_resource type="Script" path="res://scripts/ship/ship_design.gd" id="2_design"]
 [ext_resource type="Resource" path="res://data/lander_design.tres" id="3_lander"]
 [ext_resource type="Resource" path="res://data/lander_mk2_design.tres" id="4_mk2"]
+[ext_resource type="Resource" path="res://data/moon_hopper_design.tres" id="5_hopper"]
 
 [resource]
 script = ExtResource("1_list")
-ships = Array[ExtResource("2_design")]([ExtResource("3_lander"), ExtResource("4_mk2")])
+ships = Array[ExtResource("2_design")]([ExtResource("3_lander"), ExtResource("4_mk2"), ExtResource("5_hopper")])
