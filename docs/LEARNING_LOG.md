@@ -964,3 +964,10 @@ Files: `scripts/ship/ship_body.gd`, `scripts/rcs_puffs.gd`, `docs/LEARNING_LOG.m
 
 - mirroring a point and a rect across a module's own middle
 - one pixel set (both nozzle rects) driving one share, so the pair works or fails together
+
+## 2026-11-14: Moon Hopper ticket 2, a ship numbers tool
+
+Files: `tools/ship_numbers.gd`, `docs/LEARNING_LOG.md`
+
+- a headless command-line script (SceneTree, OS.get_cmdline_user_args after `--`)
+- delta-v from the rocket equation, exhaust velocity times ln of full over dry mass
