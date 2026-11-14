@@ -957,3 +957,10 @@ Files: `scripts/game_settings.gd`, `scripts/ui/settings_screen.gd`, `scripts/ui/
 - audio buses: volume in decibels from a linear share (linear_to_db), and muting
 - static variables as a simple shared store without an autoload
 - set_input_as_handled so a screen on top takes the touches
+
+## 2026-11-14: Moon Hopper ticket 1, a centered engine's tail nozzles
+
+Files: `scripts/ship/ship_body.gd`, `scripts/rcs_puffs.gd`, `docs/LEARNING_LOG.md`
+
+- mirroring a point and a rect across a module's own middle
+- one pixel set (both nozzle rects) driving one share, so the pair works or fails together

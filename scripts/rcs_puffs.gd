@@ -26,20 +26,20 @@ var _leaks: Array = []
 var _time: float = 0.0
 
 
-## Finds each module's nozzle: side ones on the RCS modules, and tail ones on the engines.
+## Finds each module's nozzle: side ones on the RCS modules, and tail ones on the engines. A centered engine gets a pair, mirrored about the center line.
 func set_nozzles(body: ShipBody) -> void:
 	_rear = PackedVector2Array()
 	for i in range(body.modules.size()):
 		var module: ModuleData = body.modules[i]
 		if not module.nozzle_rect.has_area():
 			continue
-		var at: Vector2 = body.nozzle_point(i)
+		var points: PackedVector2Array = body.nozzle_points(i)
 		if module.kind == "engine":
-			_rear.append(at)
-		elif at.x < 0.0:
-			_left = at
+			_rear.append_array(points)
+		elif points[0].x < 0.0:
+			_left = points[0]
 		else:
-			_right = at
+			_right = points[0]
 
 
 ## Says where fuel is venting from: pairs of a point on the art and the way it's going.

@@ -88,6 +88,8 @@ var pixel_y: PackedInt32Array = PackedInt32Array()
 var _half: Vector2 = Vector2.ZERO
 var _canvas: Vector2i = Vector2i.ZERO
 var _cell_size: int = 64
+# Half the number of grid columns: a module whose middle is here sits on the ship's center line.
+var _columns_middle: float = 0.5
 var _layers: Array[Layer] = []
 var _total_x: float = 0.0
 var _total_y: float = 0.0
@@ -140,6 +142,7 @@ static func measure(design: ShipDesign) -> ShipBody:
 			columns = maxi(columns, module.cell.x + 1)
 			rows = maxi(rows, module.cell.y + 1)
 	body._canvas = Vector2i(columns, rows) * design.cell_size
+	body._columns_middle = columns / 2.0
 	body._half = Vector2(body._canvas) / 2.0
 	body._pixel_at.resize(body._canvas.x * body._canvas.y)
 	body._pixel_at.fill(-1)
@@ -231,7 +234,7 @@ func _add_module(index: int, module: ModuleData, materials: Dictionary, design: 
 			pixel_x.append(at.x)
 			pixel_y.append(at.y)
 			var working: bool = not module.working_rect.has_area() or module.working_rect.has_point(Vector2i(x, y))
-			var nozzle: bool = module.nozzle_rect.has_area() and module.nozzle_rect.has_point(Vector2i(x, y))
+			var nozzle: bool = _in_nozzle(module, Vector2i(x, y))
 			_is_working.append(1 if working else 0)
 			_is_nozzle.append(1 if nozzle else 0)
 			_depth_mass.append(pixel_mass)
@@ -252,6 +255,25 @@ func _add_module(index: int, module: ModuleData, materials: Dictionary, design: 
 				_working_start[index] += 1
 			if nozzle:
 				_nozzle_start[index] += 1
+
+
+# True if a pixel of the module's art is part of its RCS nozzle. A centered module's rect is the
+# left tail nozzle, so its mirror image across the module's middle counts too.
+func _in_nozzle(module: ModuleData, at: Vector2i) -> bool:
+	if not module.nozzle_rect.has_area():
+		return false
+	if module.nozzle_rect.has_point(at):
+		return true
+	if is_centered(module):
+		var rect: Rect2i = module.nozzle_rect
+		var mirrored := Rect2i(_cell_size - rect.position.x - rect.size.x, rect.position.y, rect.size.x, rect.size.y)
+		return mirrored.has_point(at)
+	return false
+
+
+## True if a module sits in the middle column, on the ship's center line.
+func is_centered(module: ModuleData) -> bool:
+	return module.on_grid and is_equal_approx(module.cell.x + 0.5, _columns_middle)
 
 
 func _art_of(texture: Texture2D) -> Image:
@@ -370,6 +392,17 @@ func engine_exit(dead_share: float) -> Dictionary:
 func nozzle_point(module_index: int) -> Vector2:
 	var module: ModuleData = modules[module_index]
 	return Vector2(module.cell * _cell_size) + module.nozzle_point - _half
+
+
+## Every place gas leaves a module's RCS nozzles: one, or two mirrored about the center line for
+## a centered module (its nozzle_point is the left one).
+func nozzle_points(module_index: int) -> PackedVector2Array:
+	var module: ModuleData = modules[module_index]
+	var points := PackedVector2Array([nozzle_point(module_index)])
+	if module.nozzle_rect.has_area() and is_centered(module):
+		var left: Vector2 = points[0]
+		points.append(Vector2(-left.x, left.y))
+	return points
 
 
 ## The middle of the pixels a module has lost, from the middle of the grid.
