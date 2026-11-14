@@ -42,3 +42,10 @@ extends Resource
 @export var lowest_pass: float = 40000.0
 @export var highest_pass: float = 160000.0
 @export var approach_speed: float = 900.0
+## Comets: how big the nucleus is and how long the tail, in world units, and their colors. They're
+## nature's, not the agency's, so they're kept clear of telemetry cyan and agency orange.
+@export var nucleus_radius: float = 400.0
+@export var tail_length: float = 90000.0
+@export var nucleus_color: Color = Color("B8C2C9")
+@export var dust_color: Color = Color("5E5954")
+@export var glow_color: Color = Color("D6ECF4")

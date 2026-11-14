@@ -16,7 +16,7 @@ signal event_gone(id: int)
 ## Emitted with something for the comms line, and whether it's good news.
 signal message_raised(text: String, good: bool)
 
-@export var event_types: Array[EventType] = [preload("res://data/events/signal.tres"), preload("res://data/events/distress.tres")]
+@export var event_types: Array[EventType] = [preload("res://data/events/signal.tres"), preload("res://data/events/distress.tres"), preload("res://data/events/comet.tres")]
 ## How long the ship has to be flying before the first roll, and between rolls after, in real seconds.
 @export var first_wait: float = 60.0
 @export var roll_seconds: float = 45.0
@@ -56,8 +56,11 @@ var _misses: int = 0
 var _wait: float = 0.0
 var _next_id: int = 1
 var _next_name: int = 1
+var _next_comet: int = 1
 var _relay_wait: float = 0.0
 var _relay_in_sight: bool = false
+# Paths worked out for drawing, by event, with when.
+var _paths: Dictionary = {}
 
 
 func start(gravity_model: GravityModel, ship: Node2D, pilot: Pilot, agency: Agency, bodies: Dictionary, sites: Array) -> void:
@@ -118,6 +121,8 @@ func tap_radius(id: int) -> float:
 			return 200.0
 		"distress":
 			return 30.0
+		"comet":
+			return event.type.nucleus_radius
 	return 60.0
 
 
@@ -136,6 +141,8 @@ func callsign_of(id: int) -> String:
 		return ""
 	if event.type.kind == "signal" and event.step == FlightEvent.DONE:
 		return event.name
+	if event.type.kind == "comet":
+		return "COMET %s" % event.name
 	return event.type.chip
 
 
@@ -145,6 +152,8 @@ func title_of(event: FlightEvent) -> String:
 		return "%s %s" % [event.thing, event.name]
 	if event.type.kind == "distress":
 		return "Stranded %s" % event.thing.to_lower()
+	if event.type.kind == "comet":
+		return "Comet %s" % event.name
 	return event.type.label.capitalize()
 
 
@@ -157,6 +166,14 @@ func status_of(event: FlightEvent) -> String:
 			"aboard":
 				return "ABOARD · DOCK OR LAND ON A PAD"
 		return "ADRIFT · MATCH ORBIT, THEN EVA"
+	if event.type.kind == "comet" and event.step == FlightEvent.FOUND:
+		var scan: String = " · SCAN %d%%" % roundi(event.scan_share * 100.0) if event.scan_share > 0.0 else ""
+		if _in_reach(event):
+			return "IN THE COMA" + scan
+		var left: float = event.closest_at - _ship.state.time
+		if left > 0.0:
+			return "CLOSEST PASS IN %s" % _clock(left) + scan
+		return "PASSING" + scan
 	match event.step:
 		FlightEvent.FOUND:
 			if event.scan_share > 0.0:
@@ -198,9 +215,49 @@ func info_of(id: int) -> Dictionary:
 			rows.append(["STATUS", event.rescue.to_upper(), true])
 			rows.append(["PAYS", "%s CR" % Units.grouped(event.type.pay), true])
 			note = "Match their orbit, go out on EVA, and take their hand. Bring them to Kapteyn-3 or a base."
+		"comet":
+			var moving: PackedFloat64Array = velocity_of(id)
+			var left: float = event.closest_at - _ship.state.time
+			rows.append(["NUCLEUS", event.thing.to_upper() if event.step == FlightEvent.DONE else "UNKNOWN", event.step == FlightEvent.DONE])
+			rows.append(["CLOSEST PASS", ("in " + _clock(left)) if left > 0.0 else "passed", true])
+			rows.append(["PASS HEIGHT", Units.distance_text(event.place.get("pass_height", 0.0)).to_lower(), true])
+			rows.append(["REL. SPEED", Units.speed_text(Vector2(moving[0] - _ship.state.velocity_x, moving[1] - _ship.state.velocity_y).length()).to_lower(), true])
+			if event.step != FlightEvent.DONE:
+				rows.append(["SCAN", "%d%%" % roundi(event.scan_share * 100.0), true])
+				rows.append(["PAYS", "%s + %s CR" % [Units.grouped(event.type.pay), Units.grouped(event.type.first_bonus)], true])
+			note = "Fly through its coma, within %s of the nucleus, to scan it. The data uplinks with a relay in sight." % Units.distance_text(event.type.scan_reach).to_lower()
 	rows.append(["DISTANCE", Units.distance_text(away).to_lower(), true])
-	var chip: String = "CHARTED" if event.step == FlightEvent.DONE else event.type.chip
+	var chip: String = "CHARTED" if event.step == FlightEvent.DONE and event.type.kind == "signal" else event.type.chip
 	return {"name": title_of(event), "chip": chip, "rows": rows, "note": note, "can_target": true}
+
+
+## Where something on a path is going, as x, y pairs in the world, for drawing: a comet until well past
+## its closest pass, or someone adrift for one lap. Worked out at most twice a second.
+func path_of(id: int) -> PackedFloat64Array:
+	var event: FlightEvent = find(id)
+	if event == null or event.state == null or event.type.kind == "signal" or event.rescue != "adrift":
+		return PackedFloat64Array()
+	var now: float = Time.get_ticks_msec() / 1000.0
+	var kept: Dictionary = _paths.get(id, {})
+	if not kept.is_empty() and now - kept["at"] < 0.5:
+		return kept["points"]
+	var horizon: float = 600.0
+	if event.type.kind == "comet":
+		horizon = clampf((event.closest_at - _ship.state.time) * 2.0, 300.0, 2400.0)
+	else:
+		var world: int = _gravity_model.get_dominant_body(event.state.x, event.state.y, event.state.time)
+		if _bodies.has(world):
+			var mu: float = (_bodies[world] as BodyData).get_mu()
+			var center: PackedFloat64Array = _gravity_model.get_body_position(world, event.state.time)
+			var center_moving: PackedFloat64Array = _gravity_model.get_body_velocity(world, event.state.time)
+			var r: float = Vector2(event.state.x - center[0], event.state.y - center[1]).length()
+			var v: float = Vector2(event.state.velocity_x - center_moving[0], event.state.velocity_y - center_moving[1]).length()
+			var across: float = 2.0 / r - v * v / mu
+			if across > 0.0:
+				horizon = minf(TAU * sqrt(pow(1.0 / across, 3.0) / mu), 1200.0)
+	var points: PackedFloat64Array = _gravity_model.predict_trajectory(event.state, horizon, 160)
+	_paths[id] = {"at": now, "points": points}
+	return points
 
 
 ## How it's moving, as [x, y] velocity.
@@ -218,7 +275,7 @@ func options() -> Array:
 	var offered: Array = []
 	if _pilot.mode == Pilot.ABOARD and not _ship._lost:
 		for event: FlightEvent in events:
-			if event.step == FlightEvent.FOUND and not event.scanning and _in_reach(event):
+			if event.type.kind == "signal" and event.step == FlightEvent.FOUND and not event.scanning and _in_reach(event):
 				offered.append({"label": "SCAN %s" % event.type.chip, "target": _box_round(event.id), "run": _start_scan.bind(event.id)})
 	elif _pilot.mode == Pilot.EVA or _pilot.mode == Pilot.SURFACE:
 		for event: FlightEvent in events:
@@ -246,6 +303,8 @@ func spawn(type: EventType, seed_text: String = "") -> FlightEvent:
 			placed = _place_signal(event, rng)
 		"distress":
 			placed = _place_adrift(event, rng)
+		"comet":
+			placed = _place_comet(event, rng)
 	if not placed:
 		return null
 	event.id = _next_id
@@ -253,7 +312,13 @@ func spawn(type: EventType, seed_text: String = "") -> FlightEvent:
 	events.append(event)
 	var at: PackedFloat64Array = point_of(event.id)
 	var away: String = Units.distance_text(Vector2(at[0] - _ship.state.x, at[1] - _ship.state.y).length())
-	message_raised.emit("%s: %s · %s" % [type.call, _where(event), away], true)
+	if type.kind == "comet":
+		# Named as soon as it's seen, and called with when it's closest.
+		event.name = "C-%02d" % _next_comet
+		_next_comet += 1
+		message_raised.emit("%s: %s · CLOSEST PASS IN %s" % [type.call, event.name, _clock(event.closest_at - _ship.state.time)], true)
+	else:
+		message_raised.emit("%s: %s · %s" % [type.call, _where(event), away], true)
 	event_found.emit(event)
 	return event
 
@@ -263,7 +328,7 @@ func save_state() -> Dictionary:
 	var saved: Array = []
 	for event: FlightEvent in events:
 		saved.append(event.save_state())
-	return {"rolls": _rolls, "misses": _misses, "wait": _wait, "next_id": _next_id, "next_name": _next_name, "events": saved}
+	return {"rolls": _rolls, "misses": _misses, "wait": _wait, "next_id": _next_id, "next_name": _next_name, "next_comet": _next_comet, "events": saved}
 
 
 func restore_state(saved: Dictionary) -> void:
@@ -274,6 +339,7 @@ func restore_state(saved: Dictionary) -> void:
 	_wait = saved.get("wait", first_wait)
 	_next_id = saved.get("next_id", 1)
 	_next_name = saved.get("next_name", 1)
+	_next_comet = saved.get("next_comet", 1)
 	events.clear()
 	for entry: Dictionary in saved.get("events", []):
 		var event: FlightEvent = FlightEvent.from_saved(entry)
@@ -302,6 +368,8 @@ func _physics_process(delta: float) -> void:
 				_track_scan(event, delta, check_relay)
 			"distress":
 				_track_rescue(event, delta)
+			"comet":
+				_track_comet(event, delta, check_relay)
 	_read_speeds_against_survivors()
 	_press_for_options()
 
@@ -410,6 +478,102 @@ func _place_adrift(event: FlightEvent, rng: RandomNumberGenerator) -> bool:
 		event.state.ground_clearance = 20.0
 		return true
 	return false
+
+
+# A comet on a flyby of the planet the ship's near: its closest pass picked first, a while from now,
+# and then followed back along its path to where it is now, far out. Mostly the same way round as the
+# ship goes, which makes it far easier to fly through.
+func _place_comet(event: FlightEvent, rng: RandomNumberGenerator) -> bool:
+	var now: float = _ship.state.time
+	var world: int = _gravity_model.get_dominant_body(_ship.state.x, _ship.state.y, now)
+	while world > 0 and _gravity_model.get_body_parent(world) != 0:
+		world = _gravity_model.get_body_parent(world)
+	if not _bodies.has(world):
+		var worlds: Array = _bodies.keys().filter(func(index: int) -> bool: return _gravity_model.get_body_parent(index) == 0)
+		if worlds.is_empty():
+			return false
+		world = worlds[0]
+	var mu: float = (_bodies[world] as BodyData).get_mu()
+	var radius: float = _gravity_model.get_body_radius(world)
+	var center_now: PackedFloat64Array = _gravity_model.get_body_position(world, now)
+	var center_moving_now: PackedFloat64Array = _gravity_model.get_body_velocity(world, now)
+	var from_world := Vector2(_ship.state.x - center_now[0], _ship.state.y - center_now[1])
+	var against := Vector2(_ship.state.velocity_x - center_moving_now[0], _ship.state.velocity_y - center_moving_now[1])
+	var ship_sense: float = 1.0 if from_world.cross(against) >= 0.0 else -1.0
+	for attempt in range(20):
+		var height: float = rng.randf_range(event.type.lowest_pass, event.type.highest_pass)
+		var closest: float = radius + height
+		var far_speed: float = event.type.approach_speed * rng.randf_range(0.8, 1.2)
+		var speed: float = sqrt(far_speed * far_speed + 2.0 * mu / closest)
+		var angle: float = rng.randf() * TAU
+		var sense: float = ship_sense if rng.randf() < 0.75 else -ship_sense
+		var lead: float = event.type.lead_seconds * rng.randf_range(0.8, 1.2)
+		var when: float = now + lead
+		var center: PackedFloat64Array = _gravity_model.get_body_position(world, when)
+		var center_moving: PackedFloat64Array = _gravity_model.get_body_velocity(world, when)
+		var way := Vector2(cos(angle), sin(angle))
+		var state := ShipState.new()
+		state.x = center[0] + way.x * closest
+		state.y = center[1] + way.y * closest
+		state.velocity_x = center_moving[0] - way.y * sense * speed
+		state.velocity_y = center_moving[1] + way.x * sense * speed
+		state.time = when
+		state.ground_clearance = event.type.nucleus_radius
+		# Back along its path to now. One that would have come through a world is no good.
+		_gravity_model.propagate(state, -lead)
+		if state.is_on_surface():
+			continue
+		if Vector2(state.x - _ship.state.x, state.y - _ship.state.y).length() < event.type.nearest:
+			continue
+		state.time = now
+		event.state = state
+		event.closest_at = when
+		event.place = {"world": world, "pass_height": height}
+		return true
+	return false
+
+
+# A comet coasts through. Inside its coma, with the pilot aboard, the scan runs by itself, a little at
+# a time; whole, the data waits for a relay in sight. Once it's passed and left the planet behind, it's
+# gone, unless its data's still waiting aboard.
+func _track_comet(event: FlightEvent, delta: float, check_relay: bool) -> void:
+	var now: float = _ship.state.time + delta
+	var behind: float = now - event.state.time
+	if behind > 0.0:
+		_gravity_model.propagate(event.state, behind)
+	if event.state.is_on_surface() and event.step != FlightEvent.STORED:
+		var world: int = _gravity_model.get_dominant_body(event.state.x, event.state.y, event.state.time)
+		message_raised.emit("COMET %s STRUCK %s" % [event.name, _world_name(world).to_upper()], false)
+		_remove(event)
+		return
+	if event.step == FlightEvent.FOUND and _in_reach(event):
+		if event.scan_share == 0.0:
+			message_raised.emit("INSIDE THE COMA: SCANNING", true)
+		event.scan_share = minf(event.scan_share + delta / event.type.scan_seconds, 1.0)
+		if event.scan_share >= 1.0:
+			event.step = FlightEvent.STORED
+			message_raised.emit("SCAN COMPLETE: DATA STORED", true)
+			event_changed.emit(event)
+	elif event.step == FlightEvent.STORED and check_relay:
+		_relay_in_sight = _agency.can_see_relay()
+		if _relay_in_sight:
+			_chart(event)
+	var near: int = _gravity_model.get_dominant_body(event.state.x, event.state.y, event.state.time)
+	if now > event.closest_at and not _bodies.has(near) and event.step != FlightEvent.STORED:
+		if event.step == FlightEvent.FOUND:
+			message_raised.emit("COMET %s HAS PASSED" % event.name, false)
+		_remove(event)
+
+
+func _remove(event: FlightEvent) -> void:
+	events.erase(event)
+	event_gone.emit(event.id)
+
+
+# Minutes and seconds, such as 12:05.
+func _clock(seconds: float) -> String:
+	var whole: int = maxi(roundi(seconds), 0)
+	return "%d:%02d" % [whole / 60, whole % 60]
 
 
 # Adrift, they coast on the gravity model like anything else. Held, they go where the pilot's hand
@@ -563,9 +727,12 @@ func _track_scan(event: FlightEvent, delta: float, check_relay: bool) -> void:
 
 func _chart(event: FlightEvent) -> void:
 	event.step = FlightEvent.DONE
-	event.name = "A-%02d" % _next_name
-	_next_name += 1
-	message_raised.emit("CHARTED: %s %s" % [event.thing.to_upper(), event.name], true)
+	if event.type.kind == "signal":
+		event.name = "A-%02d" % _next_name
+		_next_name += 1
+		message_raised.emit("CHARTED: %s %s" % [event.thing.to_upper(), event.name], true)
+	else:
+		message_raised.emit("CHARTED: COMET %s, %s" % [event.name, event.thing.to_upper()], true)
 	_agency.pay(event.type.pay, "DATA UPLINKED")
 	_agency.pay(event.type.first_bonus, "FIRST TO CHART")
 	event_changed.emit(event)

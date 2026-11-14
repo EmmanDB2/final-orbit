@@ -819,3 +819,12 @@ Files: `scripts/event/event_director.gd`, `scripts/event/flight_event.gd`, `scri
 - Newton's second law: the same push on twice the mass gives half the acceleration
 - physics process priority: updating things in the right order within one tick
 - GDScript lambdas capture variables by value (reassigning inside one doesn't change the outside)
+
+## 2026-11-14: Passing comets
+
+Files: `scripts/event/event_director.gd`, `scripts/event/event_type.gd`, `scripts/event/comet_view.gd`, `scripts/event/event_scene.gd`, `scripts/ui/event_markers.gd`, `data/events/comet.tres`, `docs/DESIGN.md`
+
+- hyperbolic flybys: speed at closest pass from vis-viva, v² = v∞² + 2μ/r
+- running an orbit backward in time (a negative time step) to find where something starts
+- orbital period from the semi-major axis, T = 2π√(a³/μ)
+- caching an expensive result and refreshing it on a timer

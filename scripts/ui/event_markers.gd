@@ -38,18 +38,51 @@ func _draw() -> void:
 	var palette: AgencyPalette = UiStyle.palette()
 	var area := Rect2(Vector2.ZERO, size).grow(20.0)
 	for event: FlightEvent in _events.events:
+		var targeted: bool = _markers != null and _markers.is_target(event.thing_dict())
+		# Where it's headed, while it's the one being gone after.
+		if targeted or _view.is_focus(event.thing_dict()):
+			_draw_path(_events.path_of(event.id), EventList.color_of(event.type.kind, palette))
 		var at: PackedFloat64Array = _events.point_of(event.id)
 		if at.size() != 2:
 			continue
 		var spot: Vector2 = _view.to_screen(at[0], at[1]).round()
 		if not area.has_point(spot):
 			continue
-		var targeted: bool = _markers != null and _markers.is_target(event.thing_dict())
 		match event.type.kind:
 			"signal":
 				_draw_signal(event, spot, targeted, palette)
 			"distress":
 				_draw_distress(event, spot, palette)
+			"comet":
+				_draw_comet(event, spot, palette)
+
+
+# A dotted line along a path, dim, so it sits behind the ship's own.
+func _draw_path(points: PackedFloat64Array, color: Color) -> void:
+	if points.size() < 4:
+		return
+	color.a = 0.55
+	var last: Vector2 = _view.to_screen(points[0], points[1])
+	var dash: bool = true
+	for i in range(2, points.size(), 2):
+		var next: Vector2 = _view.to_screen(points[i], points[i + 1])
+		if dash:
+			draw_line(last, next, color, 1.0)
+		dash = not dash
+		last = next
+
+
+# A small ice-white mark and its name, with how the scan's going once it's under way.
+func _draw_comet(event: FlightEvent, spot: Vector2, palette: AgencyPalette) -> void:
+	var color: Color = palette.glass_light
+	draw_rect(Rect2(spot.x - 3.0, spot.y - 3.0, 7.0, 7.0), palette.hull_darkest)
+	draw_rect(Rect2(spot.x - 2.0, spot.y - 2.0, 5.0, 5.0), color)
+	var label: String = "COMET %s" % event.name
+	if event.step == FlightEvent.STORED:
+		label += " · DATA STORED"
+	elif event.step == FlightEvent.FOUND and event.scan_share > 0.0:
+		label += " · SCAN %d%%" % roundi(event.scan_share * 100.0)
+	_draw_label(label, spot, color, palette)
 
 
 # A red beacon that blinks once a second, while they're adrift. Held or aboard, the pilot has them.

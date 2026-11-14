@@ -31,6 +31,10 @@ func _add(event: FlightEvent) -> void:
 			var survivor := SurvivorView.new()
 			survivor.setup(event, _pilot)
 			view = survivor
+		"comet":
+			var comet := CometView.new()
+			comet.setup(event)
+			view = comet
 	if view == null:
 		return
 	_views[event.id] = view
