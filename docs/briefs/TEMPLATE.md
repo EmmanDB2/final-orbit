@@ -31,12 +31,14 @@ Each is about an evening of work and one commit.
 
 ## Art
 
-Anything that needs drawing gets its own art brief: a Gemini prompt Manny runs in his Gemini app for
-the concept, then a session in the Asset Editor project builds it from the brief and the concept and
-exports the game's PNGs, which this project brings in with Manny's OK. For each piece: what it is, its size at
-5 cm a pixel, the view (side or top-down), the colors from the agency palette by hex (human-made things
-only; nature's colors are free but never telemetry cyan 7FE3D6 or agency orange D9541E), a 1 px dark
-outline (0E0F12) on human-made things, and a template image for scale if there is one. Until it's
+Anything that needs drawing gets its own art brief, `docs/briefs/<asset>_art.md`, from
+`docs/briefs/ART_TEMPLATE.md`. Gemini, through `agy`, does all of it: the template, the concept, and the
+finished asset in the Asset Editor, with Manny's OK on the concept and on the flat exterior. Here, for
+each piece, say what it is, its size at 5 cm a pixel, the view (side or top-down), and which ticket brings
+the export in; the builder does only that ticket. The game reads material from art color (the table in
+the art template), so the colors set the mass: numbers that depend on mass should come from the game's
+own measure (`tools/ship_numbers.gd` for ships), not the editor's. Nature's colors are free but never
+telemetry cyan 7FE3D6 or agency orange D9541E. Until it's
 drawn, say what the builder uses in its place.
 
 ## When it's done

@@ -46,23 +46,24 @@ work down:
   system design, and writes a brief for each feature in `docs/briefs/` from `docs/briefs/TEMPLATE.md`.
   It doesn't do routine coding itself when a helper can.
 - **builder** (`.claude/agents/builder.md`, Sonnet): builds the tickets from a brief, commits each,
-  logs it, installs on the Fold, and reports back to Opus.
+  logs it, installs on the Fold, and reports back to Opus. On the art side it only brings finished
+  exports into the game; it never draws.
 - **checker** (`.claude/agents/checker.md`, Sonnet): runs the tests and checks, takes and looks at
   screenshots, and reports in a few lines, so images and long output stay out of the main session.
 - **explorer** (`.claude/agents/explorer.md`, Haiku): answers "where is" and "how does" questions about
   the code without reading it all into the main session.
-- **Sprites, in three steps:** (1) Opus writes an art brief (like
-  `docs/briefs/lander_mk2_in_asset_editor.md`) with a Gemini prompt for the concept; (2) Opus makes
-  the concept itself with the Antigravity CLI, in a scratch folder:
-  `agy -p "<prompt; save it here as name.png>" --sandbox` (Manny's Google sign-in; it comes back as a
-  1024 px pixel-art-style picture, not on the grid, not in the palette, with no transparency); (3) a
-  separate session working in the Asset Editor project (Sonnet,
-  or Opus for hard pieces) builds it there from the brief and the concept, on the pixel grid, in the
-  palette, with layers, materials, and components, and exports the game's PNGs. Then this session
-  brings them into the game, with Manny's OK. Never edit the editor's project from here. (Fable did
-  step 3 until it left the Pro plan in November 2026.)
-- **Gemini, through `agy`:** concepts for those briefs, a second opinion on screenshots, and
-  brainstorming. Manny only talks to Opus; Opus calls it.
+- **Sprites, all drawn by Gemini through `agy`:** (1) Opus writes an art brief from
+  `docs/briefs/ART_TEMPLATE.md`, which says how to run each step; (2) `agy`, in a scratch folder, draws a
+  template (the canvas grid with a 36 px pilot for scale) and the concept on it, and Manny OKs the
+  concept; (3) `agy`, run from the Asset Editor's folder, builds it there from the brief and the
+  concept, on the grid, in the palette, with layers, materials, and components, stopping once for
+  Manny's OK on the flat exterior, then exports the game's PNGs and JSON; (4) with Manny's OK, the
+  builder brings them into the game and the checker screenshots it. Sonnet only does the game side.
+  Opus never edits the editor's files itself; `agy` does, under the editor's `AGENTS.md`. The game reads
+  material from art color, so the art's colors set the mass. (Manny's call, 2026-11-14, after the Moon
+  Hopper; a Sonnet session in the editor did step 3 for it, and Fable before that.)
+- **Gemini, through `agy`:** templates, concepts, and building sprites in the Asset Editor, plus a
+  second opinion on screenshots and brainstorming. Manny only talks to Opus; Opus calls it.
 
 Keep the main session to one feature at a time, and start a fresh one for the next: this file,
 `docs/DESIGN.md`, the brief, and the learning log carry everything over. Small one-line changes can
