@@ -21,6 +21,8 @@ signal comms_area_changed(area: Rect2)
 signal widget_touched(widget: UiWidget)
 ## Emitted when the pilot asks for the title screen, from TITLE.
 signal title_requested
+## The FLIGHT menu's LIGHTS button, for trying the lighting.
+signal lights_requested
 
 const BAR_HEIGHT: float = 44.0
 const EDGE: float = 8.0
@@ -443,6 +445,7 @@ func _build() -> void:
 	_flight_menu.visible = false
 	_flight_menu.pause_pressed.connect(_toggle_pause)
 	_flight_menu.title_pressed.connect(_to_title)
+	_flight_menu.lights_pressed.connect(func() -> void: lights_requested.emit())
 	add_child(_flight_menu)
 	_event_markers = EventMarkers.new()
 	add_child(_event_markers)
@@ -703,6 +706,11 @@ func arrive() -> void:
 
 
 ## Moves the throttle lever to where the ship's throttle is, as when a saved flight's loaded.
+## Shows on the FLIGHT menu whether the station's power is on.
+func show_powered(powered: bool) -> void:
+	_flight_menu.show_powered(powered)
+
+
 func show_throttle(value: float) -> void:
 	_lever.value = value
 	_lever.queue_redraw()

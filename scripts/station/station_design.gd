@@ -16,6 +16,16 @@ extends Resource
 @export_group("Lighting")
 ## Whether its lamps are on. A derelict's aren't.
 @export var powered: bool = true
+## With the power off: every this-many lamps is an emergency lamp, pulsing dim red, and every
+## this-many is a failing one that sputters. Zero for none.
+@export var emergency_every: int = 3
+@export var failing_every: int = 7
+@export var emergency_brightness: float = 0.5
+## How far an emergency lamp's light reaches, as a share of a ceiling lamp's.
+@export var emergency_reach_share: float = 0.6
+## The light everywhere inside with the power off, from 0 to 1: little more than starlight through
+## the windows.
+@export var dark_ambient: float = 0.08
 ## The light everywhere inside, with no lamp near, from 0 to 1, and how bright each lamp is.
 @export var ambient_light: float = 0.32
 @export var lamp_brightness: float = 0.85

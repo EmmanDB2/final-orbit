@@ -15,9 +15,17 @@ uniform vec4 lamps[MOST_LAMPS];
 uniform int lamp_count = 0;
 // The light everywhere, with no lamp near, from 0 to 1.
 uniform float ambient = 0.3;
-// The lamps' light, walls and all, once it's worked out.
+// The lamps' light, walls and all, once it's worked out: red for steady lamps and the light
+// everywhere, green for failing lamps, and blue for emergency lamps.
 uniform sampler2D light_map : filter_nearest;
 uniform bool baked = false;
+// Whether the failing lamps are lit this moment, and how far through its pulse the emergency light is,
+// from 0 to 1.
+uniform float flicker = 0.0;
+uniform float pulse = 1.0;
+// Emergency light is red: what it lights most takes the palette's reds, light and dark.
+uniform vec3 alarm_bright : source_color = vec3(0.784, 0.188, 0.173);
+uniform vec3 alarm_dim : source_color = vec3(0.478, 0.18, 0.071);
 // Where someone can stand: white on floors. Lights that move are stopped by everything else.
 uniform sampler2D floor_mask : filter_nearest;
 // The pilot's helmet lamp: whether it's on, where the pilot is on the picture, which way they face,
@@ -82,11 +90,33 @@ void fragment() {
 		float share = clamp(1.0 - distance(pixel, lamp.xy) / lamp.z, 0.0, 1.0);
 		light += lamp.w * share * share * (3.0 - 2.0 * share);
 	}
+	float alarm = 0.0;
+	// The light that isn't the emergency lamps', which keeps its color.
+	float white = light;
 	if (baked) {
-		light = texture(light_map, UV).r;
+		vec3 maps = texture(light_map, UV).rgb;
+		alarm = maps.b * pulse;
+		white = 1.0 - (1.0 - maps.r) * (1.0 - maps.g * flicker);
+		light = 1.0 - (1.0 - white) * (1.0 - alarm);
 	}
 	if (helmet_on) {
-		light = 1.0 - (1.0 - light) * (1.0 - helmet_light(pixel, TEXTURE_PIXEL_SIZE));
+		float beam = helmet_light(pixel, TEXTURE_PIXEL_SIZE);
+		light = 1.0 - (1.0 - light) * (1.0 - beam);
+		white = 1.0 - (1.0 - white) * (1.0 - beam);
 	}
-	COLOR = palette_lit(texture(TEXTURE, UV), light, pixel);
+	vec4 art = texture(TEXTURE, UV);
+	vec4 lit = palette_lit(art, light, pixel);
+	// Where the emergency light outshines the rest, it's red: the light red where it's strong, the
+	// dark red where it's weaker, dithered in at the edge. Outlines and the darkest colors stay dark,
+	// and glowing colors keep their own.
+	float red = clamp((alarm - white) * 2.5, 0.0, 1.0);
+	float shade = dot(art.rgb, vec3(0.299, 0.587, 0.114));
+	if (red > bayer4(pixel) && art.a > 0.0 && shade > 0.12 && palette_glow[palette_index(art.rgb)] < 0.5) {
+		if (alarm * (0.6 + shade) > 0.4) {
+			lit.rgb = alarm_bright;
+		} else if (alarm > 0.12) {
+			lit.rgb = alarm_dim;
+		}
+	}
+	COLOR = lit;
 }

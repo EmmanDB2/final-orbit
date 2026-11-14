@@ -35,6 +35,8 @@ signal message_raised(text: String)
 @export var port_door_depth: float = 44.0
 ## The most lamps the insides' shader takes.
 const INTERIOR_LAMPS: int = 64
+## How long an emergency lamp's pulse takes, in seconds.
+const EMERGENCY_PULSE_SECONDS: float = 2.4
 ## How long the roof takes to come off, in seconds.
 @export var roof_seconds: float = 0.3
 
@@ -51,6 +53,10 @@ var _inside_sprite := Sprite2D.new()
 # The insides' light map, worked out on a worker thread, and that work while it's under way.
 var _light_task: int = -1
 var _baked_light: Image
+var _powered: bool = true
+var _light_time: float = 0.0
+var _sputter_on: bool = false
+var _sputter_left: float = 0.0
 var _roof_off: bool = false
 var _roof_gone: float = 0.0
 var _show_dot: bool = false
@@ -92,6 +98,7 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 	_sprite.centered = false
 	_sprite.offset = -Vector2(layout.origin)
 	_inside_sprite.texture = ImageTexture.create_from_image(layout.interior_image)
+	_powered = design.powered
 	_light_inside()
 	_inside_sprite.centered = false
 	_inside_sprite.offset = -Vector2(layout.origin)
@@ -101,29 +108,67 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 	add_child(_sprite)
 
 
-# The insides lit by the station's lamps, or only faintly with the power off.
+# The insides lit by the station's lamps. With the power off, only its emergency lamps pulse and its
+# failing ones sputter.
 func _light_inside() -> void:
 	var material: ShaderMaterial = PaletteLight.material_for(preload("res://shaders/interior_light.gdshader"))
+	var palette: AgencyPalette = UiStyle.palette()
+	material.set_shader_parameter("alarm_bright", palette.agency_red)
+	material.set_shader_parameter("alarm_dim", palette.agency_orange_dark)
+	var lit: Array = _lamps_now()
+	# Until the light map's ready, the steady lamps light straight through.
 	var lamps := PackedVector4Array()
-	if _design.powered:
-		for lamp: Dictionary in layout.lamps:
-			lamps.append(Vector4(lamp["point"].x, lamp["point"].y, lamp["reach"], _design.lamp_brightness))
+	for lamp: Dictionary in lit:
+		if lamp["kind"] == StationLight.STEADY:
+			lamps.append(Vector4(lamp["point"].x, lamp["point"].y, lamp["reach"], lamp["brightness"]))
 	var count: int = mini(lamps.size(), INTERIOR_LAMPS)
 	lamps.resize(INTERIOR_LAMPS)
 	material.set_shader_parameter("lamps", lamps)
 	material.set_shader_parameter("lamp_count", count)
-	material.set_shader_parameter("ambient", _design.ambient_light)
+	var ambient: float = _design.ambient_light if _powered else _design.dark_ambient
+	material.set_shader_parameter("ambient", ambient)
 	material.set_shader_parameter("floor_mask", ImageTexture.create_from_image(StationLight.floor_mask(layout.picture_size(), layout.floors())))
 	_inside_sprite.material = material
-	# Walls stopping the lamps' light takes a while to work out, so it's done off to the side. Until
-	# it's ready, the lamps light straight through.
+	# Walls stopping the lamps' light takes a while to work out, so it's done off to the side.
 	_wait_for_light()
+	_baked_light = null
 	var size: Vector2i = layout.picture_size()
 	var rooms: Array = layout.room_areas
-	var lit: Array = layout.lamps if _design.powered else []
-	var ambient: float = _design.ambient_light
-	var brightness: float = _design.lamp_brightness
-	_light_task = WorkerThreadPool.add_task(func() -> void: _baked_light = StationLight.bake(size, rooms, lit, ambient, brightness))
+	_light_task = WorkerThreadPool.add_task(func() -> void: _baked_light = StationLight.bake(size, rooms, lit, ambient))
+
+
+# Each lamp as the power has it: all steady with it on; with it off, some emergency lamps and some
+# failing ones, and the rest dark.
+func _lamps_now() -> Array:
+	var lit: Array = []
+	for i in range(layout.lamps.size()):
+		var lamp: Dictionary = layout.lamps[i].duplicate()
+		if _powered:
+			lamp["kind"] = StationLight.STEADY
+			lamp["brightness"] = _design.lamp_brightness
+		elif _design.emergency_every > 0 and i % _design.emergency_every == 0:
+			lamp["kind"] = StationLight.EMERGENCY
+			lamp["brightness"] = _design.emergency_brightness
+			lamp["reach"] = lamp["reach"] * _design.emergency_reach_share
+		elif _design.failing_every > 0 and i % _design.failing_every == 1:
+			lamp["kind"] = StationLight.FAILING
+			lamp["brightness"] = _design.lamp_brightness
+		else:
+			continue
+		lit.append(lamp)
+	return lit
+
+
+## Turns the station's power on or off, and its lamps with it.
+func set_powered(on: bool) -> void:
+	if on == _powered:
+		return
+	_powered = on
+	_light_inside()
+
+
+func is_powered() -> bool:
+	return _powered
 
 
 # Once the light map's ready, the insides use it.
@@ -146,14 +191,30 @@ func _exit_tree() -> void:
 	_wait_for_light()
 
 
-## How much light the lamps leave at a point in the station's frame, from 0 to 1.
+# Emergency lamps pulse slowly, and failing ones sputter: mostly dark, with bursts of light.
+func _change_lights(delta: float) -> void:
+	var material: ShaderMaterial = _inside_sprite.material
+	if material == null or not _inside_sprite.visible:
+		return
+	_light_time += delta
+	material.set_shader_parameter("pulse", 0.675 + 0.325 * sin(_light_time * TAU / EMERGENCY_PULSE_SECONDS))
+	_sputter_left -= delta
+	if _sputter_left <= 0.0:
+		_sputter_on = not _sputter_on
+		_sputter_left = randf_range(0.04, 0.25) if _sputter_on else randf_range(0.05, 1.6)
+	material.set_shader_parameter("flicker", 1.0 if _sputter_on else 0.0)
+
+
+## How much light the lamps leave at a point in the station's frame, from 0 to 1, with failing lamps
+## out and emergency lamps halfway through their pulse.
 func light_at(local: Vector2) -> float:
 	var point: Vector2 = local / _design.art_pixel_size + Vector2(layout.origin)
 	if _baked_light == null:
-		return _design.ambient_light if not _design.powered else 1.0
+		return 1.0 if _powered else _design.dark_ambient
 	var x: int = clampi(floori(point.x), 0, _baked_light.get_width() - 1)
 	var y: int = clampi(floori(point.y), 0, _baked_light.get_height() - 1)
-	return _baked_light.get_pixel(x, y).r
+	var maps: Color = _baked_light.get_pixel(x, y)
+	return 1.0 - (1.0 - maps.r) * (1.0 - maps.b * 0.55)
 
 
 ## Shines the pilot's helmet lamp from a point in the station's frame, facing this way in it, or puts
@@ -186,6 +247,7 @@ func set_roof_off(off: bool) -> void:
 
 func _process(delta: float) -> void:
 	_pick_up_light()
+	_change_lights(TimeWarp.real(delta))
 	var wanted: float = 1.0 if _roof_off else 0.0
 	if _roof_gone == wanted:
 		return

@@ -879,3 +879,11 @@ Files: `shaders/interior_light.gdshader`, `scripts/station/station_view.gd`, `sc
 - ray marching through a mask texture in a fragment shader for shadows
 - a cone test with the dot product and smoothstep for soft edges
 - hysteresis: separate on and off thresholds so a switch doesn't flicker
+
+## 2026-11-14: Lighting, ticket 4: power, emergency lamps, and failing lamps
+
+Files: `scripts/station/station_light.gd`, `scripts/station/station_view.gd`, `scripts/station/station_design.gd`, `shaders/interior_light.gdshader`, `scripts/ui/flight_menu.gd`, `scripts/ui/flight_hud.gd`, `scripts/feature_flags.gd`, `scripts/main.gd`, `docs/DESIGN.md`
+
+- packing separate data into a texture's color channels
+- animating a shader through uniforms (a pulse and a random sputter) instead of redrawing
+- a debug switch behind a feature flag

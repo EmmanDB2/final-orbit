@@ -160,6 +160,9 @@ func _ready() -> void:
 	_saved = saved
 	_catalog = catalog
 	$Hud/SafeArea/FlightHud.title_requested.connect(_to_title)
+	$Hud/SafeArea/FlightHud.lights_requested.connect(func() -> void:
+		$Station.set_powered(not $Station.is_powered())
+		$Hud/SafeArea/FlightHud.show_powered($Station.is_powered()))
 	if opening:
 		_open_title(home, has_save)
 	else:
