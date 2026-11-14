@@ -70,6 +70,12 @@ var light_level: float = 1.0
 ## Outside it's the star, and none in a world's shadow.
 var light_from := Vector2(-1.0, -1.4)
 var sun_level: float = 1.0
+## Holes in the suit, each as which way its gas vents, as an angle from the head, clockwise. Each
+## shows a plume.
+var leaks: PackedFloat32Array = PackedFloat32Array()
+## How far the visor's frosted over, from 0 to 1, as the suit's air runs out.
+var frost: float = 0.0
+var _frost_shown: int = 0
 var _light: DirectionalLight3D
 var _environment: Environment
 ## The view's turn, so the canvas can stay square with the screen.
@@ -197,6 +203,7 @@ func _process(delta: float) -> void:
 		return
 	_time += delta
 	_flicker += delta
+	_show_frost()
 	_light.light_energy = 0.9 * light_level * sun_level
 	# A little more light all round in shadow, so they're never lost.
 	_environment.ambient_light_energy = (0.3 + 0.15 * (1.0 - sun_level)) * light_level
@@ -390,8 +397,23 @@ func _turn_joint(joint_name: StringName, angles: Vector3) -> void:
 # Each push fires the thrusters on the side of the pack that trails, blowing the other way, and a
 # turn fires the two corners farthest apart, blowing round the opposite way to the turn. It's
 # worked out on screen, so it holds however the pilot leans.
+# The visor frosts over in two steps as the air runs out: pale, then white.
+func _show_frost() -> void:
+	var step: int = 2 if frost > 0.75 else (1 if frost > 0.35 else 0)
+	if step == _frost_shown:
+		return
+	_frost_shown = step
+	_model.recolor("visor_glass", [&"gold", &"hull_lighter", &"hull_lightest"][step])
+
+
 func _draw() -> void:
-	if palette == null or (push == Vector2.ZERO and turning == 0.0):
+	if palette == null:
+		return
+	# Gas venting from holes in the suit, each a plume from the body the way it goes.
+	for angle: float in leaks:
+		var way: Vector2 = Vector2.UP.rotated(body_angle + angle)
+		_draw_puff(_sprite.position + way * 5.0, way)
+	if push == Vector2.ZERO and turning == 0.0:
 		return
 	var pack: Node3D = _model.joint(&"backpack")
 	var corners := PackedVector2Array()

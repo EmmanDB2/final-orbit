@@ -95,6 +95,10 @@ var input_blocked: bool = false
 var _action_target: Callable = Callable()
 var _can_leave: bool = false
 var _stranded: bool = false
+## The suit's air, in seconds of one hole leaking it, and its holes, each as which way it vents, as an
+## angle from the head. Getting inside patches it and fills it up.
+var air: float = 0.0
+var suit_holes: PackedFloat32Array = PackedFloat32Array()
 ## Whether the pilot's dead, and what killed them. The body stays a body: it drifts, falls, and comes
 ## to rest like anything else, until the med bay.
 var dead: bool = false
@@ -135,6 +139,7 @@ func start_pilot(gravity_model: GravityModel, ship: Node2D, station: StationView
 	_ship = ship
 	_station = station
 	gas = data.jet_seconds
+	air = data.air_seconds
 	# The boots are what meet the ground.
 	state.ground_clearance = data.stand_height
 	# Before the ship's tick, so the pilot and ship both reach the same moment before the view's drawn.
@@ -255,6 +260,36 @@ func _burn_up() -> void:
 func _land_hard(_speed: float) -> void:
 	_show_pose(data.jump_side[5], 0.8)
 	message_raised.emit("HARD LANDING")
+	_breach_suit()
+
+
+# A hole in the suit: it leaks air, and the gas venting from it pushes them about.
+func _breach_suit() -> void:
+	suit_holes.append(randf() * TAU)
+	message_raised.emit("SUIT BREACHED · O2 LEAKING" if suit_holes.size() == 1 else "SUIT BREACHED · %d HOLES" % suit_holes.size())
+
+
+# The suit's holes leak air and, in space, push like small thrusters going the other way. Out of air,
+# they die. Says whether they did.
+func _leak(delta: float, pushes: bool) -> bool:
+	if suit_holes.is_empty():
+		return false
+	air = maxf(air - suit_holes.size() * delta, 0.0)
+	if pushes:
+		for angle: float in suit_holes:
+			var out: Vector2 = Vector2.UP.rotated(facing + angle)
+			state.velocity_x -= out.x * data.leak_push * delta
+			state.velocity_y -= out.y * data.leak_push * delta
+	if air <= 0.0:
+		_die("AIR RAN OUT", 0.1)
+		return true
+	return false
+
+
+# Back inside, the suit's patched and filled up.
+func _patch_suit() -> void:
+	suit_holes.clear()
+	air = data.air_seconds
 
 
 func _die(cause: String, severity: float, detail: String = "") -> void:
@@ -325,6 +360,8 @@ func _tick_eva(delta: float) -> void:
 	if _feel_air(delta) or _too_near_star():
 		_die("BURNED UP", 1.0)
 		return
+	if _leak(delta, true):
+		return
 	_gravity_model.propagate(state, delta)
 	if state.is_on_surface():
 		var speed: float = state.get_touchdown_speed()
@@ -381,6 +418,8 @@ func _bump_station() -> void:
 		state.velocity_y -= normal.y * into * 1.2
 		if -into > data.fatal_landing_speed:
 			_die_of_impact(-into)
+		elif -into > data.safe_landing_speed:
+			_breach_suit()
 
 
 func _look_around_outside() -> void:
@@ -407,6 +446,7 @@ func _act_outside() -> void:
 
 func _board_ship() -> void:
 	gas = data.jet_seconds
+	_patch_suit()
 	_firing = Vector2.ZERO
 	_ship.set_pilot_aboard(true)
 	_station.set_roof_off(false)
@@ -416,6 +456,7 @@ func _board_ship() -> void:
 
 func _enter_station(port: int) -> void:
 	gas = data.jet_seconds
+	_patch_suit()
 	_firing = Vector2.ZERO
 	_local = _station.port_inner(port)
 	_walking = Vector2.ZERO
@@ -602,6 +643,8 @@ func _tick_surface(delta: float) -> void:
 	if _grounded and feet - floor_there > data.step_height:
 		_grounded = false
 		_rising = 0.0
+	if _leak(delta, false):
+		return
 	var landed_at: float = 0.0
 	if _grounded:
 		feet = floor_there
@@ -680,6 +723,7 @@ func _find_door() -> bool:
 
 # Through the door: the front wall fades off, and the pilot walks the floors inside.
 func _enter_building(site: SiteView, index: int) -> void:
+	_patch_suit()
 	_site = site
 	_building = index
 	_spot = site.data.buildings[index].door
@@ -999,6 +1043,8 @@ func _report() -> void:
 		"moving": relative.length_squared() >= 0.25,
 		"spin": 0.0,
 		"fuel_share": gas / data.jet_seconds,
+		# The suit's air shows only once it's leaking.
+		"air_share": air / data.air_seconds if not suit_holes.is_empty() else -1.0,
 		"delta_v": gas * jet_push(),
 		"status": "INSIDE THE STATION" if mode == INSIDE else ("NEAR THE STATION" if near_station else status),
 	})
@@ -1051,6 +1097,9 @@ func _show_figure(delta: float) -> void:
 	_figure.turning = _turning if mode == EVA else 0.0
 	# A hand out to the side for someone being held, on EVA.
 	_figure.holding = 1 if carried_kg > 0.0 and mode == EVA else 0
+	# Holes in the suit vent, and the visor frosts as the air goes.
+	_figure.leaks = suit_holes if not dead else PackedFloat32Array()
+	_figure.frost = 1.0 - air / data.air_seconds if not suit_holes.is_empty() or dead else 0.0
 	_light_inside()
 	if dead:
 		_show_body(delta)

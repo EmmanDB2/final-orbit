@@ -275,6 +275,13 @@ func _add_piece(joint_name: StringName, piece_name: String, mesh: Mesh, color_na
 	_joints[joint_name].add_child(piece)
 
 
+## Gives one piece of the suit another of the palette's colors, such as the visor frosting over.
+func recolor(piece_name: String, color_name: StringName) -> void:
+	var piece: MeshInstance3D = find_child(piece_name, true, false) as MeshInstance3D
+	if piece != null:
+		piece.set_surface_override_material(0, _material(color_name))
+
+
 # A tube from one joint to the next. Its open ends sit inside the balls at the joints.
 func _add_limb(joint_name: StringName, piece_name: String, color_name: StringName, from: Vector3, to: Vector3, from_radius: float, to_radius: float) -> void:
 	var mesh: CylinderMesh = _tube(from_radius, to_radius, from.distance_to(to), LIMB_SIDES, false)

@@ -926,3 +926,11 @@ Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_vie
 - quadratic drag and terminal velocity (v = sqrt(2mg / (rho A)))
 - thresholds as bands (safe, hard, fatal) instead of one cutoff
 - turning a character into a passive physics body when it dies (a simple ragdoll stand-in)
+
+## 2026-11-14: Death, ticket 2: the suit's air
+
+Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/pilot/astronaut_view.gd`, `scripts/pilot/astronaut_model.gd`, `scripts/ui/tank_gauges.gd`, `docs/DESIGN.md`
+
+- a resource that drains by rate times count (holes) and refills on an event
+- recoil: venting gas pushes the other way (Newton's third law)
+- swapping a 3D mesh's material at runtime

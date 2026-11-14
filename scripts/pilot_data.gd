@@ -80,6 +80,10 @@ extends Resource
 ## How the air drags on the pilot, against their mass, like a debris chunk's width: falling through
 ## the home planet's air near the ground, it holds them to about 20 m/s.
 @export var drag_area: float = 0.3
+## How much air the suit holds, in seconds of one hole leaking it, and how hard each hole's venting
+## pushes, in world units per second squared. Breathing alone doesn't run it down yet.
+@export var air_seconds: float = 90.0
+@export var leak_push: float = 4.0
 ## How much heat from moving through air the suit can take, as the ship's heat limit is; past it, they
 ## burn up.
 @export var heat_limit: float = 1.2e10
