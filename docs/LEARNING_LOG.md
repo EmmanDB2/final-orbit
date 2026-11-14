@@ -848,3 +848,9 @@ Files: `scripts/event/event_director.gd`, `docs/DESIGN.md`
 Files: `scripts/event/event_director.gd`
 
 - reference frames: keeping a path relative to the body it orbits, then adding the body's position when drawing
+
+## 2026-11-14: The pilot's size inside stations
+
+Files: `scripts/pilot.gd`, `docs/DESIGN.md`
+
+- keeping what's drawn and what collides at the same scale

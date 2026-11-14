@@ -1022,9 +1022,9 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	var show_dot: bool = pixels_per_unit < dot_max_zoom
 	_sprite.visible = not show_dot and _figure == null
 	if _figure != null:
-		# Inside, at the station's pixel size, so the two pixels match.
-		var pixel_size: float = _station.art_pixel_size() if mode == INSIDE else 1.0
-		_figure.scale = Vector2.ONE * minf(pixels_per_unit, 1.0) * pixel_size
+		# The same size inside a station as out, as walking inside already has it. The station's art
+		# pixels are bigger than the pilot's, which keeping the pilot's real size is worth.
+		_figure.scale = Vector2.ONE * minf(pixels_per_unit, 1.0)
 		_figure.visible = not show_dot
 	_show_dot = show_dot
 	queue_redraw()
