@@ -37,6 +37,27 @@ Manny uses separate sessions for building and for learning. Sessions that start 
 Teach sessions start with the `/teach` command (`.claude/commands/teach.md`). Only switch
 to teaching when that command is used or Manny asks.
 
+## Who does what
+
+Manny is on Claude Pro, so usage is tight. He talks only to the main session, on Opus, and it hands
+work down:
+
+- **Opus (the main session):** talks with Manny, decides how features work, does the hard math and
+  system design, and writes a brief for each feature in `docs/briefs/` from `docs/briefs/TEMPLATE.md`.
+  It doesn't do routine coding itself when a helper can.
+- **builder** (`.claude/agents/builder.md`, Sonnet): builds the tickets from a brief, commits each,
+  logs it, installs on the Fold, and reports back to Opus.
+- **checker** (`.claude/agents/checker.md`, Sonnet): runs the tests and checks, takes and looks at
+  screenshots, and reports in a few lines, so images and long output stay out of the main session.
+- **explorer** (`.claude/agents/explorer.md`, Haiku): answers "where is" and "how does" questions about
+  the code without reading it all into the main session.
+- **Gemini, through Manny:** sprites (the brief's Art section is the prompt), a second opinion on
+  screenshots, and brainstorming. Fable cleans sprites up in the Asset Editor.
+
+Keep the main session to one feature at a time, and start a fresh one for the next: this file,
+`docs/DESIGN.md`, the brief, and the learning log carry everything over. Small one-line changes can
+still be made directly.
+
 ## Architecture rules
 
 - **Engine:** Godot 4. GDScript for gameplay; C++ via GDExtension for the physics core.
