@@ -910,3 +910,11 @@ Files: `scripts/ship/hull_light.gd`, `shaders/hull_light.gdshader`, `scripts/sta
 - choosing a surface's curve from the shorter of two runs (a cheap guess at a shape's axis)
 - aiming a 3D light from a 2D screen direction
 - doing big image work on a worker thread and swapping the result in
+
+## 2026-11-14: Lighting outside, ticket 4: the engine's light, and the hangar picture
+
+Files: `shaders/hull_light.gdshader`, `scripts/ship.gd`, `scripts/ship/hull_light.gd`, `scripts/palette_light.gd`, `scripts/ui/service_board.gd`, `docs/DESIGN.md`
+
+- a point light in a sprite's own pixel space
+- the same lighting worked out on the CPU for a picture drawn as part of a bigger one
+- refactoring shared logic so the shader's table and the code's come from one place

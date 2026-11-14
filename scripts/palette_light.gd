@@ -19,6 +19,10 @@ const RAMPS: Array = [
 const GLOWING: Array = [&"telemetry_cyan", &"telemetry_green", &"telemetry_amber", &"thrust_white", &"thrust_yellow", &"thrust_red"]
 ## The shader's arrays are this long.
 const SIZE: int = 32
+## The most steps any ramp has, as in the shader.
+const MOST_STEPS: int = 5
+## The shader's 4x4 Bayer pattern, row by row.
+const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
 
 ## A material for this shader, with the palette's ramps filled in.
@@ -29,8 +33,45 @@ static func material_for(shader: Shader) -> ShaderMaterial:
 	return material
 
 
-static func fill(material: ShaderMaterial) -> void:
+## The palette's steps for working out lit art in code, the same as the shader: each color, the index of
+## its next darker step, and whether it glows.
+static func table() -> Dictionary:
 	var palette: AgencyPalette = UiStyle.palette()
+	var names: Array[StringName] = _names()
+	var colors := PackedColorArray()
+	var glow := PackedByteArray()
+	for color_name: StringName in names:
+		colors.append(palette.get(color_name))
+		glow.append(1 if GLOWING.has(color_name) else 0)
+	return {"colors": colors, "down": _downs(names), "glow": glow}
+
+
+## A color as this much light leaves it at a pixel, as palette_lit() in the shader has it.
+static func lit_color(color: Color, light: float, x: int, y: int, steps_table: Dictionary) -> Color:
+	if color.a <= 0.0:
+		return color
+	var colors: PackedColorArray = steps_table["colors"]
+	var index: int = 0
+	var nearest: float = INF
+	for i in range(colors.size()):
+		var apart: float = Vector3(color.r - colors[i].r, color.g - colors[i].g, color.b - colors[i].b).length_squared()
+		if apart < nearest:
+			nearest = apart
+			index = i
+	if steps_table["glow"][index] == 1:
+		return color
+	var down: float = (1.0 - clampf(light, 0.0, 1.0)) * MOST_STEPS
+	var steps: int = floori(down)
+	if down - steps > (BAYER[(y % 4) * 4 + (x % 4)] + 0.5) / 16.0:
+		steps += 1
+	for i in range(steps):
+		index = steps_table["down"][index]
+	var lit: Color = colors[index]
+	lit.a = color.a
+	return lit
+
+
+static func _names() -> Array[StringName]:
 	var names: Array[StringName] = []
 	for ramp: Array in RAMPS:
 		for color_name: StringName in ramp:
@@ -38,20 +79,32 @@ static func fill(material: ShaderMaterial) -> void:
 				names.append(color_name)
 	for color_name: StringName in GLOWING:
 		names.append(color_name)
-	var colors := PackedVector3Array()
+	return names
+
+
+static func _downs(names: Array[StringName]) -> PackedInt32Array:
 	var down := PackedInt32Array()
-	var glow := PackedFloat32Array()
 	for i in range(names.size()):
-		var color: Color = palette.get(names[i])
-		colors.append(Vector3(color.r, color.g, color.b))
 		down.append(i)
-		glow.append(1.0 if GLOWING.has(names[i]) else 0.0)
 	for ramp: Array in RAMPS:
 		for step in range(ramp.size() - 1):
 			var from: int = names.find(ramp[step])
 			# Only the first ramp a color's on says where it goes, so near black stays near black.
 			if down[from] == from:
 				down[from] = names.find(ramp[step + 1])
+	return down
+
+
+static func fill(material: ShaderMaterial) -> void:
+	var palette: AgencyPalette = UiStyle.palette()
+	var names: Array[StringName] = _names()
+	var colors := PackedVector3Array()
+	var glow := PackedFloat32Array()
+	for color_name: StringName in names:
+		var color: Color = palette.get(color_name)
+		colors.append(Vector3(color.r, color.g, color.b))
+		glow.append(1.0 if GLOWING.has(color_name) else 0.0)
+	var down: PackedInt32Array = _downs(names)
 	material.set_shader_parameter("palette_count", names.size())
 	colors.resize(SIZE)
 	down.resize(SIZE)

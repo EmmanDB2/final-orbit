@@ -23,6 +23,11 @@ uniform float ambient = 0.32;
 uniform float wrap = 0.5;
 // How strongly the lit side's lit: above 1, the middle stays full and only the far side darkens.
 uniform float boost = 1.5;
+// The engine's flame lights the hull near it while it burns: where it leaves the art, in its pixels,
+// how far its light reaches, and how hard it's burning, from 0 to 1.
+uniform vec2 engine_at = vec2(0.0);
+uniform float engine_reach = 150.0;
+uniform float engine_level = 0.0;
 
 void fragment() {
 	vec4 art = texture(TEXTURE, UV);
@@ -39,5 +44,9 @@ void fragment() {
 	float diffuse = clamp((dot(normal, toward) + wrap) / (1.0 + wrap), 0.0, 1.0);
 	float light = ambient + (1.0 - ambient) * min(diffuse * boost, 1.0) * sun;
 	vec2 pixel = floor(UV / TEXTURE_PIXEL_SIZE) + 0.5;
+	if (engine_level > 0.0) {
+		float share = clamp(1.0 - distance(pixel, engine_at) / engine_reach, 0.0, 1.0);
+		light = 1.0 - (1.0 - light) * (1.0 - engine_level * share);
+	}
 	COLOR = palette_lit(art, light, pixel);
 }

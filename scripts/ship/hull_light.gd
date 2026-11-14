@@ -75,6 +75,33 @@ static func _rgba(art: Image) -> Image:
 	return copy
 
 
+## A picture of the art lit from the upper left, worked out in code, for screens like the hangar's
+## where it's drawn as part of a bigger picture.
+static func lit_picture(art: Image, from := Vector2(-1.0, -1.4), front: float = 0.55, ambient: float = 0.32) -> Image:
+	var picture: Image = art.duplicate()
+	picture.convert(Image.FORMAT_RGBA8)
+	var runs: Image = across_map(picture)
+	var steps_table: Dictionary = PaletteLight.table()
+	var toward := Vector3(from.x, from.y, front).normalized()
+	for y in range(picture.get_height()):
+		for x in range(picture.get_width()):
+			var color: Color = picture.get_pixel(x, y)
+			if color.a <= 0.0:
+				continue
+			var run: Color = runs.get_pixel(x, y)
+			var normal: Vector3
+			if run.b > 0.5:
+				var across: float = run.r * 2.0 - 1.0
+				normal = Vector3(across, 0.0, sqrt(maxf(1.0 - across * across, 0.0)))
+			else:
+				var down: float = run.g * 2.0 - 1.0
+				normal = Vector3(0.0, down, sqrt(maxf(1.0 - down * down, 0.0)))
+			var diffuse: float = clampf((normal.dot(toward) + 0.5) / 1.5, 0.0, 1.0)
+			var light: float = ambient + (1.0 - ambient) * minf(diffuse * 1.5, 1.0)
+			picture.set_pixel(x, y, PaletteLight.lit_color(color, light, x, y, steps_table))
+	return picture
+
+
 ## A material that lights this art, with its curvature worked out.
 static func material_for(art: Image) -> ShaderMaterial:
 	var material: ShaderMaterial = PaletteLight.material_for(SHADER)

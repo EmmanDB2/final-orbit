@@ -657,6 +657,11 @@ func _light_hull() -> void:
 		sunlight = Sunlight.at(_gravity_model, state.x, state.y, state.time)
 	var toward: Vector2 = -Vector2(state.x, state.y).normalized()
 	HullLight.aim(_sprite, toward, sunlight)
+	# The flame lights the hull round the bell while it burns.
+	var material: ShaderMaterial = _sprite.material as ShaderMaterial
+	if material != null and _sprite.texture != null:
+		material.set_shader_parameter("engine_at", _flame_at + Vector2(_sprite.texture.get_size()) / 2.0)
+		material.set_shader_parameter("engine_level", _engine_reported * 0.9 if _show_sprite else 0.0)
 	for part: Sprite2D in _part_sprites:
 		HullLight.aim(part, toward, sunlight)
 

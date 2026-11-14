@@ -411,7 +411,8 @@ func _draw_ship(area: Rect2, cutaway: bool, body: ShipBody = null, key: String =
 		key = "cutaway" if cutaway else "plain"
 	if not _pictures.has(key):
 		var made: Dictionary = (body if body != null else _services.ship().body).picture(cutaway)
-		_pictures[key] = [ImageTexture.create_from_image(made["image"]), made["middle"]]
+		# Lit from the upper left, so a ship drawn flat shows its shape here too.
+		_pictures[key] = [ImageTexture.create_from_image(HullLight.lit_picture(made["image"])), made["middle"]]
 	var texture: ImageTexture = _pictures[key][0]
 	var picture_size := Vector2(texture.get_size())
 	var room := Vector2(area.size.x - ((TIP_SIZE.x + 30.0) * 2.0 if tip_room else 0.0), area.size.y)
