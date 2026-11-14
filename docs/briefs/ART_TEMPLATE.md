@@ -28,9 +28,22 @@ editor's `AGENTS.md` bars reading game files. Opus copies this brief there.
    else is passed for one run only, such as a commit in the editor once Manny allows it:
    `--settings '{"permissions":{"allow":["command(git add *)","command(git commit *)"]}}'`. A denied
    tool ends the run with "a tool required the "<name>" permission": add exactly that rule and run
-   again.
+   again, or continue the same conversation with `agy -c -p "..."` so it keeps its work.
+
+   **Put these rules in every `agy` prompt** (learned on the cargo pod test, 2026-11-14):
+   - Never use RunWorkflow or any built-in Python tool (refused headless); write `.py` files and run
+     them with `python3`.
+   - Run each command as one plain command starting with `python3` or `godot`, with relative paths
+     from the working folder: no `cd`, no `&&`, `;`, or pipes, no other programs (do `ls`, `mkdir`
+     and the like inside Python). Anything else doesn't match the saved rules and is refused.
+   - Its sandbox can't take the space in these folder names ("globs not supported"), so the allowed
+     commands run outside it; the saved rules are what limit them.
+   - Ask for the concept as **real pixel art drawn by a Python script** on the template (8 screen px
+     per art px), not from the image generator: the editor then reads it back pixel for pixel, with no
+     redrawing. The cargo pod's concept took 2 minutes and was exact.
 3. **The rest in the editor**, a second run from the same folder: inside layers, materials,
    components, checks, exports, and the JSON. Then Opus checks the stats and shows Manny the previews.
+   The cargo pod test took about 15 minutes in the editor, including one refused run.
 4. **Into the game**, with Manny's OK: the builder (Sonnet) copies the PNGs and writes the data file,
    then the checker screenshots it.
 
@@ -93,7 +106,10 @@ says otherwise.
 ## Numbers to aim for
 
 A target mass (not only a range), its center, and anything the game's physics needs, measured the
-game's way: by the table above, times each layer's thickness.
+game's way: by the table above, times each layer's thickness. Work the target out from the art, not by
+guess: a mostly filled 64 x 64 module with three layers at 0.4 / 0.2 / 0.225 weighs about 2 t (the
+cargo pod test; it was asked for 700 kg, which its look couldn't reach). Better still, set numbers that
+depend on mass from the game's own measure afterward, as the Moon Hopper's brief did.
 
 ## Exports
 
