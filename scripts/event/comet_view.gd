@@ -27,6 +27,12 @@ const DUST_REBUILD_SECONDS: float = 2.0
 const DUST_MOST_SECONDS: float = 900.0
 ## How wide the glow's game pixels are, in screen pixels.
 const GLOW_BLOCK: float = 4.0
+## The glow's most alpha while the whole coma fits on screen, and the least it thins to up close,
+## inside the coma, so the nucleus isn't lost in a grey veil. It thins from when the coma's reach
+## passes the screen's short side until it's THIN_BY screens across.
+const MOST_ALPHA: float = 0.45
+const LEAST_ALPHA: float = 0.14
+const THIN_BY: float = 6.0
 ## A jet's spot starts spraying once it faces the star this much (the dot of its direction with the
 ## star's), and sprays fully at the second number.
 const JET_FACING_FROM: float = 0.1
@@ -242,6 +248,17 @@ func _place_glow() -> void:
 	material.set_shader_parameter("dust_points", _dust_points)
 	material.set_shader_parameter("jets", sprays)
 	material.set_shader_parameter("jet_count", jet_angles.size())
+	material.set_shader_parameter("most_alpha", glow_alpha(reach_px, get_viewport_rect().size))
+
+
+## How much alpha the glow tops out at, given the coma's reach and the screen's size, both in screen
+## pixels: full while the coma fits, thinning on a log scale as the view goes in close.
+static func glow_alpha(reach_px: float, screen: Vector2) -> float:
+	var fits: float = minf(screen.x, screen.y)
+	if fits <= 0.0 or reach_px <= fits:
+		return MOST_ALPHA
+	var share: float = clampf(log(reach_px / fits) / log(THIN_BY), 0.0, 1.0)
+	return lerpf(MOST_ALPHA, LEAST_ALPHA, share)
 
 
 ## The nucleus's outline toward an angle in its own frame, in nominal radii, blended smoothly between

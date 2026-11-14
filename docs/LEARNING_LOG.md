@@ -997,3 +997,10 @@ Files: `shaders/comet_glow.gdshader`, `scripts/event/comet_view.gd`, `docs/DESIG
 - distance to a polyline in a shader (nearest point on each segment, and how far along it is)
 - a vec2 array uniform carrying a path to a fragment shader, and clipping a huge quad to the screen
 - 1D value noise for streamers, and cutting a strength into 5 alpha bands with a Bayer dither
+
+## 2026-11-14: Thin the comet's glow up close
+
+Files: `scripts/event/comet_view.gd`, `docs/LEARNING_LOG.md`
+
+- fading by zoom on a log scale (`log`, `lerpf`, `clampf`)
+- a static function so a rule can be checked without a scene
