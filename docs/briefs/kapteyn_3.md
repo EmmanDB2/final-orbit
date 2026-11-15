@@ -194,6 +194,31 @@ Each is about an evening of work and one commit, logged in `docs/LEARNING_LOG.md
 Tickets 1 to 5 use the synthetic station in tests; ticket 6 waits for the art (Manny's OK on the
 concept and the flat exterior, then the exports).
 
+### 6a. Stand-in art from the round 1 concept (before ticket 6)
+
+Manny OK'd the concept's look, but the props, hatch, and outside get a second, more detailed round when
+Gemini's quota resets (`docs/briefs/kapteyn_3_round2_art.md`). Until then, the station plays with
+round 1's pixels as **stand-in art**, so Manny can walk around it.
+
+- **Does:** the game's Kapteyn-3 is the new station, drawn with round 1's art.
+- **Source:** `/Users/emmanuelwalters/Projects/Final Orbit Art Drop/kapteyn_3/`: `props/*.png` (each
+  prop and hatch piece alone), `kapteyn_3_concept.png` and `kapteyn_3_exterior.png` (1200 x 1000, the
+  whole station), `concept_numbers.txt` (shells, ports, prop placements, fixtures, windows, outside
+  lights), and Gemini's scripts (`art_lib.py`, `build_props.py`, `build_station.py`).
+- **How:** get each module's four layers without adding or changing any pixel. Best: a small harness
+  (in `tools/`, run with python3) that imports Gemini's `build_station.py` functions and calls its own
+  floor, wall, and roof drawing into separate canvases per module, leaving props out (they're placed
+  from data). Failing that, cut them from the two 1200 x 1000 images: the roof from the exterior; walls
+  as the shell's wall band; floor as the rest, with the props' footprints taken from the prop sprites'
+  placements. Either way, no hand-drawn pixels. Write `data/kapteyn_3.tres` and
+  `data/station_props/<id>.tres` from `concept_numbers.txt` and the props brief's table, through
+  `tools/import_station.gd` if that's ready, else by hand.
+- **Mark it:** the PNGs go in `art/kapteyn_3/standin/` and `art/station_props/standin/`, the data's
+  header comment and the import tool say STAND-IN (round 1 concept, to be replaced by round 2), and
+  `tests/test_station.gd` checks the station, not the pixels, so round 2 drops in.
+- Then the main.tscn swap (one line, staged as Decided says), tests, the checker's screenshots, and
+  install on the Fold.
+
 ## Art
 
 `docs/briefs/kapteyn_3_shells_art.md` (the six modules: floor, walls, overhead, roof) and
