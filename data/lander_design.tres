@@ -131,6 +131,7 @@ art_position = Vector2i(44, 89)
 hinge = Vector2i(53, 131)
 travel = Vector2i(-53, 72)
 folds = true
+stows_inside_hull = true
 
 [sub_resource type="Resource" id="Module_leg_1"]
 script = ExtResource("2_module")
@@ -142,6 +143,7 @@ art_position = Vector2i(64, 89)
 hinge = Vector2i(74, 131)
 travel = Vector2i(53, 72)
 folds = true
+stows_inside_hull = true
 
 [resource]
 script = ExtResource("1_design")

@@ -1197,3 +1197,11 @@ Files: `art/lander/*.png` (26), `data/lander_design.tres` (leg modules only), `s
 - a cell on the stowed grid that two parts share: the hull owns it, and the part behind waits to take it over if the hull pixel is shot away
 - staging a file's committed text and leaving the working copy alone (`git hash-object -w` and `git update-index --cacheinfo`)
 - a test that pinned one drawing's numbers (mass, pixel count, art gaps) changed to follow the module art, and a synthetic ship for the weld check
+
+## 2026-11-15: Legs that stow inside the hull (lander flat import, ticket 2)
+
+Files: `scripts/ship/module_data.gd`, `scripts/ship/ship_body.gd`, `data/lander_design.tres` (the flag on both legs), `tests/test_stowed_legs.gd`, `docs/LEARNING_LOG.md`
+
+- a per-pixel "shielded" flag worked out only when something changes (legs move, hull loses pixels), then read by outline, hits, and the picture
+- rebuilding just one layer's outline from a list of its own pixels, so moving the legs doesn't walk every pixel of the ship
+- building a ship with its legs taken off (`duplicate()` and a filtered module list) to compare against

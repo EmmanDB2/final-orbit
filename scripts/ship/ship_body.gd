@@ -8,6 +8,10 @@
 # landing leg, is a layer of its own that can be somewhere else while its pixels stay the same.
 # Mass always counts a moving part where it's stowed, since it's tiny next to the whole ship.
 #
+# A part that stows inside the hull (the lander's legs) sits behind the hull's layers. A pixel of it
+# that's right now under a hull pixel is shielded: it isn't in the ship's outline, and a hit takes the
+# hull pixel in front of it. That's worked out when the part moves or the hull loses pixels.
+#
 # A pixel can have depth: the hull's skin on top, then the systems under it, then the bare
 # frame. Damage takes one at a time, and a pixel is only gone once it has nothing left.
 class_name ShipBody
@@ -23,6 +27,11 @@ class Layer:
 	var module: int = -1
 	var moves: bool = false
 	var folds: bool = false
+	## True for a part that stows inside the hull: it draws behind it, and where it's under the hull
+	## its pixels are shielded.
+	var behind_hull: bool = false
+	## Which pixels are on this layer.
+	var pixels: PackedInt32Array = PackedInt32Array()
 	var hinge_home: Vector2 = Vector2.ZERO
 	var hinge_now: Vector2 = Vector2.ZERO
 	var travel: Vector2 = Vector2.ZERO
@@ -105,6 +114,8 @@ var _depth_mass: PackedFloat32Array = PackedFloat32Array()
 var _depth_strength: PackedFloat32Array = PackedFloat32Array()
 var _depth_color: PackedColorArray = PackedColorArray()
 var _is_working: PackedByteArray = PackedByteArray()
+# Per pixel: 1 if it's behind a hull pixel right now, so it doesn't count in the outline or take hits.
+var _shielded: PackedByteArray = PackedByteArray()
 var _is_nozzle: PackedByteArray = PackedByteArray()
 var _cell_of: PackedInt32Array = PackedInt32Array()
 # Which pixel is at each place on the grid, where the ship has it stowed. -1 for none.
@@ -203,6 +214,7 @@ func _add_module(index: int, module: ModuleData, materials: Dictionary, design: 
 		layer.module = index
 		layer.moves = true
 		layer.folds = module.folds
+		layer.behind_hull = module.stows_inside_hull
 		layer.hinge_home = Vector2(module.hinge) - _half
 		layer.hinge_now = layer.hinge_home
 		layer.travel = Vector2(module.travel)
@@ -236,6 +248,8 @@ func _add_module(index: int, module: ModuleData, materials: Dictionary, design: 
 				else:
 					_pixel_at[cell_index] = _density.size()
 			_depth.append(0)
+			_shielded.append(0)
+			layer.pixels.append(_density.size())
 			_module_of.append(index)
 			_home.append(home)
 			_color.append(color)
@@ -476,6 +490,10 @@ func set_parts_out(share: float) -> void:
 			layer.hinge_now = (layer.hinge_home + layer.travel * share).round()
 			if layer.folds:
 				layer.fold = cos(PI * minf(share * 2.0, 1.0))
+	_update_shielding()
+	for i in range(_layers.size()):
+		if _layers[i].moves:
+			_rebuild_outline(i)
 	_update_size()
 
 
@@ -569,7 +587,7 @@ func has_pixel(point: Vector2) -> bool:
 		if x < 0 or y < 0 or x >= art_width or y >= layer.image.get_height():
 			continue
 		var index: int = layer.lookup[y * art_width + x]
-		if index >= 0 and _density[index] > 0.0:
+		if index >= 0 and _density[index] > 0.0 and _shielded[index] == 0:
 			return true
 	return false
 
@@ -626,7 +644,7 @@ func crush(direction: Vector2, energy: float, damage_seed: int) -> Dictionary:
 	var order := PackedInt32Array()
 	var ranks := PackedInt32Array()
 	for index in range(_density.size()):
-		if _density[index] > 0.0:
+		if _density[index] > 0.0 and _shielded[index] == 0:
 			order.append(index)
 			ranks.append(floori(position_of(index).dot(direction)) + _jitter(index, damage_seed))
 	return _erase_in_order(order, ranks, energy)
@@ -638,7 +656,7 @@ func dent(point: Vector2, energy: float, damage_seed: int) -> Dictionary:
 	var order := PackedInt32Array()
 	var ranks := PackedInt32Array()
 	for index in range(_density.size()):
-		if _density[index] > 0.0:
+		if _density[index] > 0.0 and _shielded[index] == 0:
 			order.append(index)
 			ranks.append(_jitter(index, damage_seed) - floori(position_of(index).distance_to(point)))
 	return _erase_in_order(order, ranks, energy)
@@ -651,7 +669,7 @@ func picture(cutaway: bool) -> Dictionary:
 	var low := Vector2i(1 << 20, 1 << 20)
 	var high := Vector2i(-(1 << 20), -(1 << 20))
 	for index in range(_density.size()):
-		if _density[index] > 0.0:
+		if _density[index] > 0.0 and _shielded[index] == 0:
 			var at := Vector2i(position_of(index).floor())
 			low = Vector2i(mini(low.x, at.x), mini(low.y, at.y))
 			high = Vector2i(maxi(high.x, at.x), maxi(high.y, at.y))
@@ -659,7 +677,7 @@ func picture(cutaway: bool) -> Dictionary:
 		return {"image": Image.create(1, 1, false, Image.FORMAT_RGBA8), "middle": Vector2.ZERO}
 	var image := Image.create(high.x - low.x + 1, high.y - low.y + 1, false, Image.FORMAT_RGBA8)
 	for index in range(_density.size()):
-		if _density[index] <= 0.0:
+		if _density[index] <= 0.0 or _shielded[index] == 1:
 			continue
 		var color: Color = _color[index]
 		if cutaway:
@@ -1050,39 +1068,55 @@ func _refresh() -> void:
 		center_of_mass = Vector2.ZERO
 		spin_resistance = 0.0
 
-	# Each row's two ends are enough to find a layer's outline.
-	var firsts: Array[PackedInt32Array] = []
-	var lasts: Array[PackedInt32Array] = []
+	_update_shielding()
+	for layer_index in range(_layers.size()):
+		_rebuild_outline(layer_index)
+	_update_size()
+
+
+# Works out which pixels of the parts that stow inside the hull are behind a hull pixel where they are
+# right now. A hull pixel shields what's under it for as long as any of it is left.
+func _update_shielding() -> void:
 	for layer: Layer in _layers:
-		var first := PackedInt32Array()
-		first.resize(layer.image.get_height())
-		first.fill(-1)
-		firsts.append(first)
-		lasts.append(first.duplicate())
-	for index in range(_density.size()):
-		if _density[index] > 0.0:
-			var layer_index: int = pixel_layer[index]
+		if not layer.behind_hull:
+			continue
+		for index in layer.pixels:
+			var shielded: int = 0
+			if _density[index] > 0.0:
+				var at: Vector2 = layer.place(_home[index]) + _half
+				var x: int = floori(at.x)
+				var y: int = floori(at.y)
+				if x >= 0 and y >= 0 and x < _canvas.x and y < _canvas.y:
+					var front: int = _pixel_at[y * _canvas.x + x]
+					if front >= 0 and pixel_layer[front] == 0 and _density[front] > 0.0:
+						shielded = 1
+			_shielded[index] = shielded
+
+
+# Finds one layer's outline from each row's two ends, leaving out shielded pixels.
+func _rebuild_outline(layer_index: int) -> void:
+	var layer: Layer = _layers[layer_index]
+	var first := PackedInt32Array()
+	first.resize(layer.image.get_height())
+	first.fill(-1)
+	var last: PackedInt32Array = first.duplicate()
+	for index in layer.pixels:
+		if _density[index] > 0.0 and _shielded[index] == 0:
 			var x: int = pixel_x[index]
 			var y: int = pixel_y[index]
-			if firsts[layer_index][y] < 0 or x < firsts[layer_index][y]:
-				firsts[layer_index][y] = x
-			if x > lasts[layer_index][y]:
-				lasts[layer_index][y] = x
-
-	for layer_index in range(_layers.size()):
-		var layer: Layer = _layers[layer_index]
-		var first: PackedInt32Array = firsts[layer_index]
-		var last: PackedInt32Array = lasts[layer_index]
-		var edge_points := PackedVector2Array()
-		var corner: Vector2 = Vector2(layer.top_left) - _half
-		for y in range(first.size()):
-			if first[y] >= 0:
-				edge_points.append(corner + Vector2(first[y], y))
-				edge_points.append(corner + Vector2(first[y], y + 1))
-				edge_points.append(corner + Vector2(last[y] + 1, y))
-				edge_points.append(corner + Vector2(last[y] + 1, y + 1))
-		layer.outline = Geometry2D.convex_hull(edge_points) if edge_points.size() >= 3 else edge_points
-	_update_size()
+			if first[y] < 0 or x < first[y]:
+				first[y] = x
+			if x > last[y]:
+				last[y] = x
+	var edge_points := PackedVector2Array()
+	var corner: Vector2 = Vector2(layer.top_left) - _half
+	for y in range(first.size()):
+		if first[y] >= 0:
+			edge_points.append(corner + Vector2(first[y], y))
+			edge_points.append(corner + Vector2(first[y], y + 1))
+			edge_points.append(corner + Vector2(last[y] + 1, y))
+			edge_points.append(corner + Vector2(last[y] + 1, y + 1))
+	layer.outline = Geometry2D.convex_hull(edge_points) if edge_points.size() >= 3 else edge_points
 
 
 func _update_size() -> void:

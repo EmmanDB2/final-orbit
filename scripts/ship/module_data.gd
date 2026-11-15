@@ -47,3 +47,6 @@ extends Resource
 @export var soak_speed: float = 62.5
 ## How far the leg sags under the ship standing with full tanks, as a share of its stroke.
 @export var sag_share: float = 0.35
+## True if the leg stows inside the hull, out of sight: it draws behind the hull, and where it's under a
+## hull pixel it isn't part of the ship's outline and doesn't take hits. False leaves it in plain view.
+@export var stows_inside_hull: bool = false
