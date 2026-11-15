@@ -1093,3 +1093,13 @@ Files: `scripts/pilot/astronaut_pixels.gdshader`, `scripts/pilot/astronaut_view.
 - a dissolve over time as a hard line compared against UV.y, instead of a per-pixel threshold
 - keeping only the middle share of a strip of columns by distance from its centre
 - sweeping a codebase with grep for leftover patterns after a rule change
+
+## 2026-11-14: New Kapteyn-3 ticket 1, modules in data and the layout
+
+Files: `scripts/station/station_module.gd`, `scripts/station/station_port.gd`, `scripts/station/station_prop.gd`, `scripts/station/prop_placement.gd`, `scripts/station/light_fixture.gd`, `scripts/station/outside_light.gd`, `scripts/station/station_design.gd`, `scripts/station/station_layout.gd`, `tests/test_station.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- resources as data: small `Resource` classes with `@export` fields, so a station is a file and not code
+- quarter turns of pictures and points (rotating an image and the points on it the same way)
+- layers composed with `Image.blend_rect`, and a walkable mask worked out from them
+- a texture can hand out its own image, so turning it needs a copy
+- building a synthetic test fixture in code instead of loading art

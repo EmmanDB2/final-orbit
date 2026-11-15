@@ -13,6 +13,37 @@ extends Resource
 ## How wide one of its art pixels is, in world units.
 @export var art_pixel_size: float = 2.0
 
+@export_group("Modules")
+## A station built from modules instead of rooms: the first is the middle of the station, and each
+## one bolts onto an earlier module's port through the standard hatch. With none, the rooms above
+## are used, as they always were.
+@export var modules: Array[StationModule] = []
+## The dock port the pilot wakes up beside after the med bay, when no module has a wake bed.
+@export var home_port: String = ""
+## What an old save's docked port number meant, by name, so the number can be turned into a port:
+## the old number is the index here.
+@export var legacy_ports: PackedStringArray = PackedStringArray()
+## The standard hatch between two modules, one picture a layer, each 48 x 40 pixels, drawn with its
+## length running between the ports. It's drawn turned a quarter when the joint runs sideways.
+@export var hatch_floor: Texture2D
+@export var hatch_walls: Texture2D
+@export var hatch_overhead: Texture2D
+@export var hatch_roof: Texture2D
+## The two leaves of a hatch's sliding door, and where each one's top left corner is on the hatch's
+## picture, closed and open.
+@export var hatch_door_left: Texture2D
+@export var hatch_door_right: Texture2D
+@export var door_left_closed: Vector2i = Vector2i(8, 17)
+@export var door_left_open: Vector2i = Vector2i(-10, 17)
+@export var door_right_closed: Vector2i = Vector2i(22, 17)
+@export var door_right_open: Vector2i = Vector2i(40, 17)
+## The clear opening through the hatch's floor, on its 48 x 40 picture.
+@export var hatch_passage: Rect2i = Rect2i(8, 0, 32, 40)
+## The docking ring on the outer end of a docking collar (64 x 24, drawn for a collar facing down),
+## and the blank plate over a capped port (48 x 12).
+@export var docking_ring_roof: Texture2D
+@export var capped_plate: Texture2D
+
 @export_group("Lighting")
 ## Whether its lamps are on. A derelict's aren't.
 @export var powered: bool = true

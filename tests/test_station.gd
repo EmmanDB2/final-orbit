@@ -1,4 +1,5 @@
-# test_station.gd: checks a station's rooms bolt together properly.
+# test_station.gd: checks a station's rooms bolt together properly, and that a station of modules
+# (built here in code from small generated pictures) gets its hatches, floors, ports, and lights.
 # Run with: godot --headless --path . --script tests/test_station.gd
 extends SceneTree
 
@@ -10,6 +11,7 @@ func _initialize() -> void:
 	_test_ports_are_on_the_art()
 	_test_rooms_fit()
 	_test_walking()
+	_test_modular_station()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -146,3 +148,229 @@ func _test_walking() -> void:
 			if layout.is_walkable(Vector2(x, y) + Vector2(0.5, 0.5)) and seen[y * size.x + x] == 0 and fits.call(Vector2i(x, y)):
 				cut_off += 1
 	_check("no floor is cut off from the rest", cut_off, 0.0, 0.0)
+
+
+# --- A station of modules, made in code ---
+
+func _flag(label: String, yes: bool) -> void:
+	_check(label, 1.0 if yes else 0.0, 1.0, 0.0)
+
+
+# A picture of a flat color, with these rectangles cut out of it.
+func _picture(size: Vector2i, color: Color, holes: Array[Rect2i] = []) -> ImageTexture:
+	var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	image.fill(color)
+	for hole: Rect2i in holes:
+		image.fill_rect(hole, Color(0.0, 0.0, 0.0, 0.0))
+	return ImageTexture.create_from_image(image)
+
+
+# A square frame of this thickness with these gaps in it.
+func _frame(size: Vector2i, thickness: int, gaps: Array[Rect2i]) -> ImageTexture:
+	var inside := Rect2i(thickness, thickness, size.x - thickness * 2, size.y - thickness * 2)
+	var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0.2, 0.2, 0.25, 1.0))
+	image.fill_rect(inside, Color(0.0, 0.0, 0.0, 0.0))
+	for gap: Rect2i in gaps:
+		image.fill_rect(gap, Color(0.0, 0.0, 0.0, 0.0))
+	return ImageTexture.create_from_image(image)
+
+
+func _port(port_name: String, point: Vector2i, face: Vector2i, kind: String) -> StationPort:
+	var port := StationPort.new()
+	port.port_name = port_name
+	port.point = point
+	port.face = face
+	port.kind = kind
+	return port
+
+
+func _place(prop: StationProp, position: Vector2i, turns: int = 0) -> PropPlacement:
+	var placement := PropPlacement.new()
+	placement.prop = prop
+	placement.position = position
+	placement.turns = turns
+	return placement
+
+
+func _prop(prop_id: String, size: Vector2i, layer: String, footprint: Rect2i = Rect2i()) -> StationProp:
+	var prop := StationProp.new()
+	prop.id = prop_id
+	prop.texture = _picture(size, Color(0.8, 0.5, 0.2, 1.0))
+	prop.layer = layer
+	prop.footprint = footprint
+	return prop
+
+
+# Two modules, a hub and a side room: the hub's east port bolts to the side room's west port, its
+# south port is a docking collar, its west is capped; the side room has an airlock on its north.
+func _synthetic_station() -> StationDesign:
+	var design := StationDesign.new()
+	design.art_pixel_size = 1.0
+	var hatch_size := Vector2i(48, 40)
+	design.hatch_floor = _picture(hatch_size, Color(0.3, 0.3, 0.3, 1.0))
+	design.hatch_walls = _picture(hatch_size, Color(0.7, 0.7, 0.7, 1.0), [Rect2i(8, 0, 32, 40)])
+	design.hatch_overhead = _picture(Vector2i(48, 4), Color(0.9, 0.9, 0.9, 1.0))
+	design.hatch_roof = _picture(hatch_size, Color(0.8, 0.8, 0.9, 1.0))
+	design.hatch_door_left = _picture(Vector2i(18, 6), Color.WHITE)
+	design.hatch_door_right = _picture(Vector2i(18, 6), Color.WHITE)
+	design.docking_ring_roof = _picture(Vector2i(64, 24), Color(0.9, 0.5, 0.1, 1.0))
+	design.capped_plate = _picture(Vector2i(48, 12), Color(0.5, 0.5, 0.5, 1.0))
+	design.home_port = "dock_s"
+	var canvas := Vector2i(100, 100)
+	var floor_rect := Rect2i(8, 8, 84, 84)
+
+	var hub := StationModule.new()
+	hub.display_name = "Hub"
+	hub.canvas_size = canvas
+	hub.floor_texture = _picture(canvas, Color(0.4, 0.4, 0.45, 1.0), [Rect2i(0, 0, 100, 8), Rect2i(0, 92, 100, 8), Rect2i(0, 0, 8, 100), Rect2i(92, 0, 8, 100)])
+	hub.walls_texture = _frame(canvas, 8, [Rect2i(92, 34, 8, 32), Rect2i(34, 92, 32, 8), Rect2i(0, 34, 8, 32)])
+	hub.roof_texture = _picture(canvas, Color(0.85, 0.85, 0.9, 1.0))
+	hub.floors = [floor_rect, Rect2i(92, 34, 8, 32), Rect2i(34, 92, 32, 8)]
+	hub.ports = [_port("east", Vector2i(99, 50), Vector2i(1, 0), "inner"), _port("dock_s", Vector2i(50, 99), Vector2i(0, 1), "dock"), _port("west", Vector2i(0, 50), Vector2i(-1, 0), "capped")]
+	var desk: StationProp = _prop("desk", Vector2i(12, 8), "standing", Rect2i(0, 0, 12, 6))
+	desk.lip = 2
+	desk.spot_kind = "gig_board"
+	var decal: StationProp = _prop("decal", Vector2i(10, 10), "floor")
+	var lamp: StationProp = _prop("lamp", Vector2i(6, 6), "overhead")
+	lamp.light = LightFixture.new()
+	lamp.light.point = Vector2(3.0, 3.0)
+	lamp.light.reach_metres = 2.0
+	hub.props = [_place(desk, Vector2i(20, 20)), _place(decal, Vector2i(60, 60)), _place(lamp, Vector2i(40, 40))]
+	var red_light := LightFixture.new()
+	red_light.point = Vector2(90.0, 50.0)
+	red_light.tint = "red"
+	red_light.circuit = "emergency"
+	hub.fixtures = [red_light]
+	var window := Rect2i(10, 10, 20, 4)
+	hub.windows = [window]
+	var strobe := OutsideLight.new()
+	strobe.point = Vector2(5.0, 5.0)
+	strobe.kind = "strobe"
+	hub.outside_lights = [strobe]
+
+	var side := StationModule.new()
+	side.display_name = "Side room"
+	side.bolts_to_module = 0
+	side.bolts_to_port = "east"
+	side.own_port = "west"
+	side.canvas_size = canvas
+	side.floor_texture = hub.floor_texture
+	side.walls_texture = _frame(canvas, 8, [Rect2i(0, 34, 8, 32), Rect2i(34, 0, 32, 8)])
+	side.roof_texture = hub.roof_texture
+	side.floors = [floor_rect, Rect2i(0, 34, 8, 32), Rect2i(34, 0, 32, 8)]
+	side.ports = [_port("west", Vector2i(0, 50), Vector2i(-1, 0), "inner"), _port("airlock", Vector2i(50, 0), Vector2i(0, -1), "airlock")]
+	var bed: StationProp = _prop("bed", Vector2i(20, 10), "standing", Rect2i(0, 0, 20, 10))
+	bed.spot_kind = "wake"
+	side.props = [_place(bed, Vector2i(20, 60), 1)]
+	design.modules = [hub, side]
+	return design
+
+
+func _test_modular_station() -> void:
+	var design: StationDesign = _synthetic_station()
+	var layout: StationLayout = StationLayout.build(design)
+	_flag("a station with modules builds the modular way", layout.modular)
+	var hub_east: Dictionary = layout.port_named("east")
+	var side_west: Dictionary = layout.ports[layout.ports.size() - 2]
+	_check("two modules and their ports", layout.ports.size(), 5.0, 0.0)
+	var between: float = float(side_west["shell_point"].x - hub_east["shell_point"].x)
+	_check("bolted modules sit 40 px apart", between, 41.0, 0.0)
+	_check("and sit level", float(side_west["shell_point"].y - hub_east["shell_point"].y), 0.0, 0.0)
+	# The port's names and kinds.
+	_check("the east port is inner", 1.0 if hub_east["kind"] == "inner" and hub_east["bolted"] else 0.0, 1.0, 0.0)
+	_check("a dock port keeps its kind", 1.0 if layout.port_named("dock_s")["kind"] == "dock" else 0.0, 1.0, 0.0)
+	_check("one free port, the dock", layout.free_ports.size(), 1.0, 0.0)
+	_check("and it's the south one", 1.0 if layout.free_ports[0]["name"] == "dock_s" else 0.0, 1.0, 0.0)
+	_check("the airlock is listed as one, not as free", layout.airlock_ports.size(), 1.0, 0.0)
+	_check("the airlock is no free port", 1.0 if layout.port_named("airlock") in layout.free_ports else 0.0, 0.0, 0.0)
+	_check("the capped port is neither", 1.0 if layout.port_named("west") in layout.free_ports or layout.port_named("west") in layout.airlock_ports else 0.0, 0.0, 0.0)
+	# The hatch between them: its passage can be stood on, its side walls can't.
+	var joint: Dictionary = layout.hatches[0]
+	var middle: Vector2 = joint["center"]
+	_flag("the hatch passage is walkable", layout.is_walkable(middle))
+	_flag("and so is its end next to a shell", layout.is_walkable(middle + Vector2(-19.0, 0.0)) and layout.is_walkable(middle + Vector2(19.0, 0.0)))
+	_flag("its side walls aren't", not layout.is_walkable(middle + Vector2(0.0, 20.0)) and not layout.is_walkable(middle + Vector2(0.0, -21.0)))
+	_flag("the hatch's floor is painted into the floor layer", layout.floor_image.get_pixelv(Vector2i(middle) + Vector2i(0, 3)).a > 0.0)
+	_flag("its roof is in the roof layer", layout.roof_image.get_pixelv(Vector2i(middle) + Vector2i(0, 21)).a > 0.0)
+	# A wall pixel, a standing footprint, and a floor decal.
+	var hub_at: Vector2i = layout.origin - Vector2i(50, 50)
+	_flag("a wall pixel isn't walkable", not layout.is_walkable(Vector2(hub_at) + Vector2(3.5, 20.5)))
+	_flag("open floor is", layout.is_walkable(Vector2(hub_at) + Vector2(50.5, 30.5)))
+	_flag("a standing prop's footprint isn't", not layout.is_walkable(Vector2(hub_at) + Vector2(25.5, 22.5)))
+	_flag("the floor beside it is", layout.is_walkable(Vector2(hub_at) + Vector2(25.5, 28.5)))
+	_flag("a floor decal is", layout.is_walkable(Vector2(hub_at) + Vector2(65.5, 65.5)))
+	_flag("the decal is in the floor layer", layout.floor_image.get_pixelv(hub_at + Vector2i(65, 65)).a > 0.0)
+	_flag("an overhead prop is in the overhead layer", layout.overhead_image.get_pixelv(hub_at + Vector2i(43, 43)).a > 0.0)
+	_check("one prop stands", layout.props.size(), 2.0, 0.0)
+	# The side room's bed is turned a quarter: its 20 x 10 footprint is 10 x 20 now.
+	var bed: Dictionary = {}
+	for entry: Dictionary in layout.props:
+		if entry["prop"].id == "bed":
+			bed = entry
+	_check("a turned footprint is 10 x 20", float(bed["footprint"].size.x * 100 + bed["footprint"].size.y), 1020.0, 0.0)
+	_check("a standing prop sorts by the base of its footprint", float(bed["foot"]), float(bed["footprint"].end.y), 0.0)
+	# Spots come from props.
+	var kinds: Array = []
+	for spot: Dictionary in layout.spots:
+		kinds.append(spot["kind"])
+	_flag("a prop's spot shows up", kinds.has("gig_board") and kinds.has("wake"))
+	for spot: Dictionary in layout.spots:
+		if spot["kind"] == "gig_board":
+			_check("the gig board's spot is the middle of its footprint", float((spot["point"] - hub_at).x * 1000 + (spot["point"] - hub_at).y), 26023.0, 0.0)
+	# The dock port: its collar's walkable half, and where its ring ends.
+	var dock: Dictionary = layout.free_ports[0]
+	_check("the docking point is past the ring", float(dock["point"].y - dock["shell_point"].y), 64.0, 0.0)
+	_check("the pilot's spot by the door is inside the collar", float(Vector2(dock["inner"]).y - dock["shell_point"].y), 6.5, 0.0)
+	_flag("and can be stood on", layout.is_walkable(dock["inner"]))
+	_flag("the collar's outer half can't be", not layout.is_walkable(Vector2(dock["shell_point"]) + Vector2(0.5, 30.0)))
+	var airlock: Dictionary = layout.airlock_ports[0]
+	_check("the airlock ends at its hatch, with no ring", float(airlock["shell_point"].y - airlock["point"].y), 40.0, 0.0)
+	# Rooms for the light bake: the hatch belongs to none.
+	_check("one room a module", layout.room_areas.size(), 2.0, 0.0)
+	var in_room: int = 0
+	for area: Dictionary in layout.room_areas:
+		var shell: Image = area["image"]
+		var local: Vector2i = Vector2i(middle) - area["at"]
+		if local.x >= 0 and local.y >= 0 and local.x < shell.get_width() and local.y < shell.get_height() and shell.get_pixelv(local).a > 0.0:
+			in_room += 1
+	_check("a hatch is in no room", in_room, 0.0, 0.0)
+	_flag("a module's floor is in its room", layout.room_areas[0]["image"].get_pixelv(Vector2i(50, 50)).a > 0.0)
+	# Fixtures: the prop's light and the module's, reach turned from metres.
+	_check("two fixtures", layout.fixtures.size(), 2.0, 0.0)
+	var reaches: Array = []
+	for fixture: Dictionary in layout.fixtures:
+		reaches.append(fixture["reach"])
+	_flag("a 2 m reach is 40 pixels at 5 cm a pixel", reaches.has(40.0))
+	_flag("a prop's light lands on its picture", layout.fixtures.any(func(f: Dictionary) -> bool: return f["point"] == Vector2(hub_at) + Vector2(43.5, 43.5)))
+	_flag("the module's red one is emergency", layout.fixtures.any(func(f: Dictionary) -> bool: return f["circuit"] == "emergency" and f["tint"] == "red"))
+	_check("one window", layout.windows.size(), 1.0, 0.0)
+	_check("and one outside light", layout.outside_lights.size(), 1.0, 0.0)
+	# Everything that can be walked to: from the hub's middle to the side room, the dock and the airlock.
+	var size: Vector2i = layout.picture_size()
+	var reach: float = 12.0
+	var fits := func(cell: Vector2i) -> bool:
+		for i in range(8):
+			if not layout.is_walkable(Vector2(cell) + Vector2(0.5, 0.5) + Vector2.UP.rotated(i * TAU / 8.0) * reach):
+				return false
+		return layout.is_walkable(Vector2(cell) + Vector2(0.5, 0.5))
+	var seen := PackedByteArray()
+	seen.resize(size.x * size.y)
+	var start: Vector2i = hub_at + Vector2i(50, 50)
+	var stack: Array[Vector2i] = [start]
+	seen[start.y * size.x + start.x] = 1
+	while not stack.is_empty():
+		var cell: Vector2i = stack.pop_back()
+		for way: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var next: Vector2i = cell + way
+			if next.x >= 0 and next.y >= 0 and next.x < size.x and next.y < size.y and seen[next.y * size.x + next.x] == 0 and fits.call(next):
+				seen[next.y * size.x + next.x] = 1
+				stack.append(next)
+	var side_middle: Vector2i = Vector2i(side_west["shell_point"]) + Vector2i(50, 0)
+	_flag("the side room can be walked to through the hatch", seen[side_middle.y * size.x + side_middle.x] == 1)
+	var dock_stand := Vector2i(dock["inner"])
+	_flag("the docking collar's door can be walked to", seen[dock_stand.y * size.x + dock_stand.x] == 1)
+	var airlock_stand := Vector2i(airlock["inner"])
+	_flag("the airlock's door can be walked to", seen[airlock_stand.y * size.x + airlock_stand.x] == 1)
+	# An old-style station still builds the old way.
+	_flag("rooms still build the old way", not StationLayout.build(load("res://data/station_1.tres")).modular)
