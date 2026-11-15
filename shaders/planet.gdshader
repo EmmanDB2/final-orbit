@@ -90,11 +90,9 @@ uniform float section_deepest_px = 1200.0;
 uniform float light_steps = 2.0;
 uniform float light_lift = 0.55;
 uniform vec3 night_share = vec3(0.3, 0.34, 0.48);
-// How many flat bands the sky fades through close up, how strong it is at the ground, and how
-// much of each band's edge breaks up into a pattern of pixels.
+// How many flat bands the sky fades through close up, and how strong it is at the ground.
 uniform float air_steps = 8.0;
 uniform float air_strength = 0.96;
-uniform float sky_dither = 0.4;
 // Closer than this many world units per pixel, clouds have faded away.
 uniform float cloud_nearest = 24.0;
 
@@ -122,18 +120,6 @@ float value_noise(vec2 position, uint seed) {
 	float top = mix(corner(cell + ivec2(0, 1), seed), corner(cell + ivec2(1, 1), seed), blend.x);
 	return mix(bottom, top, blend.y);
 }
-
-
-// A repeating 4 x 4 pattern from 0 to 1, for breaking up the edges between flat colors.
-float dither(vec2 whole) {
-	ivec2 at = ivec2(whole);
-	int x = at.x & 3;
-	int y = at.y & 3;
-	int crossed = x ^ y;
-	int value = ((crossed & 1) << 3) | ((y & 1) << 2) | (crossed & 2) | ((y & 2) >> 1);
-	return (float(value) + 0.5) / 16.0;
-}
-
 
 // Layers of noise, big to small, after pushing the coordinates around with a slower noise so
 // coasts wander instead of looking like round blobs. Layers too small to see are skipped.
@@ -373,11 +359,10 @@ void fragment() {
 		}
 	}
 	float distance_px = length(offset);
-	float pattern = dither(whole);
 	float from_far = clamp(units_per_px / 256.0, 0.0, 1.0);
 	vec2 outward = distance_px > 0.0 ? offset / distance_px : vec2(0.0, -1.0);
 	float facing = dot(outward, light_way);
-	float air_day = clamp(floor(clamp(facing * 1.4 + 0.45, 0.0, 1.0) * 3.0 + pattern), 0.0, 3.0) / 3.0;
+	float air_day = clamp(floor(clamp(facing * 1.4 + 0.45, 0.0, 1.0) * 3.0 + 0.5), 0.0, 3.0) / 3.0;
 
 	if (on_grid ? above_ground : distance_px > radius_px) {
 		float above_base = on_grid ? max(height_px, 0.0) : distance_px - radius_px;
@@ -387,9 +372,9 @@ void fragment() {
 			// and sunset. Far out it's just a few bands around the planet.
 			float reach = 1.0 - above_base / air_px;
 			float steps = mix(air_steps, 3.0, from_far);
-			float level = clamp(floor(reach * reach * steps + 1.0 - sky_dither + pattern * sky_dither), 0.0, steps) / steps;
+			float level = clamp(floor(reach * reach * steps + 0.8), 0.0, steps) / steps;
 			vec3 sky = mix(air_color, air_horizon_color, smoothstep(0.55, 1.0, level));
-			float sunset = clamp(floor((1.0 - abs(facing + 0.05) / 0.2) * 3.0 + pattern), 0.0, 3.0) / 3.0 * 0.8 * level;
+			float sunset = clamp(floor((1.0 - abs(facing + 0.05) / 0.2) * 3.0 + 0.5), 0.0, 3.0) / 3.0 * 0.8 * level;
 			COLOR = vec4(mix(sky, air_sunset_color, sunset), level * air_strength * mix(0.05, 1.0, air_day));
 		} else {
 			COLOR = vec4(0.0);
@@ -426,10 +411,10 @@ void fragment() {
 		vec3 color = surface_colors[index].rgb;
 
 		// Close in, a side view of the ground grows down from the skyline over the map, with a
-		// dithered edge where they meet.
+		// hard edge where they meet.
 		float section = clamp((section_starts - units_per_px) / (section_starts - section_full), 0.0, 1.0);
 		float section_reach = section * section * section * section * section_deepest_px;
-		bool in_section = on_surface_grid && (on_grid ? depth_units / units_per_px + (pattern - 0.5) * 40.0 < section_reach : section >= 1.0);
+		bool in_section = on_surface_grid && (on_grid ? depth_units / units_per_px < section_reach : section >= 1.0);
 		if (in_section) {
 			color = on_grid ? section_color(along_rim, depth_units, rim_band, section < 1.0 ? section_reach * units_per_px : 0.0) : strata_colors[3].rgb;
 		}
@@ -442,14 +427,12 @@ void fragment() {
 			}
 		}
 
-		// The disc is a ball, so the star lights it from one side, in flat steps. Far out, a
-		// checker of pixels marks each step, as a pixel artist would shade it.
+		// The disc is a ball, so the star lights it from one side, in flat steps with hard edges.
 		vec2 on_ball = offset / radius_px;
 		float rise = sqrt(max(1.0 - dot(on_ball, on_ball), 0.0));
 		float sun = dot(vec3(on_ball, rise), normalize(vec3(light_way, light_lift)));
 		float exact_light = clamp(sun * 1.25 + 0.2, 0.0, 1.0) * light_steps;
-		float checker = mod(whole.x + whole.y, 2.0) * 0.14 * from_far;
-		float daylight = clamp(floor(exact_light + checker), 0.0, light_steps) / light_steps;
+		float daylight = clamp(floor(exact_light), 0.0, light_steps) / light_steps;
 		color = mix(color * night_share, color, daylight);
 
 		// A thin bright rim of air on the day side, from far out.

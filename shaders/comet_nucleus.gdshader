@@ -1,5 +1,5 @@
 // comet_nucleus.gdshader: a comet's nucleus, a lumpy cratered rock lit from the star's side, drawn on
-// chunky pixels in five banded tones with a 4 x 4 Bayer dither between them. From DESIGN.md,
+// chunky pixels in five banded tones with hard edges between them. From DESIGN.md,
 // "Mid-flight events" (passing comets) and "Art direction" (space and effects are shaders and code).
 //
 // Drawn over a square 2.4 radii across, centred on the comet, in screen pixels. The outline, the
@@ -43,20 +43,6 @@ vec2 turn(vec2 v, float angle) {
 	float c = cos(angle);
 	float s = sin(angle);
 	return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
-}
-
-
-// The 4 x 4 Bayer threshold at a game pixel, from 0 to just under 1.
-float bayer4(vec2 cell) {
-	ivec2 at = ivec2(mod(cell, 4.0));
-	int index = at.x + at.y * 4;
-	int matrix[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
-	return (float(matrix[index]) + 0.5) / 16.0;
-}
-
-
-float hash(vec2 at) {
-	return fract(sin(dot(at, vec2(12.9898, 78.233)) + seed * 0.37) * 43758.5453);
 }
 
 
@@ -106,9 +92,7 @@ void fragment() {
 	// The star, in the nucleus's frame, a little toward the viewer so the lit side reads as a face.
 	vec3 star = normalize(vec3(turn(light_dir, -spin), 0.45));
 	float light = clamp(dot(normal, star), 0.0, 1.0) * sun * darker + AMBIENT;
-	// A little grain, a fixed rough surface that turns with the rock.
-	light += (hash(floor(own * radius_px / block)) - 0.5) * 0.06 * sun;
-	// Five tones, shadow to highlight, dithered between neighbours.
+	// Five tones, shadow to highlight, each snapped to its nearest tone.
 	vec3 ramp[5];
 	ramp[0] = dust_color * 0.3;
 	ramp[1] = dust_color;
@@ -116,10 +100,6 @@ void fragment() {
 	ramp[3] = nucleus_color;
 	ramp[4] = mix(nucleus_color, vec3(1.0), 0.5);
 	float level = clamp(light, 0.0, 1.0) * 4.0;
-	int tone = int(floor(level));
-	if (level - float(tone) > bayer4(cell)) {
-		tone += 1;
-	}
-	tone = clamp(tone, 0, 4);
+	int tone = clamp(int(floor(level + 0.5)), 0, 4);
 	COLOR = vec4(ramp[tone], 1.0);
 }

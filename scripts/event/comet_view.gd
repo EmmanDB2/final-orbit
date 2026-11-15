@@ -3,7 +3,7 @@
 # ion tail away from the star; and a dust tail that follows the comet's own path back from the
 # nucleus, measured against the planet it's passing, and bends away from the star, so it sweeps round
 # as the comet swings past. The nucleus's outline, craters, spin, and jets all come from the comet's
-# name, so the same comet always looks the same. Everything's drawn in banded, dithered game pixels
+# name, so the same comet always looks the same. Everything's drawn in banded, hard-edged game pixels
 # by two shaders. From DESIGN.md, "Mid-flight events" (passing comets).
 class_name CometView
 extends Node2D

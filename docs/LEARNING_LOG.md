@@ -1077,3 +1077,11 @@ Files: `shaders/palette_light.gdshaderinc`, `shaders/hull_light.gdshader`, `shad
 - snapping to the nearest step with floor(x + 0.5) instead of a threshold pattern
 - replacing a noise threshold with its average (0.5) so band positions stay put
 - dropping an unused function argument from a shader helper and all its callers
+
+## 2026-11-14: No dithering ticket 2, sky, planets, star, re-entry and comet without dither
+
+Files: `shaders/planet.gdshader`, `shaders/star.gdshader`, `shaders/reentry.gdshader`, `shaders/comet_glow.gdshader`, `shaders/comet_nucleus.gdshader`, `scripts/event/comet_view.gd`, `docs/LEARNING_LOG.md`
+
+- folding a dither's average into a constant (1 - 0.4 + 0.5 * 0.4 = 0.8) so the band positions stay put
+- a shader parameter that only fed a removed pattern is deleted, not left dead
+- how to tell a shader really compiled: a throwaway script that draws it in a window, since headless runs never build shaders

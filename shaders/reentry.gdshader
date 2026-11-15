@@ -54,8 +54,6 @@ vec4 hull_glow(vec2 at) {
 		}
 	}
 	float level = hull_heat - depth / 40.0;
-	// A checker of pixels softens each edge, as the art's own shading would.
-	level += mod(floor(at.x) + floor(at.y), 2.0) * 0.04;
 	if (level < 0.1) {
 		return vec4(0.0);
 	}

@@ -1,5 +1,5 @@
 // comet_glow.gdshader: a comet's coma, its two tails, and its jets, drawn as glow in chunky pixels:
-// the glow's strength is cut into 5 alpha bands with a 4 x 4 Bayer dither between neighbours, never a
+// the glow's strength is cut into 5 alpha bands with hard edges, never a
 // smooth gradient, the way the engine flame is. The ion tail runs straight away from the star, thin
 // and pale blue, with streamers rippling outward. The dust tail is wider and cream, and follows the
 // comet's own path back from the nucleus, bent away from the star. From DESIGN.md, "Mid-flight
@@ -59,14 +59,6 @@ vec2 turn(vec2 v, float angle) {
 	float c = cos(angle);
 	float s = sin(angle);
 	return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
-}
-
-
-float bayer4(vec2 cell) {
-	ivec2 at = ivec2(mod(cell, 4.0));
-	int index = at.x + at.y * 4;
-	int matrix[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
-	return (float(matrix[index]) + 0.5) / 16.0;
 }
 
 
@@ -171,10 +163,6 @@ void fragment() {
 	float total = glow_share + ion + dust;
 	vec3 mixed = (glow_color * glow_share + ion_color * ion + dust_color * dust) / max(total, 0.0001);
 	float level = clamp(total, 0.0, 1.0) * 5.0;
-	float band = floor(level);
-	if (level - band > bayer4(cell)) {
-		band += 1.0;
-	}
-	band = min(band, 5.0);
+	float band = min(floor(level + 0.5), 5.0);
 	COLOR = vec4(mixed, band / 5.0 * most_alpha);
 }

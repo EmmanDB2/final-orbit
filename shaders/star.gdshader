@@ -46,10 +46,9 @@ void fragment() {
 		}
 		COLOR = vec4(mix(star_color, vec3(1.0), whiteness), 1.0);
 	} else if (distance_px <= radius_px + glow_px) {
-		// A checker of pixels at each edge keeps the steps from looking like hard rings.
+		// Hard rings, one flat step after another.
 		float reach = 1.0 - (distance_px - radius_px) / glow_px;
-		float checker = mod(whole.x + whole.y, 2.0) / glow_steps;
-		float step_level = floor((reach * reach + checker * 0.5) * glow_steps) / glow_steps;
+		float step_level = floor(reach * reach * glow_steps) / glow_steps;
 		COLOR = vec4(star_color, step_level * glow_strength);
 	} else {
 		COLOR = vec4(0.0);
