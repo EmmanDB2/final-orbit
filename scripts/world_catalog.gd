@@ -176,14 +176,12 @@ func _station_info(index: int) -> Dictionary:
 	return {"name": design.display_name, "chip": design.chip, "rows": rows, "note": "", "can_target": true}
 
 
-# A station's rooms for its card: its modules' names, or how many rooms an old one has.
+# A station's rooms for its card: how many modules it has, or rooms for an old one. Names don't fit the
+# card's one line.
 func _room_names(design: StationDesign) -> String:
 	if design.modules.is_empty():
 		return str(design.rooms.size())
-	var names: PackedStringArray = PackedStringArray()
-	for module: StationModule in design.modules:
-		names.append(module.display_name.to_upper())
-	return ", ".join(names)
+	return str(design.modules.size())
 
 
 func _site_info(index: int) -> Dictionary:
