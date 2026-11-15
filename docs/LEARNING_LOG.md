@@ -1165,3 +1165,10 @@ Files: `scripts/station/light_fixture.gd`, `scripts/station/station_module.gd`, 
 - a rule written as a checkable function (`lighting_problems`) and a test that it can fail
 - searching for the smallest value that satisfies a condition over every pixel
 - tint as a small, targeted color swap instead of re-coloring everything
+
+## 2026-11-14: Kapteyn-3 polish P3, docking rings from inside
+
+Files: `scripts/station/station_layout.gd`, `scripts/station/station_view.gd`, `tests/test_station.gd`, `tests/test_station_ports.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- two sprites sharing one material and the same picture size, so their shading lines up exactly
+- keeping a part drawn while its parent layer fades (a sibling instead of a child)

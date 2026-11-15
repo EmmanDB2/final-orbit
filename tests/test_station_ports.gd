@@ -28,6 +28,7 @@ func _initialize() -> void:
 	await _test_airlock(station, pilot)
 	_test_waking(main, station, pilot)
 	await _test_outside_lights(station, ship)
+	await _test_rings_from_inside(station)
 	main.queue_free()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -236,3 +237,20 @@ func _test_outside_lights(station: StationView, ship: Node2D) -> void:
 			await process_frame
 		floods = material.get_shader_parameter("floods")
 		_flag("and out without it", floods[0].w == 0.0)
+
+
+# With the roof off, the docking rings stay drawn, and with the roof's own shading.
+func _test_rings_from_inside(station: StationView) -> void:
+	station.set_roof_off(true)
+	station._roof_gone = 1.0
+	station._sprite.modulate.a = 0.0
+	station._on_view_changed(0.0, 0.0, 1.0)
+	_flag("the roof is gone from inside", station._sprite.modulate.a == 0.0)
+	_flag("but the rings are still drawn", station._rings_sprite.visible and station._rings_sprite.modulate.a == 1.0)
+	_flag("through the hull's lighting once it's ready", station._rings_sprite.material == null or station._rings_sprite.material == station._sprite.material)
+	for i in range(60):
+		await process_frame
+	_flag("they use the roof's own material", station._rings_sprite.material != null and station._rings_sprite.material == station._sprite.material)
+	station._on_view_changed(0.0, 0.0, 1.0 / 512.0)
+	_flag("and go with the rest at a distance", not station._rings_sprite.visible)
+	station.set_roof_off(false)

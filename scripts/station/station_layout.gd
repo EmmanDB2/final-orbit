@@ -31,6 +31,9 @@ var floor_image: Image
 var walls_image: Image
 var overhead_image: Image
 var roof_image: Image
+## Just the docking rings, on a picture the size of the roof's, so they can stay drawn from outside
+## while the roof's off: the part of a collar that has no inside.
+var rings_image: Image
 ## Props that stand, each with the "prop", the "at" where its turned "image" has its top left corner,
 ## its "turns", its "footprint" as a rectangle on the picture, its "foot" (the picture row its base
 ## ends on, to sort it against the pilot), and its "module".
@@ -434,6 +437,7 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 	layout.walls_image = Image.create(whole.x, whole.y, false, Image.FORMAT_RGBA8)
 	layout.overhead_image = Image.create(whole.x, whole.y, false, Image.FORMAT_RGBA8)
 	layout.roof_image = Image.create(whole.x, whole.y, false, Image.FORMAT_RGBA8)
+	layout.rings_image = Image.create(whole.x, whole.y, false, Image.FORMAT_RGBA8)
 	layout._walkable.resize(whole.x * whole.y)
 
 	# The modules' layers, each turned as the module is.
@@ -578,6 +582,7 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 	for ring: Dictionary in rings:
 		var rect := Rect2i(ring["rect"].position + shift, ring["rect"].size)
 		_blend_turned(layout.roof_image, design.docking_ring_roof, ring["turns"], rect.position)
+		_blend_turned(layout.rings_image, design.docking_ring_roof, ring["turns"], rect.position)
 	for plate: Dictionary in plates:
 		var rect := Rect2i(plate["rect"].position + shift, plate["rect"].size)
 		_blend_turned(layout.walls_image, design.capped_plate, plate["turns"], rect.position)

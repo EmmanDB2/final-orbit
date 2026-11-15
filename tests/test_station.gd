@@ -337,6 +337,15 @@ func _test_modular_station() -> void:
 	for spot: Dictionary in layout.spots:
 		if spot["kind"] == "gig_board":
 			_check("the gig board's spot is the middle of its footprint", float((spot["point"] - hub_at).x * 1000 + (spot["point"] - hub_at).y), 26023.0, 0.0)
+	# The docking ring is also kept on a picture of its own, for drawing from inside.
+	var ring_pixels: int = 0
+	for y in range(layout.rings_image.get_height()):
+		for x in range(layout.rings_image.get_width()):
+			ring_pixels += 1 if layout.rings_image.get_pixel(x, y).a > 0.0 else 0
+	_check("the ring picture holds one 64 x 24 ring", ring_pixels, 64.0 * 24.0, 0.0)
+	_check("and is as big as the roof", layout.rings_image.get_size() == layout.roof_image.get_size(), 1.0, 0.0)
+	var ring_at := Vector2i(layout.free_ports[0]["point"])
+	_flag("the ring's outer end is on it, and it's in the roof too", layout.rings_image.get_pixelv(ring_at).a > 0.0 and layout.roof_image.get_pixelv(ring_at).a > 0.0)
 	# The dock port: its collar's walkable half, and where its ring ends.
 	var dock: Dictionary = layout.free_ports[0]
 	_check("the docking point is past the ring", float(dock["point"].y - dock["shell_point"].y), 60.0, 0.0)

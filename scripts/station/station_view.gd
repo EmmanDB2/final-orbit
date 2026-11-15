@@ -87,6 +87,8 @@ var _state: ShipState
 var _design: StationDesign
 var _index: int = 0
 var _sprite := Sprite2D.new()
+# The docking rings alone, drawn from the roof's own picture's shading but staying when the roof's off.
+var _rings_sprite := Sprite2D.new()
 var _inside_sprite := Sprite2D.new()
 # A station of modules: everything inside hangs off one node that's scaled to the zoom.
 var _modular: bool = false
@@ -186,6 +188,13 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 		add_child(_inside_sprite)
 	_light_inside()
 	add_child(_sprite)
+	if _modular:
+		# The rings stay drawn from inside, so a docked ship doesn't look like it's floating. It's the
+		# roof's own shading (the same material), on a picture the size of the roof's.
+		_rings_sprite.texture = ImageTexture.create_from_image(layout.rings_image)
+		_rings_sprite.centered = false
+		_rings_sprite.offset = -Vector2(layout.origin)
+		add_child(_rings_sprite)
 
 
 # The layers of a station of modules, as children of one node that's scaled to the zoom, so each one's
@@ -464,6 +473,8 @@ func _light_outside() -> void:
 		# Its art has some shading drawn in already, so the star's is gentler.
 		_hull_material.set_shader_parameter("ambient", 0.5)
 		_sprite.material = _hull_material
+		if _modular:
+			_rings_sprite.material = _hull_material
 	if _sprite.material == null or _gravity_model == null:
 		return
 	var frame: Dictionary = _frame_at(_state.time)
@@ -1104,6 +1115,8 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	rotation = frame["angle"]
 	var show_dot: bool = pixels_per_unit <= dot_max_zoom
 	_sprite.visible = not show_dot
+	_rings_sprite.visible = _modular and not show_dot
+	_rings_sprite.scale = Vector2.ONE * _design.art_pixel_size * pixels_per_unit
 	_sprite.scale = Vector2.ONE * _design.art_pixel_size * pixels_per_unit
 	_inside_sprite.scale = _sprite.scale
 	_inside.scale = _sprite.scale
