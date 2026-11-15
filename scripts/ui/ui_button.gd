@@ -33,10 +33,13 @@ func finger_down(_position: Vector2) -> void:
 
 
 func finger_up() -> void:
-	if _pressed:
-		tapped.emit()
+	# Let go first: what a tap does can release every finger, this one included, and a button still
+	# held down would tap again, and again, until the stack ran out.
+	var was_pressed: bool = _pressed
 	_pressed = false
 	queue_redraw()
+	if was_pressed:
+		tapped.emit()
 
 
 func _draw() -> void:

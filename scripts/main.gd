@@ -173,10 +173,6 @@ func _ready() -> void:
 			_death["killed"] = text.trim_prefix("SIGNAL LOST · "))
 	$Hud/SafeArea/FlightHud.med_bay_done.connect(_wake_up)
 	$Hud/SafeArea/FlightHud.settings_changed.connect(func() -> void: _sound.apply_settings())
-	$Hud/SafeArea/FlightHud.lights_requested.connect(func() -> void:
-		$Station.set_powered(not $Station.is_powered()))
-	# The breaker panel switches it too, so the menu follows the station.
-	$Station.powered_changed.connect(func(on: bool) -> void: $Hud/SafeArea/FlightHud.show_powered(on))
 	if opening:
 		_open_title(home, has_save)
 	else:

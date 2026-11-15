@@ -1,13 +1,11 @@
-# flight_menu.gd: what the FLIGHT button opens. Only what works so far is on it: pausing, and going back
-# to the title screen. From DESIGN.md, "UI" (menus), which adds the manifest, ship, map, and settings as
+# flight_menu.gd: what the FLIGHT button opens. Only what works so far is on it: pausing, settings, and
+# going back to the title screen. (LIGHTS OUT used to be here; the breaker panel in Ops is the switch now.) From DESIGN.md, "UI" (menus), which adds the manifest, ship, map, and settings as
 # they're built.
 class_name FlightMenu
 extends Control
 
 signal pause_pressed
 signal title_pressed
-## For trying the lighting: cuts the station's power, or brings it back.
-signal lights_pressed
 signal settings_pressed
 
 const WIDTH: float = 124.0
@@ -15,7 +13,6 @@ const ROW: float = 44.0
 
 var _pause: UiButton
 var _title: UiButton
-var _lights: UiButton
 var _settings: UiButton
 
 
@@ -31,10 +28,6 @@ func _init() -> void:
 	_settings = UiButton.new().setup("SETTINGS", cyan)
 	_settings.tapped.connect(func() -> void: settings_pressed.emit())
 	add_child(_settings)
-	if FeatureFlags.LIGHTS_SWITCH:
-		_lights = UiButton.new().setup("LIGHTS OUT", UiStyle.palette().agency_red)
-		_lights.tapped.connect(func() -> void: lights_pressed.emit())
-		add_child(_lights)
 
 
 ## Hangs it from this top right corner.
@@ -48,15 +41,7 @@ func place(top_right: Vector2) -> void:
 
 
 func buttons() -> Array[UiWidget]:
-	if _lights != null:
-		return [_pause, _settings, _title, _lights]
 	return [_pause, _settings, _title]
-
-
-## Says on the LIGHTS button what it'll do next.
-func show_powered(powered: bool) -> void:
-	if _lights != null:
-		_lights.set_lamp(not powered, UiStyle.palette().agency_red, "LIGHTS OUT" if powered else "LIGHTS ON")
 
 
 func show_paused(paused: bool) -> void:

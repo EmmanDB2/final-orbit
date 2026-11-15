@@ -1148,3 +1148,11 @@ Files: `tools/export_kapteyn_standin.py`, `tools/import_station.gd`, `art/kaptey
 - a data importer that writes `.tres` resources from JSON with `ResourceSaver`
 - staging one line of a shared file by writing the index entry directly (`hash-object` and `update-index`)
 - testing a station by its structure (counts, reachability by flood fill) instead of its pixels
+
+## 2026-11-14: Kapteyn-3 polish P1, LIGHTS OUT off the menu and the settings crash
+
+Files: `scripts/ui/ui_button.gd`, `scripts/ui/flight_menu.gd`, `scripts/ui/flight_hud.gd`, `scripts/main.gd`, `scripts/feature_flags.gd`, `tests/test_flight_menu.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- re-entrancy: a signal handler that causes the same signal again (clear your state before you emit)
+- reproducing a touch bug by calling the HUD's finger handlers instead of the button's signal
+- removing a feature cleanly: its signal, its connection, its label, and its doc line

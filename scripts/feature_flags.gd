@@ -12,8 +12,8 @@ const INTERIORS: bool = true
 const WALKING_ON_WORLDS: bool = true
 ## Being tried. The pilot is a 3D model drawn as pixel art, instead of the sprite sheets.
 const PILOT_3D: bool = true
-## For trying the lighting while there are no derelicts: a LIGHTS button on the FLIGHT menu cuts
-## Kapteyn-3's power. Off for release.
+## For trying the lighting while there are no derelicts: the breaker panel in Kapteyn-3's Ops offers
+## SWITCH POWER (the FLIGHT menu's LIGHTS OUT is gone). Off for release.
 const LIGHTS_SWITCH: bool = true
 ## Tier 1. The air pushes on each part of the ship's outline, so it has lift, turns to its own trim,
 ## and can out-turn the RCS. Off, it's the old drag on one box, which never turns the ship.

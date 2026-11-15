@@ -21,8 +21,6 @@ signal comms_area_changed(area: Rect2)
 signal widget_touched(widget: UiWidget)
 ## Emitted when the pilot asks for the title screen, from TITLE.
 signal title_requested
-## The FLIGHT menu's LIGHTS button, for trying the lighting.
-signal lights_requested
 ## Emitted when the pilot leaves the med bay's bill, back to work.
 signal med_bay_done
 ## Emitted when a setting changes, so the rest of the game can take it.
@@ -497,7 +495,6 @@ func _build() -> void:
 	_flight_menu.visible = false
 	_flight_menu.pause_pressed.connect(_toggle_pause)
 	_flight_menu.title_pressed.connect(_to_title)
-	_flight_menu.lights_pressed.connect(func() -> void: lights_requested.emit())
 	_flight_menu.settings_pressed.connect(_open_settings)
 	add_child(_flight_menu)
 	_event_markers = EventMarkers.new()
@@ -801,10 +798,6 @@ func open_med_bay(bill: Dictionary) -> void:
 
 
 ## Shows on the FLIGHT menu whether the station's power is on.
-func show_powered(powered: bool) -> void:
-	_flight_menu.show_powered(powered)
-
-
 func show_throttle(value: float) -> void:
 	_lever.value = value
 	_lever.queue_redraw()
