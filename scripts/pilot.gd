@@ -181,7 +181,6 @@ func start_pilot(gravity_model: GravityModel, ship: Node2D, station: StationView
 	air = data.air_seconds
 	# A cockpit destroyed with them in it kills them too.
 	ship.ship_lost.connect(_on_ship_lost)
-	station.airlock_cycle_done.connect(_on_airlock_cycled)
 	# The boots are what meet the ground.
 	state.ground_clearance = data.stand_height
 	# Before the ship's tick, so the pilot and ship both reach the same moment before the view's drawn.
@@ -560,6 +559,11 @@ func _tick_eva(delta: float) -> void:
 		return
 	_update_fall_view()
 	_bump_station()
+	# Through the open airlock's outer door, inward: they're inside.
+	var frame: Dictionary = _station.frame_at(state.time)
+	var local: Vector2 = Vector2(state.x - frame["x"], state.y - frame["y"]).rotated(-frame["angle"])
+	if _station.airlock_crossed_in(local) >= 0:
+		_enter_via_airlock(frame)
 
 
 # Once a tick on EVA: whether they're falling to a world (so they're seen from the side), and which way
@@ -685,7 +689,12 @@ func _act_outside() -> void:
 	if _action == "BOARD SHIP":
 		_board_ship()
 	elif _action == "BOARD STATION":
-		_enter_station(_station.free_port_near(state.x, state.y, state.time, data.hatch_reach))
+		var port: int = _station.free_port_near(state.x, state.y, state.time, data.hatch_reach)
+		if _station.port_kind(port) == StationView.AIRLOCK:
+			# An airlock opens its outer door (cycling if it has to), and they float in.
+			_station.request_airlock(port)
+		else:
+			_enter_station(port)
 
 
 func _board_ship() -> void:
@@ -722,7 +731,9 @@ func _tick_inside(delta: float) -> void:
 	var frame: Dictionary = _station.frame_at(state.time)
 	# In an airlock that's cycling they stand and wait.
 	var waiting: bool = _station.airlock_busy()
-	var wanted: Vector2 = Vector2.ZERO if waiting else _wanted_move().rotated(-frame["angle"]) * data.walk_speed
+	# In an airlock that's open to space they float, at EVA float speed, instead of walking.
+	var vacuum: bool = _station.airlock_vacuum()
+	var wanted: Vector2 = Vector2.ZERO if waiting else _wanted_move().rotated(-frame["angle"]) * (data.float_speed if vacuum else data.walk_speed)
 	_walking = _walking.move_toward(wanted, data.walk_acceleration * delta)
 	# One way at a time, so a wall stops only the part of the move going into it.
 	var along_x := Vector2(_walking.x * delta, 0.0)
@@ -736,15 +747,24 @@ func _tick_inside(delta: float) -> void:
 		_local += along_y
 	else:
 		_walking.y = 0.0
+	# Somewhere they can't stand, like the collar after its outer door shut behind them: they drift back.
+	if not _station.pilot_fits(_local, radius):
+		_local = _local.move_toward(_station.settle_point(_local), data.float_speed * delta)
 	if _walking.length() > 5.0:
 		_local_facing = rotate_toward(_local_facing, atan2(_walking.x, -_walking.y), data.turn_speed * delta)
 	_place_inside(frame)
+	# Floating out through the open outer door hands them to EVA right there, moving as the station
+	# does at that point plus their own float.
+	if vacuum and _station.airlock_crossed_out(_local) >= 0:
+		_station.airlock_pilot_left()
+		_hand_over_to_eva(frame)
+		return
 	# So the station can draw props in front of or behind them, and open its doors for them.
 	_station.set_pilot_inside(_local, true)
 
 	var spot: Dictionary = _station.spot_near(_local, data.use_reach)
 	var port: int = _station.port_near_inside(_local, data.use_reach)
-	if waiting:
+	if waiting or vacuum:
 		_set_action("")
 	elif not spot.is_empty():
 		if spot["kind"] == StationProp.POWER:
@@ -775,12 +795,6 @@ func _tick_inside(delta: float) -> void:
 					_leave_station(port, frame)
 
 
-# The airlock's cycle ended: going out, the pilot steps out through its outer door.
-func _on_airlock_cycled(port: int, going_out: bool) -> void:
-	if going_out and mode == INSIDE:
-		_leave_station(port, _station.frame_at(state.time))
-
-
 func _place_inside(frame: Dictionary) -> void:
 	var offset: Vector2 = _local.rotated(frame["angle"])
 	var moving: Vector2 = _station.moving_at(frame, offset) + _walking.rotated(frame["angle"])
@@ -789,6 +803,32 @@ func _place_inside(frame: Dictionary) -> void:
 	state.velocity_x = moving.x
 	state.velocity_y = moving.y
 	facing = _local_facing + frame["angle"]
+
+
+# Out through the airlock's open door: on EVA at the same point they were floating at, with the velocity
+# _place_inside gave them, the station's at that point (its orbit and its turning) plus their float.
+func _hand_over_to_eva(frame: Dictionary) -> void:
+	facing = _local_facing + frame["angle"]
+	_station.set_roof_off(false)
+	_set_mode(EVA)
+
+
+# In through the airlock's open door from EVA: they're the pilot inside, stopped where they crossed, and
+# the door shuts behind them and it cycles, ending with the inner door open.
+func _enter_via_airlock(frame: Dictionary) -> void:
+	gas = data.jet_seconds
+	_patch_suit()
+	_firing = Vector2.ZERO
+	_push_local = Vector2.ZERO
+	_local = Vector2(state.x - frame["x"], state.y - frame["y"]).rotated(-frame["angle"])
+	_walking = Vector2.ZERO
+	_local_facing = wrapf(facing - frame["angle"], -PI, PI)
+	if _ship.pilot_aboard:
+		_ship.set_pilot_aboard(false)
+	_station.set_roof_off(true)
+	_set_stranded(false)
+	_set_mode(INSIDE)
+	_station.airlock_pilot_entered()
 
 
 func _leave_station(port: int, frame: Dictionary) -> void:

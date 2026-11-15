@@ -133,21 +133,66 @@ func _test_airlock(station: StationView, pilot: Pilot) -> void:
 	station._run_cycle(0.6)
 	station._run_cycle(0.7)
 	_flag("then green, and the cycle's done", done.size() == 1 and done[0][1] == true and lamps.state_of(airlock) == AirlockLamps.GREEN)
-	_flag("the pilot's out through the outer door", pilot.mode == Pilot.EVA)
+	_flag("the pilot stays inside, floating in a chamber open to space", pilot.mode == Pilot.INSIDE and station.open_airlock() == airlock and station.airlock_vacuum())
 	doors.update(0.3, Vector2(-1.0e9, -1.0e9), station.layout.origin)
 	_flag("and the outer door opens", doors.openness(outer) == 1.0)
+	# They float out at 20 units a second, not walk at 120.
+	var face: Vector2 = station._ports[airlock]["face"]
+	var art: float = station.art_pixel_size()
+	var line: Vector2 = Vector2(station._ports[airlock]["at"]) - face * 20.0 * art
+	pilot._has_drag = true
+	pilot._drag_heading = atan2(face.x, -face.y) + station.frame_at(pilot.state.time)["angle"]
+	pilot._local = line - face * 15.0
+	pilot._walking = Vector2.ZERO
+	for i in range(4):
+		pilot._tick_inside(0.1)
+	_flag("they float at EVA float speed, 20 units a second", absf(pilot._walking.length() - pilot.data.float_speed) < 0.01 and pilot.data.float_speed == 20.0)
+	pilot._has_drag = false
+	# Across the line: on EVA right there, with the station's velocity at that point plus their float.
+	pilot._local = line + face * 0.05
+	pilot._walking = face * 20.0
+	pilot._tick_inside(0.016)
+	var frame: Dictionary = station.frame_at(pilot.state.time)
+	_flag("past the line they're on EVA", pilot.mode == Pilot.EVA)
+	# Compared from the station's middle, since a world point is too big for a Vector2 to hold to a unit.
+	var from_middle := Vector2(pilot.state.x - frame["x"], pilot.state.y - frame["y"])
+	_flag("at the same world point", from_middle.distance_to(pilot._local.rotated(frame["angle"])) < 1.0)
+	var moving: Vector2 = station.moving_at(frame, pilot._local.rotated(frame["angle"])) + pilot._walking.rotated(frame["angle"])
+	_flag("with the station's velocity there plus their own, within a unit", Vector2(pilot.state.velocity_x, pilot.state.velocity_y).distance_to(moving) < 1.0)
+	_flag("the chamber is no longer open to space", station.open_airlock() == -1)
+	# Its door shuts again after, and the notch in the outline fills in.
+	_flag("the solid outline has a notch while the outer door's open", not station.layout.is_solid(Vector2(station._ports[airlock]["mouth"].get_center())))
 	for i in range(30):
 		station._run_cycle(0.1)
 		doors.update(0.1, Vector2(-1.0e9, -1.0e9), station.layout.origin)
 	_flag("and shuts again after", doors.openness(outer) == 0.0 and not station.airlock_busy())
-	# Coming in runs it backward and ends with the inner door open.
-	var inner: int = doors.find("airlock", "door")
-	_flag("this station's airlock has no inner door of its own", inner == -1)
-	pilot._enter_station(airlock)
-	_flag("the pilot's in, waiting out the cycle", pilot.mode == Pilot.INSIDE and station.airlock_busy())
+	_flag("and the notch is filled in", station.layout.is_solid(Vector2(station._ports[airlock]["mouth"].get_center())))
+	# BOARD STATION from outside opens the outer door instead of teleporting, cycling first.
+	station.request_airlock(airlock)
+	_flag("asking for the airlock from outside cycles it", station.airlock_busy() and pilot.mode == Pilot.EVA)
 	for i in range(30):
 		station._run_cycle(0.1)
-	_flag("and it ends", not station.airlock_busy() and done.size() == 2 and done[1][1] == false)
+	_flag("and leaves it open to space", station.open_airlock() == airlock and not station.layout.is_solid(Vector2(station._ports[airlock]["mouth"].get_center())))
+	# Floating back in: they become the pilot inside, stopped, and it cycles with the inner door opening.
+	frame = station.frame_at(pilot.state.time)
+	var back: Vector2 = line - face * 0.5
+	var at: Vector2 = Vector2(frame["x"], frame["y"]) + back.rotated(frame["angle"])
+	pilot.state.x = at.x
+	pilot.state.y = at.y
+	var carried: Vector2 = station.moving_at(frame, back.rotated(frame["angle"]))
+	pilot.state.velocity_x = carried.x
+	pilot.state.velocity_y = carried.y
+	_flag("in the open mouth they count as having come in", station.airlock_crossed_in(back) == airlock)
+	pilot._tick_eva(0.016)
+	_flag("floating in makes them the pilot inside", pilot.mode == Pilot.INSIDE)
+	_flag("stopped, where they crossed", pilot._walking == Vector2.ZERO and pilot._local.distance_to(back) < 1.0)
+	_flag("while it cycles back", station.airlock_busy())
+	for i in range(30):
+		station._run_cycle(0.1)
+	_flag("the cycle ends", not station.airlock_busy() and done[done.size() - 1][1] == false)
+	for i in range(40):
+		pilot._tick_inside(0.1)
+	_flag("they end up on floor in the EVA room", station.pilot_fits(pilot._local, station.walk_radius(pilot.data.body_radius)))
 	station._cycle = {}
 
 

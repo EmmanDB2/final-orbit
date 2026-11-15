@@ -53,6 +53,12 @@ const MOST_FLOODS: int = 8
 ## How long an airlock takes to cycle, in seconds, and how long its outer door stays open after.
 const CYCLE_SECONDS: float = 2.5
 const OUTER_OPEN_AFTER_SECONDS: float = 2.0
+## How long the chamber stays open to space for someone who's gone in it and not out, before it closes
+## itself and cycles them back in, in seconds.
+const VACUUM_SECONDS: float = 15.0
+## Half a collar's length, and half the width of its opening, in station pixels.
+const HATCH_HALF_PIXELS: float = 20.0
+const MOUTH_HALF_PIXELS: float = 16.0
 ## The kinds of port: an old station's, which docks, lets the pilot in and out, and takes EVA; a docking
 ## collar, which only ships dock at; and an airlock, which only the pilot goes in and out of.
 const LEGACY: String = "legacy"
@@ -128,6 +134,10 @@ var _ports: Array[Dictionary] = []
 # The airlock cycle under way: its "port", whether it's "out", and "time" through it, or empty.
 var _cycle: Dictionary = {}
 var _lamps: AirlockLamps
+# While an airlock's outer door is open to space: its "port" and how long it has "left". Empty otherwise.
+var _mouth: Dictionary = {}
+# The port whose mouth has a notch in the solid outline, or -1.
+var _notch_port: int = -1
 # What glows on the outside, and how long it's been running, for the strobe.
 var _glow: OutsideGlow
 var _outside_time: float = 0.0
@@ -275,6 +285,8 @@ func _add_port(port: Dictionary, kind: String) -> void:
 		"at": (surface - Vector2(layout.origin)) * _design.art_pixel_size, "face": face,
 		"kind": kind, "name": port.get("name", str(_ports.size())),
 	}
+	if port.has("mouth"):
+		entry["mouth"] = port["mouth"]
 	if port.has("inner"):
 		# A station of modules says where the pilot stands by the port's door.
 		entry["inner"] = (Vector2(port["inner"]) - Vector2(layout.origin)) * _design.art_pixel_size
@@ -721,12 +733,23 @@ func wake_spot(radius: float) -> Dictionary:
 
 ## True if someone this big can stand at this point in the station's frame.
 func pilot_fits(local: Vector2, radius: float) -> bool:
-	if not layout.is_walkable(_on_picture(local)):
+	if not _stands_at(_on_picture(local)):
 		return false
 	for i in range(8):
-		if not layout.is_walkable(_on_picture(local + Vector2.UP.rotated(i * TAU / 8.0) * radius)):
+		if not _stands_at(_on_picture(local + Vector2.UP.rotated(i * TAU / 8.0) * radius)):
 			return false
 	return true
+
+
+# Whether someone can stand at this point on the picture: on a floor, or in an airlock's mouth while its
+# outer door's open and they float out through it.
+func _stands_at(point: Vector2) -> bool:
+	if layout.is_walkable(point):
+		return true
+	if _notch_port >= 0 and not _mouth.is_empty():
+		var mouth: Rect2i = _ports[_notch_port]["mouth"]
+		return Rect2(mouth).has_point(point)
+	return false
 
 
 ## If someone this big at this point in the world is touching the station from outside, says the
@@ -991,6 +1014,87 @@ func _sync_collar_doors() -> void:
 				_doors.force(inner, HatchDoors.FREE)
 
 
+## Asks an airlock to open its outer door for someone outside: it cycles (the inner door shuts, the lamps
+## run, the outer door opens), and then stays open to space for a while. Asking while it's open keeps it open.
+func request_airlock(port: int) -> void:
+	if not _mouth.is_empty() and _mouth["port"] == port:
+		_mouth["left"] = VACUUM_SECONDS
+		return
+	if _cycle.is_empty():
+		start_airlock_cycle(port, true)
+
+
+## Which airlock's outer door is open to space, or -1.
+func open_airlock() -> int:
+	return _mouth["port"] if not _mouth.is_empty() else -1
+
+
+## How far a point in the station's frame is along an airlock's way out, from its outer door line:
+## negative on the inside of it, positive outside. And how far it is off the middle of the opening.
+func _past_door(port: int, local: Vector2) -> Vector2:
+	var entry: Dictionary = _ports[port]
+	var from_end: Vector2 = local - Vector2(entry["at"])
+	var face: Vector2 = entry["face"]
+	return Vector2(from_end.dot(face) + HATCH_HALF_PIXELS * _design.art_pixel_size, from_end.dot(face.orthogonal()))
+
+
+## Whether someone floating inside has gone out through the open airlock's outer door, past its line:
+## the port, or -1.
+func airlock_crossed_out(local: Vector2) -> int:
+	if _mouth.is_empty():
+		return -1
+	var past: Vector2 = _past_door(_mouth["port"], local)
+	return _mouth["port"] if past.x >= 0.0 and absf(past.y) <= MOUTH_HALF_PIXELS * _design.art_pixel_size else -1
+
+
+## Whether someone on EVA has gone in through the open airlock's outer door, past its line and into the
+## collar: the port, or -1.
+func airlock_crossed_in(local: Vector2) -> int:
+	if _mouth.is_empty():
+		return -1
+	var past: Vector2 = _past_door(_mouth["port"], local)
+	var tube: float = HATCH_HALF_PIXELS * 2.0 * _design.art_pixel_size
+	return _mouth["port"] if past.x <= 0.0 and past.x >= -tube and absf(past.y) <= MOUTH_HALF_PIXELS * _design.art_pixel_size else -1
+
+
+## Whether the pilot inside is floating in an airlock that's open to space.
+func airlock_vacuum() -> bool:
+	return _pilot_inside and not _mouth.is_empty()
+
+
+## The pilot's gone out through the open airlock: the chamber closes up behind them after a moment.
+func airlock_pilot_left() -> void:
+	if _mouth.is_empty():
+		return
+	var port: int = _mouth["port"]
+	_mouth = {}
+	_cycle = {"port": port, "out": true, "time": CYCLE_SECONDS, "done": true, "after": 0.0}
+
+
+## The pilot's come in through the open airlock: its outer door shuts behind them and it cycles back,
+## ending with the inner door open.
+func airlock_pilot_entered() -> void:
+	if _mouth.is_empty():
+		return
+	var port: int = _mouth["port"]
+	_mouth = {}
+	_cycle = {"port": port, "out": false, "time": 0.0, "done": false, "after": 0.0}
+
+
+## The nearest airlock's inner point to this one, in the station's frame, for settling someone who's
+## ended up where they can't stand, such as in the collar after the outer door's shut behind them.
+func settle_point(local: Vector2) -> Vector2:
+	var best: Vector2 = local
+	var best_away: float = INF
+	for i in range(_ports.size()):
+		if _ports[i]["kind"] == AIRLOCK:
+			var away: float = local.distance_to(port_inner(i))
+			if away < best_away:
+				best_away = away
+				best = port_inner(i)
+	return best
+
+
 ## Starts an airlock's cycle, going out to space or coming in from it, which takes 2.5 seconds. Going
 ## out the inner door shuts, the lamps go red, then amber pulsing, then green, and the outer door opens:
 ## then airlock_cycle_done is emitted. Coming in runs it backward and ends with the inner door open. A
@@ -1004,8 +1108,15 @@ func airlock_busy() -> bool:
 	return not _cycle.is_empty() and not _cycle["done"]
 
 
-# Runs the airlock's cycle on a bit: its doors, its lamps, and its end.
+# Runs the airlock's cycle on a bit: its doors, its lamps, and its end. Going out it ends with the outer
+# door open to space, which lasts until the pilot's gone out through it or the time's up, and then the
+# chamber closes up and cycles back in. Coming in it ends with the inner door open.
 func _run_cycle(delta: float) -> void:
+	if not _mouth.is_empty():
+		_mouth["left"] -= delta
+		if _mouth["left"] <= 0.0:
+			# Nobody went out: it closes itself and cycles whoever's inside back in.
+			airlock_pilot_entered()
 	if _cycle.is_empty():
 		return
 	var port_index: int = _cycle["port"]
@@ -1029,6 +1140,8 @@ func _run_cycle(delta: float) -> void:
 			if outer >= 0:
 				# Coming in, the outer door's open as they step in, and shuts behind them.
 				_doors.force(outer, HatchDoors.OPEN if not going_out and t < 0.3 else HatchDoors.SHUT)
+		if not going_out and t >= 0.3:
+			_set_notch(-1)
 		if t >= CYCLE_SECONDS:
 			_cycle["done"] = true
 			_cycle["after"] = 0.0
@@ -1039,12 +1152,31 @@ func _run_cycle(delta: float) -> void:
 					_doors.force(outer, HatchDoors.OPEN)
 				if not going_out and inner >= 0:
 					_doors.force(inner, HatchDoors.OPEN)
+			if going_out:
+				_mouth = {"port": port_index, "left": VACUUM_SECONDS}
+				_set_notch(port_index)
 			airlock_cycle_done.emit(port_index, going_out)
+	elif going_out and not _mouth.is_empty():
+		# Open to space, with someone about to go out or come in.
+		pass
 	else:
 		_cycle["after"] += delta
 		if _cycle["after"] >= (OUTER_OPEN_AFTER_SECONDS if going_out else 1.0):
 			_cycle = {}
+			_set_notch(-1)
 			_sync_collar_doors()
+
+
+# Cuts a notch in the solid outline at this airlock's mouth, so someone on EVA fits through its open
+# outer door, or fills it in again with -1.
+func _set_notch(port: int) -> void:
+	if port == _notch_port:
+		return
+	if _notch_port >= 0:
+		layout.set_notch(_ports[_notch_port]["mouth"], false)
+	_notch_port = port
+	if port >= 0:
+		layout.set_notch(_ports[port]["mouth"], true)
 
 
 # Where a docked ship is held: [x, y, velocity x, velocity y, heading, spin].

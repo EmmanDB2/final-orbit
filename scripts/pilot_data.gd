@@ -44,6 +44,9 @@ extends Resource
 ## How fast the pilot gets around inside, in world units per second, and how quickly they get going.
 @export var walk_speed: float = 120.0
 @export var walk_acceleration: float = 700.0
+## How fast they float about in an airlock that's open to space, in world units per second: the EVA
+## float speed, 1 m/s.
+@export var float_speed: float = 20.0
 ## How fast the pilot turns to face where they're going, in radians per second.
 @export var turn_speed: float = 6.0
 ## On EVA the jetpack turns the pilot like the ship's RCS: this fast a change in spin, in radians per

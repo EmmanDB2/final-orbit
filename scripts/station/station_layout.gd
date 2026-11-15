@@ -221,6 +221,14 @@ static func build(design: StationDesign) -> StationLayout:
 	return layout
 
 
+## Opens or closes a notch in the solid outline: a rectangle of the picture that isn't solid while it's
+## open, such as an airlock's mouth while its outer door is open, so someone on EVA fits through.
+func set_notch(rect: Rect2i, open: bool) -> void:
+	for y in range(maxi(rect.position.y, 0), mini(rect.end.y, _size.y)):
+		for x in range(maxi(rect.position.x, 0), mini(rect.end.x, _size.x)):
+			_solid[y * _size.x + x] = 0 if open else (1 if image.get_pixel(x, y).a > 0.5 else 0)
+
+
 func _remember_solid() -> void:
 	_size = image.get_size()
 	_solid.resize(_size.x * _size.y)
@@ -566,6 +574,9 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 				half.size.y = COLLAR_WALK
 			passage = passage.intersection(half)
 		passages.append(passage)
+		if piece.has("free"):
+			# The whole opening, before a free collar's walkable part was cut to its shell half.
+			piece["passage"] = Rect2i(passage_turned.position + rect.position, passage_turned.size)
 		layout.hatches.append(entry)
 	# Doors inside a module, which have no piece of their own: just leaves in a doorway in the art.
 	for i in range(count):
@@ -603,6 +614,8 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 		var face: Vector2i = record["face"]
 		var collar_end: Vector2i = record["point"] + shift + face * (HATCH_LENGTH if record["kind"] == StationPort.AIRLOCK else HATCH_LENGTH + RING_DEPTH - RING_OVERLAP)
 		port["point"] = collar_end
+		# The collar's clear opening, all of it, for when the outer door's open.
+		port["mouth"] = piece["passage"]
 		port["inner"] = Vector2(record["point"] + shift) + Vector2(face) * float(COLLAR_STAND) + Vector2(0.5, 0.5)
 		if record["kind"] == StationPort.DOCK:
 			layout.free_ports.append(port)

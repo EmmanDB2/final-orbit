@@ -1172,3 +1172,12 @@ Files: `scripts/station/station_layout.gd`, `scripts/station/station_view.gd`, `
 
 - two sprites sharing one material and the same picture size, so their shading lines up exactly
 - keeping a part drawn while its parent layer fades (a sibling instead of a child)
+
+## 2026-11-14: Kapteyn-3 polish P4, floating out of and into the airlock
+
+Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/station/station_view.gd`, `scripts/station/station_layout.gd`, `tests/test_station_ports.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- a handover between two movement modes that keeps position and velocity continuous (the station's velocity at a point plus the pilot's own)
+- carving a notch in a collision mask at run time and filling it back in
+- a state machine for the chamber (cycling, open to space, closing) driven by who crosses the door line
+- comparing big world coordinates from a nearby origin, since a float32 Vector2 can't hold them to a unit
