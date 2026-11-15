@@ -73,7 +73,7 @@ func _test_lander() -> void:
 	_check("full tanks are harder to spin", 1.0 if full["spin_resistance"] > empty["spin_resistance"] else 0.0, 1.0, 0.0)
 	# The flat lander is 335 kg heavier than the first one, and its engine's the same, so about 298.
 	_check("thrust is the tuned feel when full", design.engine_force / full["mass"], 298.3, 1.0)
-	_check("turning is the tuned feel when full", design.rcs_torque / full["spin_resistance"], 1.5, 0.01)
+	_check("turning is the tuned feel when full", design.rcs_torque / full["spin_resistance"], 1.486, 0.01)
 
 
 # A simple bar: a 20 x 4 block of one material, so every answer can be worked out by hand.
@@ -177,7 +177,7 @@ func _test_real_parts() -> void:
 	var design: ShipDesign = load("res://data/lander_design.tres")
 	var body: ShipBody = ShipBody.measure(design)
 	var rcs_left: int = 2
-	_check("the layers add up to the lander's mass", body.mass, 19826.0, 40.0)
+	_check("the layers add up to the lander's mass", body.mass, 19644.0, 40.0)
 	_check("and every pixel's there", body.pixel_count, 14652.0, 0.0)
 	_check("the RCS nozzle starts working", body.nozzle_share(rcs_left), 1.0, 0.0)
 	_check("and its module", body.working_share(rcs_left), 1.0, 0.0)

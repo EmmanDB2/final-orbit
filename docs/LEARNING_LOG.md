@@ -1212,3 +1212,10 @@ Files: `data/lander_mk2_design.tres` (the flag on both legs), `tests/test_stowed
 
 - checking a part's fit by testing every stowed pixel against a mask of the hull's pixels (it already fit, so only the flag was needed)
 - comparing a ship against a copy of itself with one setting off (`duplicate()` on the modules) to show the deployed feet didn't move
+
+## 2026-11-15: Flat lander redrawn inner layers imported
+
+Files: `art/lander/*_systems.png`, `art/lander/*_frame.png` (16), `tests/test_ship_body.gd`, `docs/LEARNING_LOG.md`
+
+- mass and center of mass come from the art's colors, so new art moves the numbers with no data change
+- tests that pin a derived number (mass, turn feel) follow the art; checking exterior and leg PNGs are byte-identical shows what didn't change
