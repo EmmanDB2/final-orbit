@@ -43,6 +43,13 @@ signal powered_changed(on: bool)
 @export var port_door_depth: float = 44.0
 ## The most lamps the insides' shader takes.
 const INTERIOR_LAMPS: int = 64
+## The strobe flashes for this long every this long, in seconds. A floodlight lights the hull this far,
+## in metres.
+const STROBE_FLASH_SECONDS: float = 0.1
+const STROBE_EVERY_SECONDS: float = 1.5
+const FLOOD_REACH_METRES: float = 6.0
+## The most floodlights the hull's shader takes.
+const MOST_FLOODS: int = 8
 ## How long an airlock takes to cycle, in seconds, and how long its outer door stays open after.
 const CYCLE_SECONDS: float = 2.5
 const OUTER_OPEN_AFTER_SECONDS: float = 2.0
@@ -116,6 +123,9 @@ var _ports: Array[Dictionary] = []
 # The airlock cycle under way: its "port", whether it's "out", and "time" through it, or empty.
 var _cycle: Dictionary = {}
 var _lamps: AirlockLamps
+# What glows on the outside, and how long it's been running, for the strobe.
+var _glow: OutsideGlow
+var _outside_time: float = 0.0
 # The port nearest the hatch, while it's close enough to show.
 var _guide_port: int = -1
 var _guide_ready: bool = false
@@ -151,6 +161,12 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 	_hull_task = WorkerThreadPool.add_task(func() -> void: _hull_material = HullLight.material_for(outside))
 	_sprite.centered = false
 	_sprite.offset = -Vector2(layout.origin)
+	if layout.modular:
+		_glow = OutsideGlow.new()
+		_glow.origin = Vector2(layout.origin)
+		_glow.windows = layout.windows
+		_glow.lights = layout.outside_lights
+		_sprite.add_child(_glow)
 	_powered = design.powered
 	_modular = layout.modular
 	_planned = _modular and not layout.fixtures.is_empty()
@@ -395,6 +411,48 @@ func _exit_tree() -> void:
 		_hull_task = -1
 
 
+# What an approach light at a docking collar shows: "amber" while the collar's free, "green" while a ship
+# is lined up to dock there, and "off" while one's docked there, or with the power off.
+func approach_light(port_name: String) -> String:
+	if not _powered:
+		return "off"
+	for i in range(_ports.size()):
+		if _ports[i]["name"] == port_name and _ports[i]["kind"] == DOCK:
+			if docked_port == i:
+				return "off"
+			return "green" if _guide_port == i and _guide_ready else "amber"
+	return "off"
+
+
+# Whether the strobe's flashing at this moment.
+func strobe_on() -> bool:
+	return fmod(_outside_time, STROBE_EVERY_SECONDS) < STROBE_FLASH_SECONDS
+
+
+# The lights that glow on the outside: windows, nav lights, the strobe, and the approach lights, and the
+# floodlights lighting the hull round each docking collar while it's powered.
+func _light_glow(delta: float) -> void:
+	if _glow == null:
+		return
+	_outside_time += delta
+	var approach := {}
+	for light: Dictionary in layout.outside_lights:
+		if light["kind"] == OutsideLight.APPROACH:
+			approach[light["port"]] = approach_light(light["port"])
+	_glow.set_state(_powered, strobe_on(), approach)
+	if _sprite.material == null:
+		return
+	var floods := PackedVector4Array()
+	var reach: float = FLOOD_REACH_METRES / Units.METERS_PER_UNIT / _design.art_pixel_size
+	for light: Dictionary in layout.outside_lights:
+		if light["kind"] == OutsideLight.FLOOD and floods.size() < MOST_FLOODS:
+			floods.append(Vector4(light["point"].x, light["point"].y, reach, 1.0 if _powered else 0.0))
+	var count: int = floods.size()
+	floods.resize(MOST_FLOODS)
+	(_sprite.material as ShaderMaterial).set_shader_parameter("floods", floods)
+	(_sprite.material as ShaderMaterial).set_shader_parameter("flood_count", count)
+
+
 # The outside lit by the star, and dark in a world's shadow, once its curvature's ready.
 func _light_outside() -> void:
 	if _hull_task >= 0 and WorkerThreadPool.is_task_completed(_hull_task):
@@ -502,6 +560,7 @@ func _process(delta: float) -> void:
 	_pick_up_light()
 	_change_lights(TimeWarp.real(delta))
 	_light_outside()
+	_light_glow(TimeWarp.real(delta))
 	_run_cycle(TimeWarp.real(delta))
 	if _doors != null:
 		_doors.update(TimeWarp.real(delta), _pilot_at if _pilot_inside else Vector2(-1.0e9, -1.0e9), layout.origin)

@@ -27,6 +27,7 @@ func _initialize() -> void:
 	_test_saves(station, ship)
 	await _test_airlock(station, pilot)
 	_test_waking(main, station, pilot)
+	await _test_outside_lights(station, ship)
 	main.queue_free()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -164,3 +165,74 @@ func _test_waking(main: Node, station: StationView, pilot: Pilot) -> void:
 	_flag("on floor they can stand on", station.pilot_fits(pilot._local, pilot.data.body_radius))
 	_flag("facing down", absf(angle_difference(pilot._local_facing, PI)) < 0.01)
 	_flag("and the bed isn't something to use", station.spot_near(bed_at, 4.0).is_empty())
+
+
+# Puts the ship's hatch on a port, as _try_dock_at does, but only asks the docking guide about it.
+func _line_up_at(station: StationView, ship: Node2D, port: int) -> void:
+	ship.pilot_aboard = true
+	var frame: Dictionary = station.frame_at(ship.state.time)
+	var entry: Dictionary = station._ports[port]
+	var into: Vector2 = -entry["face"]
+	ship.heading = frame["angle"] + atan2(into.x, -into.y)
+	var hatch: Vector2 = ship.hatch_from_center().rotated(ship.heading)
+	# A little way back from the port along its line.
+	var at: Vector2 = Vector2(entry["at"] + entry["face"] * 30.0).rotated(frame["angle"]) - hatch
+	ship.state.x = frame["x"] + at.x
+	ship.state.y = frame["y"] + at.y
+	var to_ship := Vector2(ship.state.x - frame["x"], ship.state.y - frame["y"])
+	var moving: Vector2 = station.moving_at(frame, to_ship)
+	ship.state.velocity_x = moving.x
+	ship.state.velocity_y = moving.y
+	ship.angular_velocity = frame["rate"]
+	station._find_guide(frame, to_ship)
+
+
+func _test_outside_lights(station: StationView, ship: Node2D) -> void:
+	station.docked_port = -1
+	ship.docked = false
+	station.set_powered(true)
+	_flag("a free collar's approach light is amber", station.approach_light("dock_s") == "amber")
+	var dock: int = _port_named(station, "dock_s")
+	_line_up_at(station, ship, dock)
+	_flag("green while a ship's lined up to dock", station.approach_light("dock_s") == "green")
+	_flag("a port with no collar has no light", station.approach_light("airlock") == "off")
+	_try_dock_at(station, ship, dock)
+	_flag("off while a ship's docked there", station.approach_light("dock_s") == "off")
+	station.docked_port = -1
+	station.set_powered(false)
+	_flag("and off without power", station.approach_light("dock_s") == "off")
+	station.set_powered(true)
+	# The strobe flashes for 0.1 s every 1.5 s.
+	station._outside_time = 0.05
+	_flag("the strobe's on at the start of its beat", station.strobe_on())
+	station._outside_time = 0.5
+	_flag("and off after 0.1 s", not station.strobe_on())
+	station._outside_time = 1.55
+	_flag("and on again next beat", station.strobe_on())
+	# What's drawn: windows glow only with power; nav lights and strobe whatever; approach lights follow the port.
+	var glow: OutsideGlow = station._glow
+	var palette: AgencyPalette = UiStyle.palette()
+	var kinds := {}
+	for light: Dictionary in glow.lights:
+		kinds[light["kind"]] = light
+	glow.set_state(true, true, {"dock_s": "amber"})
+	_flag("nav lights are red west and green east", glow.color_of(kinds["nav_red"]) == palette.agency_red and glow.color_of(kinds["nav_green"]) == palette.telemetry_green)
+	_flag("the strobe is warm white", glow.color_of(kinds["strobe"]) == palette.thrust_white)
+	_flag("an amber approach light is amber", glow.color_of(kinds["approach"]) == palette.telemetry_amber)
+	glow.set_state(false, false, {"dock_s": "off"})
+	_flag("without power the nav lights stay on", glow.color_of(kinds["nav_red"]) == palette.agency_red)
+	_flag("and the strobe's between flashes and approach light out", glow.color_of(kinds["strobe"]).a == 0.0 and glow.color_of(kinds["approach"]).a == 0.0)
+	# The floodlight: the hull's shader is told where it is, and it goes out with the power.
+	for i in range(60):
+		await process_frame
+	var material: ShaderMaterial = station._sprite.material as ShaderMaterial
+	_flag("the hull is lit by the star once it's ready", material != null)
+	if material != null:
+		var floods: PackedVector4Array = material.get_shader_parameter("floods")
+		_flag("one floodlight, 6 m (120 px) round", material.get_shader_parameter("flood_count") == 1 and absf(floods[0].z - 120.0) < 0.001)
+		_flag("on with the power", floods[0].w == 1.0)
+		station.set_powered(false)
+		for i in range(3):
+			await process_frame
+		floods = material.get_shader_parameter("floods")
+		_flag("and out without it", floods[0].w == 0.0)

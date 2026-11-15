@@ -249,7 +249,14 @@ func _synthetic_station() -> StationDesign:
 	var strobe := OutsideLight.new()
 	strobe.point = Vector2(5.0, 5.0)
 	strobe.kind = "strobe"
-	hub.outside_lights = [strobe]
+	var outside_lights: Array[OutsideLight] = [strobe]
+	for light_kind: Array in [["nav_red", Vector2(3.0, 50.0), ""], ["nav_green", Vector2(96.0, 50.0), ""], ["approach", Vector2(40.0, 96.0), "dock_s"], ["flood", Vector2(60.0, 96.0), "dock_s"]]:
+		var extra := OutsideLight.new()
+		extra.kind = light_kind[0]
+		extra.point = light_kind[1]
+		extra.port_name = light_kind[2]
+		outside_lights.append(extra)
+	hub.outside_lights = outside_lights
 
 	var side := StationModule.new()
 	side.display_name = "Side room"
@@ -347,7 +354,7 @@ func _test_modular_station() -> void:
 	_flag("a prop's light lands on its picture", layout.fixtures.any(func(f: Dictionary) -> bool: return f["point"] == Vector2(hub_at) + Vector2(43.5, 43.5)))
 	_flag("the module's red one is emergency", layout.fixtures.any(func(f: Dictionary) -> bool: return f["circuit"] == "emergency" and f["tint"] == "red"))
 	_check("one window", layout.windows.size(), 1.0, 0.0)
-	_check("and one outside light", layout.outside_lights.size(), 1.0, 0.0)
+	_check("and its outside lights", layout.outside_lights.size(), 5.0, 0.0)
 	# Everything that can be walked to: from the hub's middle to the side room, the dock and the airlock.
 	var size: Vector2i = layout.picture_size()
 	var reach: float = 12.0

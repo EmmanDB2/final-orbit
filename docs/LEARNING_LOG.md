@@ -1130,3 +1130,12 @@ Files: `scripts/station/station_view.gd`, `scripts/station/airlock_lamps.gd`, `s
 - saving by name instead of by index, with a legacy table to read old numbers
 - versioned saves: bump the version and read the old shape
 - searching outward in rings for the nearest spot something fits
+
+## 2026-11-14: New Kapteyn-3 ticket 5, outside lights
+
+Files: `scripts/station/outside_glow.gd`, `scripts/station/station_view.gd`, `shaders/hull_light.gdshader`, `tests/test_station.gd`, `tests/test_station_ports.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- a child node of a sprite drawing flat glow pixels, inheriting its scale and fade
+- an array uniform of point lights (`vec4[]` plus a count) added to a shader without changing what it did before
+- deriving a light's state from other systems' state (docked, lined up) instead of storing it
+- `fmod` of a running time for a repeating flash

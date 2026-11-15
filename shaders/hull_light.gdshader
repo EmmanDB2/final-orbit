@@ -28,6 +28,11 @@ uniform float boost = 1.5;
 uniform vec2 engine_at = vec2(0.0);
 uniform float engine_reach = 150.0;
 uniform float engine_level = 0.0;
+// A station's floodlights light the hull round them the same way: each is where it is in the art's pixels,
+// how far it reaches, and how bright it is, from 0 to 1, with how many there are. A ship has none.
+#define MOST_FLOODS 8
+uniform vec4 floods[MOST_FLOODS];
+uniform int flood_count = 0;
 
 void fragment() {
 	vec4 art = texture(TEXTURE, UV);
@@ -47,6 +52,14 @@ void fragment() {
 	if (engine_level > 0.0) {
 		float share = clamp(1.0 - distance(pixel, engine_at) / engine_reach, 0.0, 1.0);
 		light = 1.0 - (1.0 - light) * (1.0 - engine_level * share);
+	}
+	for (int i = 0; i < MOST_FLOODS; i++) {
+		if (i >= flood_count) {
+			break;
+		}
+		vec4 flood = floods[i];
+		float reach_share = clamp(1.0 - distance(pixel, flood.xy) / flood.z, 0.0, 1.0);
+		light = 1.0 - (1.0 - light) * (1.0 - flood.w * reach_share);
 	}
 	COLOR = palette_lit(art, light);
 }
