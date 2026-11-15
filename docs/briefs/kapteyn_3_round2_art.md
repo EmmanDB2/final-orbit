@@ -77,6 +77,19 @@ Keep the window and light positions from `concept_numbers.txt`.
 Inside floors and walls were OK'd as they are; where a wall or floor is still one big flat area, give
 it the same treatment lightly (seams, access panels, a vent), without moving anything.
 
+## From Manny's play test (2026-11-14)
+
+- **No ceiling light fixtures in the art** ("Hide the light fixtures on the roof and just 'imply'
+  there's a light above"). Drop `light_panel`; overhead art has no lamp housings. The game draws only
+  the light's pool on the floor. Screens, signs, and status lamps still glow.
+- **Light lines up with the room**: each room's fixtures are strips laid on a grid, their long axis at
+  right angles to the line you walk in on from the room's main door. Leave floor space for the pools
+  in rows: don't put tall props or markings that fight a regular row of light down the room's middle.
+- **The docking rings are seen from inside too** ("else the ship looks like it's floating"): while
+  the roof is off, each docking ring past its collar stays drawn under the docked ship. Draw the ring so
+  it reads as the solid join between the station and a ship, next to the interior, at the originals'
+  detail.
+
 ## Still true
 
 Flat (no painted light, shade, or highlights: detail is drawn shapes, not shading), no dithering, the

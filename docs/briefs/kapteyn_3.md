@@ -238,3 +238,83 @@ placeholder textures.
   in a world's shadow.
 - Tell Manny to try: dock at each collar, walk every room, use the gig board and service terminal,
   LIGHTS OUT, go out and back in through the airlock, and die to wake in the med bay.
+
+## Polish round (2026-11-14, after Manny played it on the Fold)
+
+Manny: "pretty sick as a concept. It definitely needs a bit of polish and a lot more detail." The detail
+waits for Gemini's round 2 (`kapteyn_3_round2_art.md`); this round is the polish. No new pixels.
+
+### Decided
+
+- **LIGHTS OUT leaves the FLIGHT menu** (Manny: "Remove 'Lights Out' from the 'Flight' menu"). The
+  breaker panel in Ops is the switch. `FeatureFlags.LIGHTS_SWITCH` stays, now only gating the panel's
+  SWITCH POWER and code or tests.
+- **Bright when powered** ("When the lights are on everything should be bright"): with mains on, every
+  floor and prop pixel of a room is at the top light step, except within 1 m of a wall, where it may be
+  one step down. Kapteyn-3's `ambient_light` goes to 0.8 and `lamp_brightness` to 1.0, and fixtures
+  reach the room's corners. A station without power is unchanged.
+- **Warm tints, never hides:** a warm-lit pixel keeps its own color, except the two lightest hull
+  colors, which take the warm ramp's matching step (E8E4DA to F2D27A, A9ADB3 to D4A23A). Floors, props,
+  and screens keep their colors, so the crew hab's floor reads.
+- **Fixtures are unseen** ("Hide the light fixtures on the roof and just 'imply' there's a light
+  above"): no ceiling light sprites; only the light pool on the floor shows. Kapteyn-3's `light_panel`
+  placements go. Screens, signs, and status lamps still glow.
+- **Fixtures line up** ("Lights in a room should all face the same way ... perpendicularly on the way
+  from the door"): each module has `main_port` (the door you walk in by) and `light_axis`, the long
+  axis of its fixtures, at right angles to the line you walk in on. A fixture is a strip: its pool is a
+  stadium (a rectangle with round ends) along that axis, 2.4 m long plus its reach, not a circle. A
+  room's fixtures sit on one tidy grid: equal spacing, centered in the room, rows along the axis.
+  Kapteyn-3: med bay (door east) and crew hab (main door west) axis north-south; concourse (main door
+  south, from the docking hub) east-west; docking hub (main door north) east-west; ops (door south)
+  east-west; EVA prep (door south) east-west. A test checks every room of every modular station.
+- **Emergency is the same fixtures, in red** ("the red lights should align with the light's position"):
+  `emergency` stops being a circuit. A fixture is `mains`, `failing`, or `always`, plus `on_emergency`
+  (true or false). With the power out, an `on_emergency` fixture glows red at its own spot, pulsing as
+  now, with a pool 0.6 of its reach; the rest go dark; failing ones sputter. Kapteyn-3's separate red
+  lamps by the doors go; every room has at least one `on_emergency` fixture, every other one in a row.
+- **Docking rings show from inside** ("else the ship looks like it's floating"): while the roof is off,
+  the outside of each docking collar, the docking ring past the collar tube (the part with no inside),
+  stays drawn, under a docked ship, lit as outside.
+- **Float out of the airlock** ("could we have it so they can just float out?"): EXIT STATION at the
+  airlock no longer teleports. The cycle runs, the outer door opens, and the chamber is vacuum: the
+  pilot moves in it at EVA float speed, 20 units/s (1 m/s), not walking speed. Crossing the outer door
+  line hands them to EVA right there, with position continuous and velocity = the station's velocity at
+  that point (its orbit and its turning) + their float velocity, turned into the world. The station's
+  solid outline has a notch at the airlock mouth while the outer door is open, so they fit through.
+  Coming back: an EVA pilot crossing that line inward, with the outer door open, becomes the pilot inside
+  the chamber at the same spot, stopped; the outer door closes, the cycle runs backward, and the inner
+  door opens into the EVA room. BOARD STATION at the airlock now opens the outer door (cycling if
+  needed) instead of teleporting.
+- **Settings crash** ("Pressing 'Settings' while in game crashes the game"): find and fix it; a test
+  opens SETTINGS from the FLIGHT menu and from the title screen.
+
+### P1. Flight menu: LIGHTS OUT gone, settings fixed
+
+- **Touches:** the FLIGHT menu's script (`scripts/ui/`), the settings screen, a new or existing test.
+- **Check:** suites pass; the new test opens and closes settings from both places without errors.
+
+### P2. Lighting: bright, warm tint, unseen strip fixtures in line, emergency from the same fixtures
+
+- **Touches:** `light_fixture.gd`, `station_module.gd` (`main_port`, `light_axis`), `station_light.gd`
+  (stadium pools along the axis), `shaders/interior_light.gdshader` and `palette_light` (warm rule),
+  `station_view.gd` (circuits), `data/kapteyn_3.tres` (fixtures redone on grids, light panels and red
+  door lamps removed, ambient and brightness), `tools/import_station.gd` if it writes fixtures, tests.
+- **Check:** suites pass; a test checks each room's fixtures share its axis, lie on an even grid, and
+  that every room has an `on_emergency` fixture; a throwaway bake shows every floor pixel at the top step
+  powered.
+
+### P3. Docking rings from inside
+
+- **Touches:** `station_layout.gd` (a separate image of the dock rings), `station_view.gd`.
+- **Check:** a screenshot from inside with a ship docked at `dock_s` shows the ring under the ship.
+
+### P4. Float out of and into the airlock
+
+- **Touches:** `pilot.gd` (the float in the open chamber, the handover both ways), `station_view.gd`
+  (outer door state, the notch in the solid outline), tests.
+- **Check:** a test: after EXIT STATION and the cycle, the pilot floating across the line is on EVA at
+  the same world point with velocity = station's + theirs, within a unit; floating back in becomes the
+  inside pilot and ends in the EVA room after the cycle.
+
+Then the checker: a lit room, the power out (red at the fixtures' own spots), the med bay's light
+layout, a docked ship seen from inside, and the airlock float-out. DESIGN.md updated, logged, installed.
