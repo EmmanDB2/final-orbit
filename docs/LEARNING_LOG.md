@@ -1189,3 +1189,11 @@ Files: `scripts/pilot.gd`, `scripts/station/station_view.gd`, `tests/test_airloc
 - driving a test through the same call a button makes (the context menu's row), then running real physics ticks
 - guiding a body along a path in phases (out, across, in) by setting its velocity relative to a moving, turning frame
 - making a gap passable by shrinking the collider near it, not by widening the art
+
+## 2026-11-15: Flat lander art in, with its new legs (lander flat import, ticket 1)
+
+Files: `art/lander/*.png` (26), `data/lander_design.tres` (leg modules only), `scripts/ship/ship_body.gd`, `tests/test_ship_body.gd`, `tests/test_landing_prediction.gd`, `docs/LEARNING_LOG.md`
+
+- a cell on the stowed grid that two parts share: the hull owns it, and the part behind waits to take it over if the hull pixel is shot away
+- staging a file's committed text and leaving the working copy alone (`git hash-object -w` and `git update-index --cacheinfo`)
+- a test that pinned one drawing's numbers (mass, pixel count, art gaps) changed to follow the module art, and a synthetic ship for the weld check

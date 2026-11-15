@@ -109,6 +109,9 @@ var _is_nozzle: PackedByteArray = PackedByteArray()
 var _cell_of: PackedInt32Array = PackedInt32Array()
 # Which pixel is at each place on the grid, where the ship has it stowed. -1 for none.
 var _pixel_at: PackedInt32Array = PackedInt32Array()
+# A moving part's pixel that sits under a hull pixel's place on the grid, waiting to take that place
+# over if the hull pixel goes. -1 for none.
+var _pixel_behind: PackedInt32Array = PackedInt32Array()
 # Pairs of pixels joined across a gap the art draws.
 var _welds: PackedInt32Array = PackedInt32Array()
 var _needs_split_check: bool = true
@@ -146,6 +149,8 @@ static func measure(design: ShipDesign) -> ShipBody:
 	body._half = Vector2(body._canvas) / 2.0
 	body._pixel_at.resize(body._canvas.x * body._canvas.y)
 	body._pixel_at.fill(-1)
+	body._pixel_behind.resize(body._canvas.x * body._canvas.y)
+	body._pixel_behind.fill(-1)
 
 	var grid_layer := Layer.new()
 	grid_layer.image = Image.create(body._canvas.x, body._canvas.y, false, Image.FORMAT_RGBA8)
@@ -225,7 +230,11 @@ func _add_module(index: int, module: ModuleData, materials: Dictionary, design: 
 			var cell_index: int = on_canvas.y * _canvas.x + on_canvas.x
 			_cell_of.append(cell_index)
 			if on_canvas.x >= 0 and on_canvas.y >= 0 and on_canvas.x < _canvas.x and on_canvas.y < _canvas.y:
-				_pixel_at[cell_index] = _density.size()
+				# A moving part's pixel over a hull pixel's place leaves that place to the hull.
+				if layer_index != 0 and _pixel_at[cell_index] >= 0:
+					_pixel_behind[cell_index] = _density.size()
+				else:
+					_pixel_at[cell_index] = _density.size()
 			_depth.append(0)
 			_module_of.append(index)
 			_home.append(home)
@@ -957,6 +966,7 @@ func _peel(index: int) -> void:
 	_density[index] = 0.0
 	_needs_split_check = true
 	pixel_count -= 1
+	_hand_over_place(index)
 	_layers[pixel_layer[index]].image.set_pixel(pixel_x[index], pixel_y[index], Color(0.0, 0.0, 0.0, 0.0))
 	_module_left[module_index] -= 1
 	_module_hole[module_index] += home
@@ -964,6 +974,17 @@ func _peel(index: int) -> void:
 		_working_left[module_index] -= 1
 	if _is_nozzle[index] == 1:
 		_nozzle_left[module_index] -= 1
+
+
+# When a pixel is gone, a moving part's pixel that was under it takes its place on the grid.
+func _hand_over_place(index: int) -> void:
+	var cell: int = _cell_of[index]
+	if cell < 0 or cell >= _pixel_at.size() or _pixel_at[cell] != index:
+		return
+	var behind: int = _pixel_behind[cell]
+	if behind >= 0 and _density[behind] > 0.0:
+		_pixel_at[cell] = behind
+		_pixel_behind[cell] = -1
 
 
 # Spends the energy from the highest rank down. A counting sort sorts the pixels, since the

@@ -71,7 +71,8 @@ func _test_lander() -> void:
 	_check("empty tanks leave the dry mass", empty["mass"], body.mass, 1e-6)
 	_check("empty tanks leave the dry spin resistance", empty["spin_resistance"], body.spin_resistance, 1e-2)
 	_check("full tanks are harder to spin", 1.0 if full["spin_resistance"] > empty["spin_resistance"] else 0.0, 1.0, 0.0)
-	_check("thrust is the tuned feel when full", design.engine_force / full["mass"], 300.0, 1.0)
+	# The flat lander is 335 kg heavier than the first one, and its engine's the same, so about 298.
+	_check("thrust is the tuned feel when full", design.engine_force / full["mass"], 298.3, 1.0)
 	_check("turning is the tuned feel when full", design.rcs_torque / full["spin_resistance"], 1.5, 0.01)
 
 
@@ -86,6 +87,29 @@ func _bar_design(strength: float) -> ShipDesign:
 	material.colors = PackedColorArray([color])
 	var module := ModuleData.new()
 	module.texture = ImageTexture.create_from_image(image)
+	var design := ShipDesign.new()
+	design.cell_size = 20
+	design.modules = [module]
+	design.materials = [material]
+	return design
+
+
+# A block and a smaller one, the nozzle, two pixels apart.
+func _gap_design() -> ShipDesign:
+	var color := Color8(10, 20, 30)
+	var image := Image.create(20, 6, false, Image.FORMAT_RGBA8)
+	for y in range(6):
+		for x in range(20):
+			if x < 12 or x >= 14:
+				image.set_pixel(x, y, color)
+	var material := MaterialData.new()
+	material.density = 2.0
+	material.strength = 10.0
+	material.colors = PackedColorArray([color])
+	var module := ModuleData.new()
+	module.kind = "rcs"
+	module.texture = ImageTexture.create_from_image(image)
+	module.nozzle_rect = Rect2i(14, 0, 6, 6)
 	var design := ShipDesign.new()
 	design.cell_size = 20
 	design.modules = [module]
@@ -153,8 +177,8 @@ func _test_real_parts() -> void:
 	var design: ShipDesign = load("res://data/lander_design.tres")
 	var body: ShipBody = ShipBody.measure(design)
 	var rcs_left: int = 2
-	_check("the layers add up to the lander's mass", body.mass, 19485.0, 40.0)
-	_check("and every pixel's there", body.pixel_count, 14337.0, 0.0)
+	_check("the layers add up to the lander's mass", body.mass, 19826.0, 40.0)
+	_check("and every pixel's there", body.pixel_count, 14652.0, 0.0)
 	_check("the RCS nozzle starts working", body.nozzle_share(rcs_left), 1.0, 0.0)
 	_check("and its module", body.working_share(rcs_left), 1.0, 0.0)
 
@@ -175,30 +199,34 @@ func _test_real_parts() -> void:
 	_check("the nozzle gone means the RCS is gone", other.working_share(rcs_left), 0.0, 0.0)
 	_check("with nearly all the module left", 1.0 if other.module_share(rcs_left) > 0.95 else 0.0, 1.0, 0.0)
 
-	# Puts the pieces back together and compares them with the original drawing.
+	# Puts the pieces back together and compares them with each module's own drawing: a grid module's
+	# pixels are on the grid's layer in its cell, and a moving part's are on its own layer.
 	var whole: ShipBody = ShipBody.measure(design)
-	var art: Image = (load("res://art/ship_lander.png") as Texture2D).get_image()
-	if art.is_compressed():
-		art.decompress()
-	art.convert(Image.FORMAT_RGBA8)
 	var differences: int = 0
 	var drawn: int = 0
-	for y in range(art.get_height()):
-		for x in range(art.get_width()):
-			var from_art: Color = art.get_pixel(x, y)
-			if from_art.a < 0.5:
-				continue
-			drawn += 1
-			var grid_at := Vector2i(x, y) + Vector2i(8, 22)
-			var found: bool = false
-			for layer in whole._layers:
-				var on_art: Vector2i = grid_at - layer.top_left
-				if on_art.x >= 0 and on_art.y >= 0 and on_art.x < layer.image.get_width() and on_art.y < layer.image.get_height():
-					var here: Color = layer.image.get_pixel(on_art.x, on_art.y)
-					if here.a > 0.5 and here.is_equal_approx(from_art):
-						found = true
-			if not found:
-				differences += 1
+	for module_index in range(design.modules.size()):
+		var module: ModuleData = design.modules[module_index]
+		var art: Image = module.texture.get_image()
+		if art.is_compressed():
+			art.decompress()
+		art.convert(Image.FORMAT_RGBA8)
+		var layer: ShipBody.Layer = whole._layers[0]
+		var offset: Vector2i = module.cell * design.cell_size
+		if not module.on_grid:
+			for candidate: ShipBody.Layer in whole._layers:
+				if candidate.module == module_index:
+					layer = candidate
+			offset = Vector2i.ZERO
+		for y in range(art.get_height()):
+			for x in range(art.get_width()):
+				var from_art: Color = art.get_pixel(x, y)
+				if from_art.a < 0.5:
+					continue
+				drawn += 1
+				var at: Vector2i = Vector2i(x, y) + offset
+				var here: Color = layer.image.get_pixel(at.x, at.y)
+				if not (here.a > 0.5 and here.is_equal_approx(from_art)):
+					differences += 1
 	_check("the pieces match the drawing exactly", differences, 0.0, 0.0)
 	_check("and nothing's extra", whole.pixel_count, drawn, 0.0)
 
@@ -289,36 +317,23 @@ func _test_no_floaters() -> void:
 	corner._refresh()
 	_check("a corner still holds", corner.split_off().size(), 0.0, 0.0)
 
-	# The whole lander, with its drawn gaps, is one piece, and the gaps are welded.
+	# The flat lander is drawn without gaps, so it's one piece with nothing to weld.
 	var design: ShipDesign = load("res://data/lander_design.tres")
 	var lander: ShipBody = ShipBody.measure(design)
 	_check("the lander starts in one piece", lander.split_off().size(), 0.0, 0.0)
-	_check("with welds across the art's gaps", 1.0 if lander._welds.size() > 0 else 0.0, 1.0, 0.0)
+	_check("with no gaps to weld", lander._welds.size(), 0.0, 0.0)
 
-	# Weld partners gone: the RCS nozzle, drawn with a gap, comes off.
-	var rcs_left: int = 2
-	lander._count_pieces(false)
-	var nozzle_pixel: int = -1
-	for index in range(lander._density.size()):
-		if lander._is_nozzle[index] == 1 and lander._module_of[index] == rcs_left:
-			nozzle_pixel = index
-			break
-	var nozzle_piece: int = lander._piece_of(nozzle_pixel)
-	var nozzle_cells := {}
-	for i in range(0, lander._welds.size(), 2):
-		var a: int = lander._welds[i]
-		var b: int = lander._welds[i + 1]
-		if lander._piece_of(a) == nozzle_piece and lander._piece_of(b) != nozzle_piece:
-			nozzle_cells[b] = true
-		if lander._piece_of(b) == nozzle_piece and lander._piece_of(a) != nozzle_piece:
-			nozzle_cells[a] = true
-	_check("the nozzle is welded on", 1.0 if nozzle_cells.size() > 0 else 0.0, 1.0, 0.0)
-	var before_nozzle: float = lander.nozzle_share(rcs_left)
-	for partner: int in nozzle_cells:
-		lander._erase(partner)
-	lander._refresh()
-	var parts: Array[Dictionary] = lander.split_off()
-	_check("lose what it's welded to and the nozzle drops", 1.0 if parts.size() >= 1 and lander.nozzle_share(rcs_left) < before_nozzle else 0.0, 1.0, 0.0)
+	# A part drawn with a gap, like an RCS nozzle, is welded on, and comes off with what it's welded to.
+	var gapped: ShipBody = ShipBody.measure(_gap_design())
+	_check("a drawn gap gets welds", 1.0 if gapped._welds.size() > 0 else 0.0, 1.0, 0.0)
+	_check("and it's one piece", gapped.split_off().size(), 0.0, 0.0)
+	_check("the nozzle is on", gapped.nozzle_share(0), 1.0, 0.0)
+	for index in range(gapped._density.size()):
+		if gapped.pixel_x[index] >= 8 and gapped.pixel_x[index] < 14:
+			gapped._erase(index)
+	gapped._refresh()
+	var parts: Array[Dictionary] = gapped.split_off()
+	_check("lose what it's welded to and the nozzle drops", 1.0 if parts.size() == 1 and gapped.nozzle_share(0) < 1.0 else 0.0, 1.0, 0.0)
 
 	# After a beating, no pixel is left floating.
 	var beaten: ShipBody = ShipBody.measure(design)

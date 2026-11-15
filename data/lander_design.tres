@@ -127,9 +127,9 @@ display_name = "Landing leg, left"
 kind = "leg"
 texture = ExtResource("18_leg_left")
 on_grid = false
-art_position = Vector2i(16, 101)
-hinge = Vector2i(19, 143)
-travel = Vector2i(-19, 60)
+art_position = Vector2i(44, 89)
+hinge = Vector2i(53, 131)
+travel = Vector2i(-53, 72)
 folds = true
 
 [sub_resource type="Resource" id="Module_leg_1"]
@@ -138,9 +138,9 @@ display_name = "Landing leg, right"
 kind = "leg"
 texture = ExtResource("19_leg_right")
 on_grid = false
-art_position = Vector2i(97, 100)
-hinge = Vector2i(106, 143)
-travel = Vector2i(19, 60)
+art_position = Vector2i(64, 89)
+hinge = Vector2i(74, 131)
+travel = Vector2i(53, 72)
 folds = true
 
 [resource]
