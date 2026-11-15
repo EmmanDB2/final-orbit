@@ -1181,3 +1181,11 @@ Files: `scripts/pilot.gd`, `scripts/pilot_data.gd`, `scripts/station/station_vie
 - carving a notch in a collision mask at run time and filling it back in
 - a state machine for the chamber (cycling, open to space, closing) driven by who crosses the door line
 - comparing big world coordinates from a nearby origin, since a float32 Vector2 can't hold them to a unit
+
+## 2026-11-15: Kapteyn-3 airlock boarding fix, BOARD STATION tapped from EVA
+
+Files: `scripts/pilot.gd`, `scripts/station/station_view.gd`, `tests/test_airlock_board.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- driving a test through the same call a button makes (the context menu's row), then running real physics ticks
+- guiding a body along a path in phases (out, across, in) by setting its velocity relative to a moving, turning frame
+- making a gap passable by shrinking the collider near it, not by widening the art

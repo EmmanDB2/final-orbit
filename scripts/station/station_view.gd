@@ -59,6 +59,12 @@ const VACUUM_SECONDS: float = 15.0
 ## Half a collar's length, and half the width of its opening, in station pixels.
 const HATCH_HALF_PIXELS: float = 20.0
 const MOUTH_HALF_PIXELS: float = 16.0
+## Boarding by an airlock: how near its line someone counts as lined up, and how far out from its end they
+## go before moving across to it, in station pixels.
+const BOARDING_ALIGNED_PIXELS: float = 3.0
+const BOARDING_CLEARANCE_PIXELS: float = 14.0
+## How near an open mouth the pilot counts as narrow, in station pixels.
+const MOUTH_NARROW_REACH_PIXELS: float = 70.0
 ## The kinds of port: an old station's, which docks, lets the pilot in and out, and takes EVA; a docking
 ## collar, which only ships dock at; and an airlock, which only the pilot goes in and out of.
 const LEGACY: String = "legacy"
@@ -138,6 +144,8 @@ var _lamps: AirlockLamps
 var _mouth: Dictionary = {}
 # The port whose mouth has a notch in the solid outline, or -1.
 var _notch_port: int = -1
+# An airlock asked to open while it was busy with something else, to start once it's free, or -1.
+var _pending_open: int = -1
 # What glows on the outside, and how long it's been running, for the strobe.
 var _glow: OutsideGlow
 var _outside_time: float = 0.0
@@ -761,6 +769,10 @@ func push_pilot_out(x: float, y: float, time: float, radius: float) -> Dictionar
 		return {}
 	var angle: float = frame["angle"]
 	var local: Vector2 = to_pilot.rotated(-angle)
+	# Going through an open airlock's mouth the pilot counts as their walking width, not the suit's
+	# radius, so there's room to thread it: the opening's only 32 px across.
+	if _notch_port >= 0 and local.distance_to(_ports[_notch_port]["at"]) <= MOUTH_NARROW_REACH_PIXELS * _design.art_pixel_size:
+		radius = walk_radius(radius)
 	var touching: bool = false
 	for i in range(8):
 		if _is_solid(local + Vector2.UP.rotated(i * TAU / 8.0) * radius):
@@ -1022,6 +1034,27 @@ func request_airlock(port: int) -> void:
 		return
 	if _cycle.is_empty():
 		start_airlock_cycle(port, true)
+	elif not (_cycle["port"] == port and _cycle["out"]):
+		# Busy with something else (shutting up behind someone, or cycling in): it opens when it's done.
+		_pending_open = port
+
+
+## Which way someone on EVA going to board by this airlock should drift, as a unit vector in the
+## station's frame, from where they are: out from the hull to just outside the collar, then across to
+## the middle of its line, then in once the outer door's open, and nowhere (hold still) until it is.
+func boarding_way(port: int, local: Vector2) -> Vector2:
+	var entry: Dictionary = _ports[port]
+	var face: Vector2 = entry["face"]
+	var across_way: Vector2 = face.orthogonal()
+	var rel: Vector2 = local - Vector2(entry["at"])
+	var art: float = _design.art_pixel_size
+	var along: float = rel.dot(face) / art
+	var across: float = rel.dot(across_way) / art
+	if absf(across) > BOARDING_ALIGNED_PIXELS:
+		return face if along < BOARDING_CLEARANCE_PIXELS else -across_way * signf(across)
+	if open_airlock() != port:
+		return Vector2.ZERO
+	return -face
 
 
 ## Which airlock's outer door is open to space, or -1.
@@ -1165,6 +1198,10 @@ func _run_cycle(delta: float) -> void:
 			_cycle = {}
 			_set_notch(-1)
 			_sync_collar_doors()
+			if _pending_open >= 0:
+				var wanted: int = _pending_open
+				_pending_open = -1
+				start_airlock_cycle(wanted, true)
 
 
 # Cuts a notch in the solid outline at this airlock's mouth, so someone on EVA fits through its open

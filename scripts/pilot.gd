@@ -85,6 +85,8 @@ var facing: float = 0.0
 var _gravity_model: GravityModel
 var _ship: Node2D
 var _station: StationView
+# The airlock they've asked to board by from outside, and are drifting to by themselves, or -1.
+var _boarding_port: int = -1
 var _sprite := Sprite2D.new()
 # The 3D pilot, when FeatureFlags.PILOT_3D is on, drawn instead of the sprite.
 var _figure: AstronautView
@@ -536,6 +538,11 @@ func _tick_eva(delta: float) -> void:
 	var push: Vector2 = _body_push()
 	_firing = Vector2.ZERO
 	_push_local = Vector2.ZERO
+	if _boarding_port >= 0:
+		if push != Vector2.ZERO:
+			_boarding_port = -1
+		else:
+			_drift_to_airlock()
 	if push != Vector2.ZERO and gas > 0.0:
 		_push_local = push
 		_firing = push.rotated(facing)
@@ -691,8 +698,10 @@ func _act_outside() -> void:
 	elif _action == "BOARD STATION":
 		var port: int = _station.free_port_near(state.x, state.y, state.time, data.hatch_reach)
 		if _station.port_kind(port) == StationView.AIRLOCK:
-			# An airlock opens its outer door (cycling if it has to), and they float in.
+			# An airlock opens its outer door (cycling if it has to), and they drift in by themselves, at
+			# float speed, unless they take over with the jetpack.
 			_station.request_airlock(port)
+			_boarding_port = port
 		else:
 			_enter_station(port)
 
@@ -813,6 +822,17 @@ func _hand_over_to_eva(frame: Dictionary) -> void:
 	_set_mode(EVA)
 
 
+# Drifting to the airlock they asked to board by, at float speed, moving as the station does at that point
+# plus the drift, so the way in stays put against its turning.
+func _drift_to_airlock() -> void:
+	var frame: Dictionary = _station.frame_at(state.time)
+	var local: Vector2 = Vector2(state.x - frame["x"], state.y - frame["y"]).rotated(-frame["angle"])
+	var way: Vector2 = _station.boarding_way(_boarding_port, local)
+	var moving: Vector2 = _station.moving_at(frame, local.rotated(frame["angle"])) + (way * data.float_speed).rotated(frame["angle"])
+	state.velocity_x = moving.x
+	state.velocity_y = moving.y
+
+
 # In through the airlock's open door from EVA: they're the pilot inside, stopped where they crossed, and
 # the door shuts behind them and it cycles, ending with the inner door open.
 func _enter_via_airlock(frame: Dictionary) -> void:
@@ -820,6 +840,7 @@ func _enter_via_airlock(frame: Dictionary) -> void:
 	_patch_suit()
 	_firing = Vector2.ZERO
 	_push_local = Vector2.ZERO
+	_boarding_port = -1
 	_local = Vector2(state.x - frame["x"], state.y - frame["y"]).rotated(-frame["angle"])
 	_walking = Vector2.ZERO
 	_local_facing = wrapf(facing - frame["angle"], -PI, PI)
@@ -1264,6 +1285,8 @@ func _set_mode(new_mode: String) -> void:
 		helmet_lamp = false
 		_station.light_helmet(Vector2.ZERO, 0.0, false)
 	# Inside a station they're drawn between the props behind them and in front of them.
+	if new_mode != EVA:
+		_boarding_port = -1
 	z_index = StationView.Z_PILOT if new_mode == INSIDE else 0
 	if old_mode == INSIDE and new_mode != INSIDE:
 		_station.set_pilot_inside(Vector2.ZERO, false)
