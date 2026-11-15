@@ -41,6 +41,10 @@ signal message_raised(text: String)
 const INTERIOR_LAMPS: int = 64
 ## How long an emergency lamp's pulse takes, in seconds.
 const EMERGENCY_PULSE_SECONDS: float = 2.4
+## With the power on, a failing fixture flickers out for a moment every so often: how long it waits
+## between flickers and how long each lasts, in seconds, each from the first to the second.
+const FAILING_EVERY_SECONDS := Vector2(4.0, 10.0)
+const FAILING_OUT_SECONDS := Vector2(0.05, 0.15)
 ## How long the roof takes to come off, in seconds.
 @export var roof_seconds: float = 0.3
 ## How far below the pilot's middle their feet are for sorting against props, in world units.
@@ -73,6 +77,12 @@ var _pilot_inside: bool = false
 # Every material the insides are drawn with, and the values their shared settings have now.
 var _lit_materials: Array[ShaderMaterial] = []
 var _light_params: Dictionary = {}
+# A station whose modules set fixtures is lit the planned way: baked once, from its data, into maps with
+# a channel per power circuit; the power, the flicker, and the pulse are only how live each circuit is.
+var _planned: bool = false
+var _baked_maps: Dictionary = {}
+var _failing_out: bool = false
+var _failing_wait: float = 0.0
 # The insides' light map, worked out on a worker thread, and that work while it's under way.
 var _light_task: int = -1
 var _baked_light: Image
@@ -131,6 +141,8 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 	_sprite.offset = -Vector2(layout.origin)
 	_powered = design.powered
 	_modular = layout.modular
+	_planned = _modular and not layout.fixtures.is_empty()
+	_failing_wait = randf_range(FAILING_EVERY_SECONDS.x, FAILING_EVERY_SECONDS.y)
 	# Under the roof, which fades off it.
 	if _modular:
 		_build_modular_inside()
@@ -162,6 +174,9 @@ func _build_modular_inside() -> void:
 		sprite.position = Vector2(stand["at"] - layout.origin)
 		sprite.z_index = Z_BEHIND
 		sprite.material = _new_lit_material(Vector2(stand["at"]))
+		if stand["prop"].plant:
+			# Its green leaves step down their own ramp instead of glowing.
+			sprite.material.set_shader_parameter("plant", true)
 		_inside.add_child(sprite)
 		_stands.append({"sprite": sprite, "foot": stand["foot"]})
 	_inside.add_child(_layer_sprite(layout.overhead_image, Z_OVERHEAD))
@@ -210,6 +225,9 @@ func _light_inside() -> void:
 	for lamp: Dictionary in lit:
 		if lamp["kind"] == StationLight.STEADY:
 			lamps.append(Vector4(lamp["point"].x, lamp["point"].y, lamp["reach"], lamp["brightness"]))
+	if _planned:
+		_light_planned(lamps)
+		return
 	var count: int = mini(lamps.size(), INTERIOR_LAMPS)
 	lamps.resize(INTERIOR_LAMPS)
 	_set_light_param("lamps", lamps)
@@ -218,8 +236,7 @@ func _light_inside() -> void:
 	var ambient: float = _design.ambient_light if _powered else _design.dark_ambient
 	_set_light_param("ambient", ambient)
 	_set_light_param("map_size", Vector2(layout.picture_size()))
-	if not _light_params.has("floor_mask"):
-		_set_light_param("floor_mask", ImageTexture.create_from_image(StationLight.floor_mask(layout.picture_size(), layout.floors())))
+	_set_floor_mask()
 	# Walls stopping the lamps' light takes a while to work out, so it's done off to the side.
 	_wait_for_light()
 	_baked_light = null
@@ -228,12 +245,55 @@ func _light_inside() -> void:
 	_light_task = WorkerThreadPool.add_task(func() -> void: _baked_light = StationLight.bake(size, rooms, lit, ambient))
 
 
+# The planned way: the fixtures are baked once, whatever the power does, and from then on it's only
+# how live each circuit is. Until they're ready, the mains and always fixtures light straight through.
+func _light_planned(lamps: PackedVector4Array) -> void:
+	_set_light_param("planned", true)
+	_set_light_param("map_size", Vector2(layout.picture_size()))
+	_set_floor_mask()
+	_set_light_param("ambient", _design.ambient_light if _powered else _design.dark_ambient)
+	if _baked_maps.is_empty() and _light_task < 0:
+		var count: int = mini(lamps.size(), INTERIOR_LAMPS)
+		lamps.resize(INTERIOR_LAMPS)
+		_set_light_param("lamps", lamps)
+		_set_light_param("lamp_count", count)
+		var size: Vector2i = layout.picture_size()
+		var rooms: Array = layout.room_areas
+		var fixtures: Array = layout.fixtures
+		_light_task = WorkerThreadPool.add_task(func() -> void: _baked_maps = StationLight.bake_fixtures(size, rooms, fixtures))
+	_set_light_param("circuit_live", _circuits_live())
+
+
+# Where someone can stand, for the helmet lamp's beam to stop at what isn't.
+func _set_floor_mask() -> void:
+	if not _light_params.has("floor_mask"):
+		_set_light_param("floor_mask", ImageTexture.create_from_image(StationLight.floor_mask(layout.picture_size(), layout.floors())))
+
+
+# How live each power circuit is now, as mains, failing, emergency, always: mains with the power on,
+# emergency pulsing with it off, failing flickering out now and then with it on or sputtering with it
+# off, and always on whatever the power does.
+func _circuits_live() -> Vector4:
+	var pulse: float = 0.675 + 0.325 * sin(_light_time * TAU / EMERGENCY_PULSE_SECONDS)
+	var failing: float
+	if _powered:
+		failing = 0.0 if _failing_out else 1.0
+	else:
+		failing = 1.0 if _sputter_on else 0.0
+	return Vector4(1.0 if _powered else 0.0, failing, 0.0 if _powered else pulse, 1.0)
+
+
 # Each lamp as the power has it: all steady with it on; with it off, some emergency lamps and some
 # failing ones, and the rest dark.
 func _lamps_now() -> Array:
 	var lit: Array = []
-	if _modular:
-		return _fixtures_now()
+	if _planned:
+		# Only for what shows until the fixtures' maps are ready.
+		for fixture: Dictionary in layout.fixtures:
+			var circuit: String = fixture["circuit"]
+			if circuit == LightFixture.ALWAYS or (_powered and circuit != LightFixture.EMERGENCY):
+				lit.append({"point": fixture["point"], "reach": fixture["reach"], "room": fixture["room"], "brightness": fixture["brightness"], "kind": StationLight.STEADY})
+		return lit
 	for i in range(layout.lamps.size()):
 		var lamp: Dictionary = layout.lamps[i].duplicate()
 		if _powered:
@@ -248,31 +308,6 @@ func _lamps_now() -> Array:
 			lamp["brightness"] = _design.lamp_brightness
 		else:
 			continue
-		lit.append(lamp)
-	return lit
-
-
-# A station of modules' fixtures as the power has them: mains and always on, and with the power off the
-# emergency ones pulsing and the failing ones sputtering. (Planned lighting by circuit and tint is the
-# next ticket's; until then every fixture is a white lamp.)
-func _fixtures_now() -> Array:
-	var lit: Array = []
-	for fixture: Dictionary in layout.fixtures:
-		var lamp: Dictionary = {"point": fixture["point"], "reach": fixture["reach"], "room": fixture["room"], "brightness": fixture["brightness"] * _design.lamp_brightness}
-		match fixture["circuit"]:
-			LightFixture.ALWAYS:
-				lamp["kind"] = StationLight.STEADY
-			LightFixture.MAINS:
-				if not _powered:
-					continue
-				lamp["kind"] = StationLight.STEADY
-			LightFixture.FAILING:
-				lamp["kind"] = StationLight.STEADY if _powered else StationLight.FAILING
-			LightFixture.EMERGENCY:
-				if _powered:
-					continue
-				lamp["kind"] = StationLight.EMERGENCY
-				lamp["brightness"] = fixture["brightness"] * _design.emergency_brightness
 		lit.append(lamp)
 	return lit
 
@@ -294,6 +329,13 @@ func _pick_up_light() -> void:
 	if _light_task < 0 or not WorkerThreadPool.is_task_completed(_light_task):
 		return
 	_wait_for_light()
+	if _planned:
+		if not _baked_maps.is_empty() and not _lit_materials.is_empty():
+			_set_light_param("circuit_light", ImageTexture.create_from_image(_baked_maps["light"]))
+			_set_light_param("warm_share", ImageTexture.create_from_image(_baked_maps["warm"]))
+			_set_light_param("red_share", ImageTexture.create_from_image(_baked_maps["red"]))
+			_set_light_param("baked", true)
+		return
 	if _baked_light != null and not _lit_materials.is_empty():
 		_set_light_param("light_map", ImageTexture.create_from_image(_baked_light))
 		_set_light_param("baked", true)
@@ -327,16 +369,24 @@ func _light_outside() -> void:
 	HullLight.aim(_sprite, toward, Sunlight.at(_gravity_model, frame["x"], frame["y"], _state.time))
 
 
-# Emergency lamps pulse slowly, and failing ones sputter: mostly dark, with bursts of light.
+# Emergency lamps pulse slowly, and failing ones sputter: mostly dark, with bursts of light. With the
+# power on, a failing fixture flickers out for a moment every few seconds.
 func _change_lights(delta: float) -> void:
 	if _lit_materials.is_empty() or not _insides_visible():
 		return
 	_light_time += delta
-	_set_light_param("pulse", 0.675 + 0.325 * sin(_light_time * TAU / EMERGENCY_PULSE_SECONDS))
 	_sputter_left -= delta
 	if _sputter_left <= 0.0:
 		_sputter_on = not _sputter_on
 		_sputter_left = randf_range(0.04, 0.25) if _sputter_on else randf_range(0.05, 1.6)
+	_failing_wait -= delta
+	if _failing_wait <= 0.0:
+		_failing_out = not _failing_out
+		_failing_wait = randf_range(FAILING_OUT_SECONDS.x, FAILING_OUT_SECONDS.y) if _failing_out else randf_range(FAILING_EVERY_SECONDS.x, FAILING_EVERY_SECONDS.y)
+	if _planned:
+		_set_light_param("circuit_live", _circuits_live())
+		return
+	_set_light_param("pulse", 0.675 + 0.325 * sin(_light_time * TAU / EMERGENCY_PULSE_SECONDS))
 	_set_light_param("flicker", 1.0 if _sputter_on else 0.0)
 
 
@@ -349,6 +399,12 @@ func _insides_visible() -> bool:
 ## out and emergency lamps halfway through their pulse.
 func light_at(local: Vector2) -> float:
 	var point: Vector2 = local / _design.art_pixel_size + Vector2(layout.origin)
+	if _planned:
+		if _baked_maps.is_empty():
+			return 1.0 if _powered else _design.dark_ambient
+		# Failing fixtures out and emergency ones halfway through their pulse, so it doesn't flicker.
+		var live := Vector4(1.0 if _powered else 0.0, 0.0, 0.0 if _powered else 0.55, 1.0)
+		return StationLight.evaluate(_baked_maps, floori(point.x), floori(point.y), live, _design.ambient_light if _powered else _design.dark_ambient)["light"]
 	if _baked_light == null:
 		return 1.0 if _powered else _design.dark_ambient
 	var x: int = clampi(floori(point.x), 0, _baked_light.get_width() - 1)

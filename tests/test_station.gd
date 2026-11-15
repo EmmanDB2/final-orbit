@@ -13,6 +13,7 @@ func _initialize() -> void:
 	_test_walking()
 	_test_modular_station()
 	_test_hatch_doors()
+	_test_planned_lighting()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -408,3 +409,75 @@ func _test_hatch_doors() -> void:
 	_check("a held-open door opens with nobody there", doors.openness(1), 1.0, 0.0)
 	_flag("and its leaf has slid", (parent.get_child(2) as Sprite2D).position != shut_at)
 	parent.free()
+
+
+# The planned lighting: fixtures baked per circuit, tint, and room, with the power only a live factor.
+func _test_planned_lighting() -> void:
+	var design: StationDesign = _synthetic_station()
+	var hub: StationModule = design.modules[0]
+	var side: StationModule = design.modules[1]
+	# A wide white mains light by the hub's east wall, reaching 60 px: past the wall, into the side room's
+	# pixels, if light went through walls. A warm mains lamp in the side room, a failing white one in the
+	# hub, and an always-on screen.
+	var wide := LightFixture.new()
+	wide.point = Vector2(88.0, 70.0)
+	wide.reach_metres = 3.0
+	var warm_lamp := LightFixture.new()
+	warm_lamp.point = Vector2(50.0, 50.0)
+	warm_lamp.reach_metres = 2.5
+	warm_lamp.tint = "warm"
+	var flicker := LightFixture.new()
+	flicker.point = Vector2(15.0, 90.0)
+	flicker.reach_metres = 1.5
+	flicker.circuit = "failing"
+	var screen := LightFixture.new()
+	screen.point = Vector2(20.0, 50.0)
+	screen.reach_metres = 1.0
+	screen.circuit = "always"
+	hub.fixtures[0].reach_metres = 1.0
+	hub.fixtures.append_array([wide, flicker, screen])
+	side.fixtures = [warm_lamp]
+	var layout: StationLayout = StationLayout.build(design)
+	var maps: Dictionary = StationLight.bake_fixtures(layout.picture_size(), layout.room_areas, layout.fixtures)
+	var hub_at: Vector2i = layout.origin - Vector2i(50, 50)
+	var side_at := Vector2i.ZERO
+	for port: Dictionary in layout.ports:
+		if port["name"] == "west" and port["module"] == 1:
+			side_at = port["shell_point"]
+	var ambient: float = 0.1
+	var on := Vector4(1.0, 1.0, 0.0, 1.0)
+	var off := Vector4(0.0, 0.0, 1.0, 1.0)
+	var lit: Dictionary = StationLight.evaluate(maps, hub_at.x + 88, hub_at.y + 70, on, ambient)
+	_flag("a mains white fixture lights its room", lit["light"] > 0.9 and lit["tint"] == "white")
+	# 20 px past the hub's east edge is the hatch, then the side room: both out of its room.
+	var across: Dictionary = StationLight.evaluate(maps, side_at.x + 5, side_at.y + 20, on, ambient)
+	_flag("but not through the wall into the next room", across["light"] < ambient + 0.001)
+	var hatch: Dictionary = StationLight.evaluate(maps, hub_at.x + 120, hub_at.y + 70, on, ambient)
+	_flag("or into the hatch, which is in no room", hatch["light"] < ambient + 0.001)
+	var warm: Dictionary = StationLight.evaluate(maps, side_at.x + 50, side_at.y, on, ambient)
+	_flag("a warm fixture gives warm light", warm["light"] > 0.9 and warm["tint"] == "warm")
+	var power_off: Dictionary = StationLight.evaluate(maps, hub_at.x + 88, hub_at.y + 75, off, ambient)
+	_flag("mains is dark without the power", power_off["light"] < ambient + 0.001)
+	var out: Dictionary = StationLight.evaluate(maps, hub_at.x + 15, hub_at.y + 90, Vector4(1.0, 0.0, 0.0, 1.0), ambient)
+	var in_flicker: Dictionary = StationLight.evaluate(maps, hub_at.x + 15, hub_at.y + 90, Vector4(1.0, 1.0, 0.0, 1.0), ambient)
+	_flag("a failing fixture is out when it flickers and on otherwise", out["light"] < ambient + 0.001 and in_flicker["light"] > 0.9)
+	var sputter: Dictionary = StationLight.evaluate(maps, hub_at.x + 15, hub_at.y + 90, Vector4(0.0, 1.0, 1.0, 1.0), ambient)
+	_flag("and it sputters without the power", sputter["light"] > 0.9)
+	var screen_dark: Dictionary = StationLight.evaluate(maps, hub_at.x + 20, hub_at.y + 50, off, ambient)
+	_flag("a screen is on whatever the power", screen_dark["light"] > 0.9)
+	# The emergency lamp, the first fixture, by the east door: red, and only without the power.
+	var emergency_on: Dictionary = StationLight.evaluate(maps, hub_at.x + 90, hub_at.y + 50, Vector4(1.0, 1.0, 0.0, 1.0), ambient)
+	var emergency_off: Dictionary = StationLight.evaluate(maps, hub_at.x + 90, hub_at.y + 50, Vector4(0.0, 0.0, 1.0, 1.0), ambient)
+	_flag("an emergency fixture is dark while powered", emergency_on["tint"] != "red")
+	_flag("and red with the power off", emergency_off["tint"] == "red" and emergency_off["light"] > ambient + 0.2)
+	var pulsing: Dictionary = StationLight.evaluate(maps, hub_at.x + 90, hub_at.y + 50, Vector4(0.0, 0.0, 0.4, 1.0), ambient)
+	_flag("and pulses with its live factor", pulsing["light"] < emergency_off["light"])
+	# With no fixtures at all, a modular station gets automatic lamps instead.
+	var bare: StationDesign = _synthetic_station()
+	for module: StationModule in bare.modules:
+		module.fixtures = []
+		for placement: PropPlacement in module.props:
+			placement.prop.light = null
+	var plain: StationLayout = StationLayout.build(bare)
+	_check("no fixtures: none baked", plain.fixtures.size(), 0.0, 0.0)
+	_flag("no fixtures: automatic lamps instead", plain.lamps.size() > 0)

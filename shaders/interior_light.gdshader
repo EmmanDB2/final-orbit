@@ -29,6 +29,17 @@ uniform bool baked = false;
 // from 0 to 1.
 uniform float flicker = 0.0;
 uniform float pulse = 1.0;
+// A station with fixtures set in its data is lit the planned way, from three light maps of four channels
+// each, one channel a power circuit (mains, failing, emergency, always): how much of that circuit's
+// light reaches the pixel, how much of it is warm, and how much red. Each circuit's light is scaled by
+// how live it is now, so the power, the flicker, and the pulse change with nothing worked out again.
+uniform bool planned = false;
+uniform sampler2D circuit_light : filter_nearest;
+uniform sampler2D warm_share : filter_nearest;
+uniform sampler2D red_share : filter_nearest;
+uniform vec4 circuit_live = vec4(1.0);
+// Whether this art is a plant's, so its green leaves step down their own ramp.
+uniform bool plant = false;
 // Emergency light is red: what it lights most takes the palette's reds, light and dark.
 uniform vec3 alarm_bright : source_color = vec3(0.784, 0.188, 0.173);
 uniform vec3 alarm_dim : source_color = vec3(0.478, 0.18, 0.071);
@@ -100,7 +111,20 @@ void fragment() {
 	float alarm = 0.0;
 	// The light that isn't the emergency lamps', which keeps its color.
 	float white = light;
-	if (baked) {
+	// The planned way: how much of the light is warm and how much is red.
+	float warm_amount = 0.0;
+	float red_amount = 0.0;
+	float white_amount = ambient;
+	if (planned && baked) {
+		vec4 amounts = texture(circuit_light, map_uv) * circuit_live;
+		vec4 warm_of = texture(warm_share, map_uv);
+		vec4 red_of = texture(red_share, map_uv);
+		float all_amount = amounts.r + amounts.g + amounts.b + amounts.a;
+		warm_amount = dot(amounts, warm_of);
+		red_amount = dot(amounts, red_of);
+		white_amount = max(all_amount - warm_amount - red_amount, 0.0) + ambient;
+		light = 1.0 - (1.0 - ambient) * (1.0 - amounts.r) * (1.0 - amounts.g) * (1.0 - amounts.b) * (1.0 - amounts.a);
+	} else if (baked) {
 		vec3 maps = texture(light_map, map_uv).rgb;
 		alarm = maps.b * pulse;
 		white = 1.0 - (1.0 - maps.r) * (1.0 - maps.g * flicker);
@@ -110,19 +134,39 @@ void fragment() {
 		float beam = helmet_light(pixel, 1.0 / map_size);
 		light = 1.0 - (1.0 - light) * (1.0 - beam);
 		white = 1.0 - (1.0 - white) * (1.0 - beam);
+		white_amount += beam;
 	}
 	vec4 art = texture(TEXTURE, UV);
 	vec4 lit = palette_lit(art, light);
-	// Where the emergency light outshines the rest, it's red: the light red where it's strong, the
-	// dark red where it's weaker, with a clean edge. Outlines and the darkest colors stay dark,
-	// and glowing colors keep their own.
-	float red = clamp((alarm - white) * 2.5, 0.0, 1.0);
 	float shade = dot(art.rgb, vec3(0.299, 0.587, 0.114));
-	if (red > 0.5 && art.a > 0.0 && shade > 0.12 && palette_glow[palette_index(art.rgb)] < 0.5) {
-		if (alarm * (0.6 + shade) > 0.4) {
-			lit.rgb = alarm_bright;
-		} else if (alarm > 0.12) {
-			lit.rgb = alarm_dim;
+	if (planned && baked) {
+		// Whichever of warm and red is more than half the light takes the pixel onto its ramp, with a
+		// clean edge. Outlines and the darkest colors stay dark, and glowing colors keep their own.
+		float total_amount = white_amount + warm_amount + red_amount;
+		if (plant && art.a > 0.0 && is_plant_green(art.rgb)) {
+			lit.rgb = plant_lit(light);
+		} else if (art.a > 0.0 && shade > 0.12 && palette_glow[palette_index(art.rgb)] < 0.5) {
+			if (red_amount > warm_amount && red_amount > 0.5 * total_amount && red_amount > 0.12) {
+				if (red_amount * (0.6 + shade) > 0.4) {
+					lit.rgb = alarm_bright;
+				} else {
+					lit.rgb = alarm_dim;
+				}
+			} else if (warm_amount > 0.5 * total_amount && warm_amount > 0.12) {
+				lit.rgb = warm_lit(shade, light);
+			}
+		}
+	} else {
+		// Where the emergency light outshines the rest, it's red: the light red where it's strong, the
+		// dark red where it's weaker, with a clean edge. Outlines and the darkest colors stay dark,
+		// and glowing colors keep their own.
+		float red = clamp((alarm - white) * 2.5, 0.0, 1.0);
+		if (red > 0.5 && art.a > 0.0 && shade > 0.12 && palette_glow[palette_index(art.rgb)] < 0.5) {
+			if (alarm * (0.6 + shade) > 0.4) {
+				lit.rgb = alarm_bright;
+			} else if (alarm > 0.12) {
+				lit.rgb = alarm_dim;
+			}
 		}
 	}
 	COLOR = lit;

@@ -4,7 +4,10 @@
 # whose pools overlap blend the way light does, brighter together but never past full. The map has a
 # channel for each kind of lamp, so the ones that change can change without working it out again:
 # red for steady lamps and the light everywhere, green for failing ones that sputter, and blue for
-# emergency lamps that pulse. Slow enough to run on a worker thread. From DESIGN.md, "Lighting".
+# emergency lamps that pulse. Slow enough to run on a worker thread. A station with light fixtures
+# set in its data (see bake_fixtures) is lit the planned way instead: one channel a power circuit, and
+# how much of each circuit's light is warm or red, so the power and the flicker are live and nothing
+# is baked again. From DESIGN.md, "Lighting".
 class_name StationLight
 extends RefCounted
 
@@ -73,3 +76,133 @@ static func floor_mask(size: Vector2i, walkable: PackedByteArray) -> Image:
 	for i in range(walkable.size()):
 		bytes[i] = 255 if walkable[i] == 1 else 0
 	return Image.create_from_data(size.x, size.y, false, Image.FORMAT_L8, bytes)
+
+
+## The power circuits a fixture can be on, as the channel each one's light is in, in this order.
+const CIRCUIT_MAINS: int = 0
+const CIRCUIT_FAILING: int = 1
+const CIRCUIT_EMERGENCY: int = 2
+const CIRCUIT_ALWAYS: int = 3
+
+
+## Which channel a fixture's circuit name is.
+static func circuit_index(circuit: String) -> int:
+	match circuit:
+		LightFixture.FAILING:
+			return CIRCUIT_FAILING
+		LightFixture.EMERGENCY:
+			return CIRCUIT_EMERGENCY
+		LightFixture.ALWAYS:
+			return CIRCUIT_ALWAYS
+	return CIRCUIT_MAINS
+
+
+## The light of a station's fixtures, worked out once whatever the power does. Three pictures the size
+## of the station, four channels each, one per circuit in the order above: "light" is how much of the
+## circuit's light reaches the pixel when it's fully on, "warm" is how much of that is warm, and "red"
+## how much is red, each from 0 to 255. A fixture only lights the room it's in. Each fixture has a
+## "point" and "reach" in picture pixels, a "room" (counting from 0), a "tint", a "circuit", and a
+## "brightness". Each room is its placed "image" and its corner "at".
+static func bake_fixtures(size: Vector2i, rooms: Array, fixtures: Array) -> Dictionary:
+	var count: int = size.x * size.y
+	var room_of := PackedByteArray()
+	room_of.resize(count)
+	for r in range(rooms.size()):
+		var picture: Image = rooms[r]["image"]
+		var at: Vector2i = rooms[r]["at"]
+		var data: PackedByteArray = picture.get_data()
+		var width: int = picture.get_width()
+		for y in range(picture.get_height()):
+			var row: int = (at.y + y) * size.x + at.x
+			for x in range(width):
+				if data[(y * width + x) * 4 + 3] > 0:
+					room_of[row + x] = r + 1
+	var light := PackedByteArray()
+	var warm := PackedByteArray()
+	var red := PackedByteArray()
+	light.resize(count * 4)
+	warm.resize(count * 4)
+	red.resize(count * 4)
+	# One circuit at a time: how much of the dark is left, and the light it throws in all, in warm, and
+	# in red, from every fixture that reaches the pixel.
+	for circuit in range(4):
+		var dark := PackedFloat32Array()
+		var total := PackedFloat32Array()
+		var warm_sum := PackedFloat32Array()
+		var red_sum := PackedFloat32Array()
+		dark.resize(count)
+		dark.fill(1.0)
+		total.resize(count)
+		warm_sum.resize(count)
+		red_sum.resize(count)
+		var any: bool = false
+		for fixture: Dictionary in fixtures:
+			if circuit_index(fixture["circuit"]) != circuit:
+				continue
+			any = true
+			var center: Vector2 = fixture["point"]
+			var reach: float = fixture["reach"]
+			var room: int = fixture["room"] + 1
+			var brightness: float = fixture["brightness"]
+			var low := Vector2i((center - Vector2(reach, reach)).floor()).max(Vector2i.ZERO)
+			var high := Vector2i((center + Vector2(reach, reach)).ceil()).min(size - Vector2i.ONE)
+			for y in range(low.y, high.y + 1):
+				for x in range(low.x, high.x + 1):
+					var i: int = y * size.x + x
+					if room_of[i] != room:
+						continue
+					var share: float = 1.0 - Vector2(x + 0.5 - center.x, y + 0.5 - center.y).length() / reach
+					if share <= 0.0:
+						continue
+					var strength: float = brightness * share * share * (3.0 - 2.0 * share)
+					dark[i] *= 1.0 - strength
+					total[i] += strength
+					match fixture["tint"]:
+						LightFixture.WARM:
+							warm_sum[i] += strength
+						LightFixture.RED:
+							red_sum[i] += strength
+		if not any:
+			continue
+		for i in range(count):
+			light[i * 4 + circuit] = int(clampf(1.0 - dark[i], 0.0, 1.0) * 255.0)
+			if total[i] > 0.0:
+				warm[i * 4 + circuit] = int(clampf(warm_sum[i] / total[i], 0.0, 1.0) * 255.0)
+				red[i * 4 + circuit] = int(clampf(red_sum[i] / total[i], 0.0, 1.0) * 255.0)
+	return {
+		"light": Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGBA8, light),
+		"warm": Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGBA8, warm),
+		"red": Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGBA8, red),
+	}
+
+
+## What the fixtures' light does at a pixel, as the shader works it out, given the baked pictures, how
+## live each circuit is (mains, failing, emergency, always, each from 0 to 1), and the light with
+## nothing near. Says the pixel's "light" from 0 to 1 and its "tint": "white", "warm", or "red", the
+## one that's more than half the light there, when it's strong enough to show.
+static func evaluate(maps: Dictionary, x: int, y: int, live: Vector4, ambient: float, extra_white: float = 0.0) -> Dictionary:
+	var light_map: Image = maps["light"]
+	var width: int = light_map.get_width()
+	var height: int = light_map.get_height()
+	var px: int = clampi(x, 0, width - 1)
+	var py: int = clampi(y, 0, height - 1)
+	var circuits: Color = light_map.get_pixel(px, py)
+	var warm_share: Color = maps["warm"].get_pixel(px, py)
+	var red_share: Color = maps["red"].get_pixel(px, py)
+	var amounts := Vector4(circuits.r * live.x, circuits.g * live.y, circuits.b * live.z, circuits.a * live.w)
+	var warm_amount: float = amounts.x * warm_share.r + amounts.y * warm_share.g + amounts.z * warm_share.b + amounts.w * warm_share.a
+	var red_amount: float = amounts.x * red_share.r + amounts.y * red_share.g + amounts.z * red_share.b + amounts.w * red_share.a
+	var all_amount: float = amounts.x + amounts.y + amounts.z + amounts.w
+	var white_amount: float = maxf(all_amount - warm_amount - red_amount, 0.0) + ambient + extra_white
+	var dark: float = (1.0 - ambient) * (1.0 - amounts.x) * (1.0 - amounts.y) * (1.0 - amounts.z) * (1.0 - amounts.w)
+	var total: float = white_amount + warm_amount + red_amount
+	var tint: String = "white"
+	if red_amount > warm_amount and red_amount > 0.5 * total and red_amount > TINT_FROM:
+		tint = "red"
+	elif warm_amount > 0.5 * total and warm_amount > TINT_FROM:
+		tint = "warm"
+	return {"light": 1.0 - dark * (1.0 - extra_white), "tint": tint}
+
+
+## A tint only shows where there's at least this much of it.
+const TINT_FROM: float = 0.12

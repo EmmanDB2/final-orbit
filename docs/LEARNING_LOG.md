@@ -1112,3 +1112,12 @@ Files: `scripts/station/station_view.gd`, `scripts/station/hatch_doors.gd`, `scr
 - a per-sprite uniform (`sprite_at`) so a shader looks a shared light map up by station pixel
 - one place that keeps a shared setting in step on many materials
 - easing a door with `move_toward` over a time, and a hold timer before it closes
+
+## 2026-11-14: New Kapteyn-3 ticket 3, planned lighting
+
+Files: `scripts/station/station_light.gd`, `scripts/station/station_view.gd`, `scripts/station/station_layout.gd`, `shaders/interior_light.gdshader`, `shaders/palette_light.gdshaderinc`, `scripts/palette_light.gd`, `tests/test_station.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- baking once into RGBA channels (one per circuit) so live changes are just uniforms
+- summing light by tint and picking the dominant one past half
+- a CPU copy of the shader's math, so a test can check what the shader decides
+- smoothstep falloff and the product of darks to blend overlapping lights

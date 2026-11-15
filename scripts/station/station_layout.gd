@@ -109,7 +109,13 @@ static func _lamps_of(room: StationRoom) -> Array[Dictionary]:
 		for i in range(room.lamp_points.size()):
 			found.append({"point": room.lamp_points[i], "reach": room.lamp_reaches[i] if i < room.lamp_reaches.size() else 40.0})
 		return found
-	for rect: Rect2i in room.walkable:
+	return _lamps_over(room.walkable)
+
+
+# The automatic lamps over a set of floors: one over each floor big enough, and a row down a long one.
+static func _lamps_over(floors: Array[Rect2i]) -> Array[Dictionary]:
+	var found: Array[Dictionary] = []
+	for rect: Rect2i in floors:
 		if rect.get_area() < SMALLEST_LIT_FLOOR:
 			continue
 		var long: float = maxf(rect.size.x, rect.size.y)
@@ -432,6 +438,17 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 			if prop.light != null:
 				var light_at: Vector2 = Vector2(_turned_point(prop.light.point, picture_size, total) + corner) + Vector2(0.5, 0.5)
 				layout._add_fixture(design, prop.light, light_at, i)
+
+	# A station with no fixtures in its data gets automatic lamps over its floors, as the old rooms do.
+	if layout.fixtures.is_empty():
+		for i in range(count):
+			var entry: Dictionary = placed[i]
+			for lamp: Dictionary in _lamps_over(design.modules[i].floors):
+				layout.lamps.append({
+					"point": Vector2(entry["at"] + shift + _turned_point(lamp["point"], entry["size"], entry["turns"])) + Vector2(0.5, 0.5),
+					"reach": lamp["reach"],
+					"room": i,
+				})
 
 	# The hatch pieces, in every layer.
 	var passages: Array[Rect2i] = []
