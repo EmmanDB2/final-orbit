@@ -135,9 +135,11 @@ func _draw() -> void:
 	var pixel: float = WORLD_PIXEL * step * _pixels_per_unit
 	var fade: float = height / shadow_height
 	var rows: int = 3 if fade < 0.5 else 2
+	# Higher up the strip narrows with hard ends, keeping only its middle: all of it at first, then
+	# the middle 60%, then the middle 30%.
+	var kept: float = 1.0 if fade <= 0.35 else (0.6 if fade <= 0.7 else 0.3)
 	for i in range(count):
-		# Higher up it breaks into a pattern of pixels, and then fewer of them.
-		if (fade > 0.35 and i % 2 == 0) or (fade > 0.7 and i % 4 != 1):
+		if absf((i + 0.5) / count - 0.5) > kept * 0.5:
 			continue
 		var at_column: int = first + i * step
 		var angle: float = (at_column + step * 0.5) * WORLD_PIXEL / data.radius + turned

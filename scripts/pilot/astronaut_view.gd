@@ -116,8 +116,8 @@ var leaks: PackedFloat32Array = PackedFloat32Array()
 var frost: float = 0.0
 ## How strong the leaking gas is, from 0 to 1: after the air runs out, it thins and dies away.
 var leak_strength: float = 1.0
-## Burning up: 0 is whole, 1 is gone. The suit flares to the re-entry glow's colors, then breaks up
-## through an ordered dither.
+## Burning up: 0 is whole, 1 is gone. The suit flares to the re-entry glow's colors, then breaks up,
+## each as a hard line sweeping down from the head to the feet.
 var burn: float = 0.0
 var _frost_shown: int = 0
 var _light: DirectionalLight3D

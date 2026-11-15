@@ -1085,3 +1085,11 @@ Files: `shaders/planet.gdshader`, `shaders/star.gdshader`, `shaders/reentry.gdsh
 - folding a dither's average into a constant (1 - 0.4 + 0.5 * 0.4 = 0.8) so the band positions stay put
 - a shader parameter that only fed a removed pattern is deleted, not left dead
 - how to tell a shader really compiled: a throwaway script that draws it in a window, since headless runs never build shaders
+
+## 2026-11-14: No dithering ticket 3, the pilot burning up and a last sweep
+
+Files: `scripts/pilot/astronaut_pixels.gdshader`, `scripts/pilot/astronaut_view.gd`, `scripts/ground_effects.gd`, `docs/LEARNING_LOG.md`
+
+- a dissolve over time as a hard line compared against UV.y, instead of a per-pixel threshold
+- keeping only the middle share of a strip of columns by distance from its centre
+- sweeping a codebase with grep for leftover patterns after a rule change
