@@ -105,13 +105,13 @@ void fragment() {
 		white = 1.0 - (1.0 - white) * (1.0 - beam);
 	}
 	vec4 art = texture(TEXTURE, UV);
-	vec4 lit = palette_lit(art, light, pixel);
+	vec4 lit = palette_lit(art, light);
 	// Where the emergency light outshines the rest, it's red: the light red where it's strong, the
-	// dark red where it's weaker, dithered in at the edge. Outlines and the darkest colors stay dark,
+	// dark red where it's weaker, with a clean edge. Outlines and the darkest colors stay dark,
 	// and glowing colors keep their own.
 	float red = clamp((alarm - white) * 2.5, 0.0, 1.0);
 	float shade = dot(art.rgb, vec3(0.299, 0.587, 0.114));
-	if (red > bayer4(pixel) && art.a > 0.0 && shade > 0.12 && palette_glow[palette_index(art.rgb)] < 0.5) {
+	if (red > 0.5 && art.a > 0.0 && shade > 0.12 && palette_glow[palette_index(art.rgb)] < 0.5) {
 		if (alarm * (0.6 + shade) > 0.4) {
 			lit.rgb = alarm_bright;
 		} else if (alarm > 0.12) {

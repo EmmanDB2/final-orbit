@@ -98,7 +98,7 @@ static func lit_picture(art: Image, from := Vector2(-1.0, -1.4), front: float = 
 				normal = Vector3(0.0, down, sqrt(maxf(1.0 - down * down, 0.0)))
 			var diffuse: float = clampf((normal.dot(toward) + 0.5) / 1.5, 0.0, 1.0)
 			var light: float = ambient + (1.0 - ambient) * minf(diffuse * 1.5, 1.0)
-			picture.set_pixel(x, y, PaletteLight.lit_color(color, light, x, y, steps_table))
+			picture.set_pixel(x, y, PaletteLight.lit_color(color, light, steps_table))
 	return picture
 
 

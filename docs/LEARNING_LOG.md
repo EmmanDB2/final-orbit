@@ -1069,3 +1069,11 @@ Files: `scripts/ui/gig_board.gd`, `tests/test_gigs.gd`, `docs/LEARNING_LOG.md`
 - a "just did it" flag that locks a button until the player does something else, so a double tap can't repeat it
 - re-reading a list from its source (refresh) after changing it, so a replaced row shows at once
 - a UI widget that only lays itself out when it draws, and what that means for driving it in a headless test
+
+## 2026-11-14: No dithering ticket 1, palette lighting without dither
+
+Files: `shaders/palette_light.gdshaderinc`, `shaders/hull_light.gdshader`, `shaders/interior_light.gdshader`, `scripts/palette_light.gd`, `scripts/ship/hull_light.gd`, `docs/LEARNING_LOG.md`
+
+- snapping to the nearest step with floor(x + 0.5) instead of a threshold pattern
+- replacing a noise threshold with its average (0.5) so band positions stay put
+- dropping an unused function argument from a shader helper and all its callers

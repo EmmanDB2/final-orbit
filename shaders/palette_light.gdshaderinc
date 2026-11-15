@@ -1,7 +1,7 @@
 // palette_light.gdshaderinc: light and shade that keep to the agency palette. Shade never mixes in
 // black: each pixel steps down its own ramp in the palette, white hull through the grays to near
 // black, orange, gold, blue, and glass each down their own, and where one step meets the next the
-// art's own pixels are dithered in a 4x4 Bayer pattern, like the sky's bands. Lights and screens
+// art's own pixels switch in a hard line to the nearest step, like the sky's bands. Lights and screens
 // (telemetry and thrust colors) glow and never darken. Shared by every shader that lights art, so
 // rooms and, later, hulls shade the same way: each works out how much light reaches a pixel, from
 // 0 to 1, and hands it to palette_lit(). From DESIGN.md, "Art direction" (the locked palette) and
@@ -35,17 +35,9 @@ int palette_index(vec3 color) {
 	return best;
 }
 
-// The 4x4 Bayer threshold at an art pixel, from 0 to just under 1.
-float bayer4(vec2 pixel) {
-	ivec2 at = ivec2(mod(floor(pixel), 4.0));
-	int index = at.x + at.y * 4;
-	int matrix[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
-	return (float(matrix[index]) + 0.5) / 16.0;
-}
-
-// This color as this much light leaves it, at this art pixel: stepped down its ramp, dithered
-// between steps. Full light leaves it as it is; none takes it all the way down.
-vec4 palette_lit(vec4 color, float light, vec2 pixel) {
+// This color as this much light leaves it: stepped down its ramp to the nearest step, with a hard
+// edge where one step meets the next. Full light leaves it as it is; none takes it all the way down.
+vec4 palette_lit(vec4 color, float light) {
 	if (color.a <= 0.0 || palette_count == 0) {
 		return color;
 	}
@@ -54,10 +46,7 @@ vec4 palette_lit(vec4 color, float light, vec2 pixel) {
 		return color;
 	}
 	float down = (1.0 - clamp(light, 0.0, 1.0)) * float(MOST_STEPS);
-	int steps = int(floor(down));
-	if (down - float(steps) > bayer4(pixel)) {
-		steps += 1;
-	}
+	int steps = int(floor(down + 0.5));
 	for (int i = 0; i < MOST_STEPS; i++) {
 		if (i < steps) {
 			index = palette_down[index];

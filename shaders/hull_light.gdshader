@@ -48,5 +48,5 @@ void fragment() {
 		float share = clamp(1.0 - distance(pixel, engine_at) / engine_reach, 0.0, 1.0);
 		light = 1.0 - (1.0 - light) * (1.0 - engine_level * share);
 	}
-	COLOR = palette_lit(art, light, pixel);
+	COLOR = palette_lit(art, light);
 }

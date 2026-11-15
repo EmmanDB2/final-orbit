@@ -21,8 +21,6 @@ const GLOWING: Array = [&"telemetry_cyan", &"telemetry_green", &"telemetry_amber
 const SIZE: int = 32
 ## The most steps any ramp has, as in the shader.
 const MOST_STEPS: int = 5
-## The shader's 4x4 Bayer pattern, row by row.
-const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
 
 ## A material for this shader, with the palette's ramps filled in.
@@ -46,8 +44,9 @@ static func table() -> Dictionary:
 	return {"colors": colors, "down": _downs(names), "glow": glow}
 
 
-## A color as this much light leaves it at a pixel, as palette_lit() in the shader has it.
-static func lit_color(color: Color, light: float, x: int, y: int, steps_table: Dictionary) -> Color:
+## A color as this much light leaves it, as palette_lit() in the shader has it: the nearest step on
+## its ramp, the same at every pixel.
+static func lit_color(color: Color, light: float, steps_table: Dictionary) -> Color:
 	if color.a <= 0.0:
 		return color
 	var colors: PackedColorArray = steps_table["colors"]
@@ -61,9 +60,7 @@ static func lit_color(color: Color, light: float, x: int, y: int, steps_table: D
 	if steps_table["glow"][index] == 1:
 		return color
 	var down: float = (1.0 - clampf(light, 0.0, 1.0)) * MOST_STEPS
-	var steps: int = floori(down)
-	if down - steps > (BAYER[(y % 4) * 4 + (x % 4)] + 0.5) / 16.0:
-		steps += 1
+	var steps: int = floori(down + 0.5)
 	for i in range(steps):
 		index = steps_table["down"][index]
 	var lit: Color = colors[index]
