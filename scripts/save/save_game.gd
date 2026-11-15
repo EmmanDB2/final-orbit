@@ -8,7 +8,7 @@ class_name SaveGame
 extends Node
 
 ## This version of the save. Raise it when what's saved changes, and add a step to _upgrade.
-const VERSION: int = 3
+const VERSION: int = 4
 ## Where saves live. A test points this somewhere of its own and turns saving on for itself.
 static var folder: String = "user://saves"
 static var on_in_tests: bool = false
@@ -84,6 +84,10 @@ static func _upgrade(data: Dictionary) -> Dictionary:
 				agency["focus"] = active["id"] if not active.is_empty() else -1
 				agency.erase("active")
 				data["agency"] = agency
+			3:
+				# Version 4 saves the docked port by name. An old number stays a number in the save, and the
+				# station turns it into a port by its design's legacy_ports when the ship's put back.
+				pass
 		data["version"] += 1
 	return data
 

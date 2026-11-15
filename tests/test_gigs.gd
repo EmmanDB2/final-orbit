@@ -269,7 +269,7 @@ func _test_old_save_upgrades() -> void:
 	var old: Dictionary = {"version": 2, "agency": {"credits": 1500, "next_id": 12, "rounds": {}, "active": one["gigs"][0], "cargo_kg": 600.0}}
 	_reset()
 	var upgraded: Dictionary = SaveGame._upgrade(old)
-	_check("the save is now version 3", upgraded["version"] == SaveGame.VERSION and SaveGame.VERSION == 3)
+	_check("the save is now version 4", upgraded["version"] == SaveGame.VERSION and SaveGame.VERSION == 4)
 	var agency_data: Dictionary = upgraded["agency"]
 	_check("the active gig is a one-item list", agency_data["gigs"].size() == 1 and not agency_data.has("active"))
 	_check("focus is its id", agency_data["focus"] == old_gig.id)
@@ -280,7 +280,7 @@ func _test_old_save_upgrades() -> void:
 	var none: Dictionary = SaveGame._upgrade({"version": 2, "agency": {"credits": 5, "active": {}}})
 	_check("an old save with no gig holds none", none["agency"]["gigs"].is_empty() and none["agency"]["focus"] == -1)
 	var bare: Dictionary = SaveGame._upgrade({"version": 1})
-	_check("a version 1 save steps all the way up", bare["version"] == 3 and bare["agency"]["gigs"].is_empty())
+	_check("a version 1 save steps all the way up", bare["version"] == SaveGame.VERSION and bare["agency"]["gigs"].is_empty())
 	_agency.credits = 0
 	_reset()
 

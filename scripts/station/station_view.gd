@@ -12,6 +12,10 @@ extends Node2D
 
 ## Emitted when the pilot should be told why a docking didn't take.
 signal message_raised(text: String)
+## Emitted when an airlock's cycle ends: which port it's on, and whether the pilot's going out.
+signal airlock_cycle_done(port: int, going_out: bool)
+## Emitted when the station's power is switched on or off.
+signal powered_changed(on: bool)
 
 ## The station shows as a dot at this zoom and farther.
 @export var dot_max_zoom: float = 1.0 / 256.0
@@ -39,6 +43,14 @@ signal message_raised(text: String)
 @export var port_door_depth: float = 44.0
 ## The most lamps the insides' shader takes.
 const INTERIOR_LAMPS: int = 64
+## How long an airlock takes to cycle, in seconds, and how long its outer door stays open after.
+const CYCLE_SECONDS: float = 2.5
+const OUTER_OPEN_AFTER_SECONDS: float = 2.0
+## The kinds of port: an old station's, which docks, lets the pilot in and out, and takes EVA; a docking
+## collar, which only ships dock at; and an airlock, which only the pilot goes in and out of.
+const LEGACY: String = "legacy"
+const DOCK: String = "dock"
+const AIRLOCK: String = "airlock"
 ## How long an emergency lamp's pulse takes, in seconds.
 const EMERGENCY_PULSE_SECONDS: float = 2.4
 ## With the power on, a failing fixture flickers out for a moment every so often: how long it waits
@@ -101,6 +113,9 @@ var _pixels_per_unit: float = 1.0
 var _roll: float = 0.0
 # Where the free ports are in the station's own frame, in world units: "at" and "face".
 var _ports: Array[Dictionary] = []
+# The airlock cycle under way: its "port", whether it's "out", and "time" through it, or empty.
+var _cycle: Dictionary = {}
+var _lamps: AirlockLamps
 # The port nearest the hatch, while it's close enough to show.
 var _guide_port: int = -1
 var _guide_ready: bool = false
@@ -125,14 +140,11 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 	process_physics_priority = -5
 	var far_corner := Vector2(layout.origin).max(Vector2(layout.image.get_size() - layout.origin))
 	_contact_range = far_corner.length() * design.art_pixel_size + ship_reach
+	# The ports a ship can dock at, and for a station of modules the airlocks after them.
 	for port: Dictionary in layout.free_ports:
-		var face := Vector2(port["face"])
-		var surface: Vector2 = Vector2(port["point"]) + Vector2(0.5, 0.5) + face * 0.5
-		var entry: Dictionary = {"at": (surface - Vector2(layout.origin)) * design.art_pixel_size, "face": face}
-		if port.has("inner"):
-			# A station of modules says where the pilot stands by the port's door.
-			entry["inner"] = (Vector2(port["inner"]) - Vector2(layout.origin)) * design.art_pixel_size
-		_ports.append(entry)
+		_add_port(port, DOCK if layout.modular else LEGACY)
+	for port: Dictionary in layout.airlock_ports:
+		_add_port(port, AIRLOCK)
 	_sprite.texture = ImageTexture.create_from_image(layout.image)
 	# Its outside is lit by the star once its curvature's worked out, off to the side, as it's big.
 	var outside: Image = layout.image
@@ -180,6 +192,19 @@ func _build_modular_inside() -> void:
 		_inside.add_child(sprite)
 		_stands.append({"sprite": sprite, "foot": stand["foot"]})
 	_inside.add_child(_layer_sprite(layout.overhead_image, Z_OVERHEAD))
+	# The airlock's status lamps, either side of each of its doors.
+	_lamps = AirlockLamps.new()
+	_lamps.z_index = Z_OVERHEAD
+	for i in range(_ports.size()):
+		if _ports[i]["kind"] != AIRLOCK:
+			continue
+		for hatch: Dictionary in layout.hatches:
+			if hatch["ports"].has(_ports[i]["name"]) and (hatch["kind"] == "airlock" or hatch["kind"] == "door"):
+				var across: Vector2 = Vector2(hatch["face"]).orthogonal()
+				for side in [-1.0, 1.0]:
+					_lamps.lamps.append({"at": hatch["center"] - Vector2(layout.origin) + across * side * 20.0, "airlock": i})
+	_inside.add_child(_lamps)
+	_sync_collar_doors()
 
 
 # A layer of the whole station's picture as a sprite, lit.
@@ -211,6 +236,21 @@ func _set_light_param(param: String, value: Variant) -> void:
 	_light_params[param] = value
 	for material: ShaderMaterial in _lit_materials:
 		material.set_shader_parameter(param, value)
+
+
+# A port, from the layout's, as the view keeps it: where its hatch is and which way it faces in the
+# station's frame, in world units, its kind, and its name.
+func _add_port(port: Dictionary, kind: String) -> void:
+	var face := Vector2(port["face"])
+	var surface: Vector2 = Vector2(port["point"]) + Vector2(0.5, 0.5) + face * 0.5
+	var entry: Dictionary = {
+		"at": (surface - Vector2(layout.origin)) * _design.art_pixel_size, "face": face,
+		"kind": kind, "name": port.get("name", str(_ports.size())),
+	}
+	if port.has("inner"):
+		# A station of modules says where the pilot stands by the port's door.
+		entry["inner"] = (Vector2(port["inner"]) - Vector2(layout.origin)) * _design.art_pixel_size
+	_ports.append(entry)
 
 
 # The insides lit by the station's lamps. With the power off, only its emergency lamps pulse and its
@@ -318,6 +358,7 @@ func set_powered(on: bool) -> void:
 		return
 	_powered = on
 	_light_inside()
+	powered_changed.emit(on)
 
 
 func is_powered() -> bool:
@@ -461,6 +502,7 @@ func _process(delta: float) -> void:
 	_pick_up_light()
 	_change_lights(TimeWarp.real(delta))
 	_light_outside()
+	_run_cycle(TimeWarp.real(delta))
 	if _doors != null:
 		_doors.update(TimeWarp.real(delta), _pilot_at if _pilot_inside else Vector2(-1.0e9, -1.0e9), layout.origin)
 	var wanted: float = 1.0 if _roof_off else 0.0
@@ -529,14 +571,30 @@ func port_outer(port: int, clearance: float) -> Vector2:
 	return _ports[port]["at"] + _ports[port]["face"] * clearance
 
 
-## The free port with nothing docked at it that's within reach of this point in the world, or -1.
+## The port the pilot can board by from outside, on EVA, that's within reach of this point in the world,
+## or -1: any free port of an old station, the airlock of a station of modules, and never a docking collar.
 func free_port_near(x: float, y: float, time: float, port_reach: float) -> int:
 	var frame: Dictionary = _frame_at(time)
 	var local: Vector2 = Vector2(x - frame["x"], y - frame["y"]).rotated(-frame["angle"])
 	for i in range(_ports.size()):
-		if i != docked_port and local.distance_to(_ports[i]["at"]) <= port_reach:
+		if i != docked_port and port_exits(i) and local.distance_to(_ports[i]["at"]) <= port_reach:
 			return i
 	return -1
+
+
+## What kind a port is: "legacy", "dock", or "airlock".
+func port_kind(port: int) -> String:
+	return _ports[port]["kind"]
+
+
+## Whether the pilot can go out of the station by this port, and in by it from outside.
+func port_exits(port: int) -> bool:
+	return _ports[port]["kind"] != DOCK
+
+
+# Whether a ship can dock at this port.
+func _port_docks(port: Dictionary) -> bool:
+	return port["kind"] != AIRLOCK
 
 
 ## The free port whose inner door is within reach of this point in the station's frame, or -1.
@@ -547,12 +605,38 @@ func port_near_inside(local: Vector2, door_reach: float) -> int:
 	return -1
 
 
-## Something to use within reach of this point in the station's frame, or nothing.
+## The nearest thing to use within reach of this point in the station's frame, or nothing. A bed to
+## wake up beside isn't something to use, and the breaker panel only is while the lights switch is on.
 func spot_near(local: Vector2, spot_reach: float) -> Dictionary:
+	var best: Dictionary = {}
+	var best_away: float = spot_reach
 	for spot: Dictionary in layout.spots:
+		if spot["kind"] == StationProp.WAKE or (spot["kind"] == StationProp.POWER and not FeatureFlags.LIGHTS_SWITCH):
+			continue
 		var at: Vector2 = (Vector2(spot["point"]) - Vector2(layout.origin)) * _design.art_pixel_size
-		if local.distance_to(at) <= spot_reach:
-			return spot
+		var away: float = local.distance_to(at)
+		if away <= best_away:
+			best_away = away
+			best = spot
+	return best
+
+
+## Where the pilot wakes up after the med bay: standing beside the bed with the "wake" spot, facing down,
+## as a "local" point in the station's frame and a "facing". Empty if the station has no such bed, and
+## they wake at the home port's inner door instead.
+func wake_spot(radius: float) -> Dictionary:
+	for spot: Dictionary in layout.spots:
+		if spot["kind"] != StationProp.WAKE:
+			continue
+		var bed: Vector2 = spot_point(spot)
+		var ways: Array[Vector2] = [Vector2.RIGHT, Vector2.LEFT, Vector2.DOWN, Vector2.UP,
+				Vector2(1.0, 1.0).normalized(), Vector2(-1.0, 1.0).normalized(), Vector2(1.0, -1.0).normalized(), Vector2(-1.0, -1.0).normalized()]
+		var away: float = 0.0
+		while away <= 120.0:
+			for way: Vector2 in ways:
+				if pilot_fits(bed + way * away, radius):
+					return {"local": bed + way * away, "facing": PI}
+			away += 2.0
 	return {}
 
 
@@ -647,6 +731,7 @@ func _physics_process(delta: float) -> void:
 		_was_docked = false
 		_leaving_port = true
 		docked_port = -1
+		_sync_collar_doors()
 	_find_guide(frame, to_ship)
 	if distance > _contact_range or not _ship.has_shape():
 		return
@@ -684,6 +769,8 @@ func _find_guide(frame: Dictionary, to_ship: Vector2) -> void:
 	var hatch: Vector2 = _hatch_in_frame(frame, to_ship)
 	var nearest: float = guide_reach
 	for i in range(_ports.size()):
+		if not _port_docks(_ports[i]):
+			continue
 		var away: float = hatch.distance_to(_ports[i]["at"])
 		if away < nearest:
 			nearest = away
@@ -708,10 +795,14 @@ func _try_docking(frame: Dictionary, to_ship: Vector2) -> bool:
 	var nearest: int = -1
 	var nearest_away: float = INF
 	for i in range(_ports.size()):
+		if not _port_docks(_ports[i]):
+			continue
 		var away: float = hatch.distance_to(_ports[i]["at"])
 		if away < nearest_away:
 			nearest_away = away
 			nearest = i
+	if nearest < 0:
+		return false
 	if _leaving_port:
 		_leaving_port = nearest_away < undock_clear
 		return false
@@ -727,6 +818,7 @@ func _try_docking(frame: Dictionary, to_ship: Vector2) -> bool:
 		_tell_pilot("LINE UP TO DOCK")
 		return false
 	docked_port = nearest
+	_sync_collar_doors()
 	_ship.dock(_docked_point)
 	_dock_goal_heading = _heading_into(port)
 	_dock_heading = _ship.heading - frame["angle"]
@@ -738,15 +830,54 @@ func _try_docking(frame: Dictionary, to_ship: Vector2) -> bool:
 	return true
 
 
-## What a save needs from the station: which port the ship's docked at, if any.
+## What a save needs from the station: the name of the port the ship's docked at, if any.
 func save_state() -> Dictionary:
-	return {"docked_port": docked_port if _ship.docked else -1}
+	return {"docked_port": _ports[docked_port]["name"] if _ship.docked and docked_port >= 0 else ""}
+
+
+## The name of the port the ship's docked at, or an empty one.
+func docked_port_name() -> String:
+	return _ports[docked_port]["name"] if docked_port >= 0 else ""
 
 
 ## Puts a saved ship back on its port, all the way in. Docking repairs and refuels it, as it did when
-## it first docked.
+## it first docked. The port is a name; a number from an older save is turned into one by the design's
+## legacy_ports, and a station without them takes it as the port's place in its list. A port the
+## station doesn't have leaves the ship undocked.
 func restore_state(saved: Dictionary) -> void:
-	var port_index: int = saved.get("docked_port", -1)
+	_dock_at(_port_from_save(saved.get("docked_port", "")))
+
+
+## Docks the ship at the station's home port, as a pilot waking up in the med bay finds it, or at its
+## first free port if the design names none.
+func restore_home() -> void:
+	var home: int = _port_from_save(_design.home_port)
+	_dock_at(home if home >= 0 else _port_from_save(0))
+
+
+# Which of the ports a saved value means, or -1: a name, or an old save's number.
+func _port_from_save(value: Variant) -> int:
+	if value is String or value is StringName:
+		for i in range(_ports.size()):
+			if _ports[i]["name"] == String(value) and _port_docks(_ports[i]):
+				return i
+		return -1
+	var number: int = int(value)
+	if number < 0:
+		return -1
+	if not _design.legacy_ports.is_empty():
+		return _port_from_save(_design.legacy_ports[number]) if number < _design.legacy_ports.size() else -1
+	# Of the ports that can dock, counting from 0.
+	var counted: int = 0
+	for i in range(_ports.size()):
+		if _port_docks(_ports[i]):
+			if counted == number:
+				return i
+			counted += 1
+	return -1
+
+
+func _dock_at(port_index: int) -> void:
 	if port_index < 0 or port_index >= _ports.size():
 		return
 	var port: Dictionary = _ports[port_index]
@@ -758,6 +889,83 @@ func restore_state(saved: Dictionary) -> void:
 	_ship.dock(_docked_point)
 	_was_docked = true
 	_guide_port = -1
+	_sync_collar_doors()
+
+
+# A docking collar's door stands open while a ship's docked at it and shut otherwise, and an airlock's
+# outer door stays shut unless it's cycling, whatever the pilot's nearness.
+func _sync_collar_doors() -> void:
+	if _doors == null:
+		return
+	for i in range(_ports.size()):
+		var port: Dictionary = _ports[i]
+		if port["kind"] == DOCK:
+			var collar: int = _doors.find(port["name"], "dock")
+			if collar >= 0:
+				_doors.force(collar, HatchDoors.OPEN if docked_port == i else HatchDoors.SHUT)
+		elif port["kind"] == AIRLOCK and _cycle.is_empty():
+			var outer: int = _doors.find(port["name"], "airlock")
+			if outer >= 0:
+				_doors.force(outer, HatchDoors.SHUT)
+			var inner: int = _doors.find(port["name"], "door")
+			if inner >= 0:
+				_doors.force(inner, HatchDoors.FREE)
+
+
+## Starts an airlock's cycle, going out to space or coming in from it, which takes 2.5 seconds. Going
+## out the inner door shuts, the lamps go red, then amber pulsing, then green, and the outer door opens:
+## then airlock_cycle_done is emitted. Coming in runs it backward and ends with the inner door open. A
+## station with no doors to run still waits the time.
+func start_airlock_cycle(port: int, going_out: bool) -> void:
+	_cycle = {"port": port, "out": going_out, "time": 0.0, "done": false, "after": 0.0}
+
+
+## Whether an airlock's cycling, so the pilot waits for it.
+func airlock_busy() -> bool:
+	return not _cycle.is_empty() and not _cycle["done"]
+
+
+# Runs the airlock's cycle on a bit: its doors, its lamps, and its end.
+func _run_cycle(delta: float) -> void:
+	if _cycle.is_empty():
+		return
+	var port_index: int = _cycle["port"]
+	var airlock_name: String = _ports[port_index]["name"]
+	var going_out: bool = _cycle["out"]
+	var outer: int = _doors.find(airlock_name, "airlock") if _doors != null else -1
+	var inner: int = _doors.find(airlock_name, "door") if _doors != null else -1
+	_cycle["time"] += delta
+	var t: float = _cycle["time"]
+	if not _cycle["done"]:
+		var lamp_state: int
+		if going_out:
+			lamp_state = AirlockLamps.RED if t < 0.8 else (AirlockLamps.AMBER if t < 1.9 else AirlockLamps.GREEN)
+		else:
+			lamp_state = AirlockLamps.GREEN if t < 0.6 else (AirlockLamps.AMBER if t < 1.7 else AirlockLamps.RED)
+		if _lamps != null:
+			_lamps.set_state(port_index, lamp_state)
+		if _doors != null:
+			if inner >= 0:
+				_doors.force(inner, HatchDoors.SHUT)
+			if outer >= 0:
+				# Coming in, the outer door's open as they step in, and shuts behind them.
+				_doors.force(outer, HatchDoors.OPEN if not going_out and t < 0.3 else HatchDoors.SHUT)
+		if t >= CYCLE_SECONDS:
+			_cycle["done"] = true
+			_cycle["after"] = 0.0
+			if _lamps != null:
+				_lamps.set_state(port_index, AirlockLamps.GREEN)
+			if _doors != null:
+				if going_out and outer >= 0:
+					_doors.force(outer, HatchDoors.OPEN)
+				if not going_out and inner >= 0:
+					_doors.force(inner, HatchDoors.OPEN)
+			airlock_cycle_done.emit(port_index, going_out)
+	else:
+		_cycle["after"] += delta
+		if _cycle["after"] >= (OUTER_OPEN_AFTER_SECONDS if going_out else 1.0):
+			_cycle = {}
+			_sync_collar_doors()
 
 
 # Where a docked ship is held: [x, y, velocity x, velocity y, heading, spin].

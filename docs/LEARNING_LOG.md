@@ -1121,3 +1121,12 @@ Files: `scripts/station/station_light.gd`, `scripts/station/station_view.gd`, `s
 - summing light by tint and picking the dominant one past half
 - a CPU copy of the shader's math, so a test can check what the shader decides
 - smoothstep falloff and the product of darks to blend overlapping lights
+
+## 2026-11-14: New Kapteyn-3 ticket 4, ports, airlock, docking, waking, and the save
+
+Files: `scripts/station/station_view.gd`, `scripts/station/airlock_lamps.gd`, `scripts/pilot.gd`, `scripts/main.gd`, `scripts/world_catalog.gd`, `scripts/save/save_game.gd`, `tests/test_station_ports.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- a small state machine (a timer and phases) driving doors, lamps, and a signal
+- saving by name instead of by index, with a legacy table to read old numbers
+- versioned saves: bump the version and read the old shape
+- searching outward in rings for the nearest spot something fits

@@ -168,12 +168,22 @@ func _station_info(index: int) -> Dictionary:
 		["ORBITS", _bodies[parent].display_name, true],
 		["ALTITUDE", _meters(radius - _gravity_model.get_body_radius(parent)), true],
 		["PERIOD", _minutes(TAU * radius / speed), true],
-		["ROOMS", str(design.rooms.size()), true],
+		["ROOMS", _room_names(design), true],
 		["FREE PORTS", str(entry["free_ports"]), true],
 		["SERVICES", "FUEL, REPAIR", true],
 		["DISTANCE", _meters(away), true],
 	]
 	return {"name": design.display_name, "chip": design.chip, "rows": rows, "note": "", "can_target": true}
+
+
+# A station's rooms for its card: its modules' names, or how many rooms an old one has.
+func _room_names(design: StationDesign) -> String:
+	if design.modules.is_empty():
+		return str(design.rooms.size())
+	var names: PackedStringArray = PackedStringArray()
+	for module: StationModule in design.modules:
+		names.append(module.display_name.to_upper())
+	return ", ".join(names)
 
 
 func _site_info(index: int) -> Dictionary:

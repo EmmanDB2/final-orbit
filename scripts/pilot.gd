@@ -181,6 +181,7 @@ func start_pilot(gravity_model: GravityModel, ship: Node2D, station: StationView
 	air = data.air_seconds
 	# A cockpit destroyed with them in it kills them too.
 	ship.ship_lost.connect(_on_ship_lost)
+	station.airlock_cycle_done.connect(_on_airlock_cycled)
 	# The boots are what meet the ground.
 	state.ground_clearance = data.stand_height
 	# Before the ship's tick, so the pilot and ship both reach the same moment before the view's drawn.
@@ -464,7 +465,8 @@ func _die(cause: String, severity: float, detail: String = "", impact_speed: flo
 	died.emit(cause, severity)
 
 
-## Back from the med bay: alive, patched, and inside the station by this port.
+## Back from the med bay: alive, patched, and inside the station, standing beside the bed there, facing
+## down, or by this port's inner door if the station has no such bed.
 func wake_in_station(port: int) -> void:
 	dead = false
 	death_cause = ""
@@ -481,7 +483,11 @@ func wake_in_station(port: int) -> void:
 		_figure.lift = 0.0
 	carried_kg = 0.0
 	_set_stranded(false)
+	var beside: Dictionary = _station.wake_spot(data.body_radius)
 	_enter_station(port)
+	if not beside.is_empty():
+		_local = beside["local"]
+		_local_facing = beside["facing"]
 
 
 ## How hard the jetpack pushes now, in world units per second squared: less with someone held.
@@ -704,6 +710,9 @@ func _enter_station(port: int) -> void:
 	_station.set_roof_off(true)
 	_set_stranded(false)
 	_set_mode(INSIDE)
+	# Coming in by an airlock, they wait in it while it cycles.
+	if _station.port_kind(port) == StationView.AIRLOCK:
+		_station.start_airlock_cycle(port, false)
 
 
 func _tick_inside(delta: float) -> void:
@@ -711,7 +720,9 @@ func _tick_inside(delta: float) -> void:
 	# single tick out would put the pilot hundreds of units off, at orbital speed.
 	state.time = _ship.state.time + delta
 	var frame: Dictionary = _station.frame_at(state.time)
-	var wanted: Vector2 = _wanted_move().rotated(-frame["angle"]) * data.walk_speed
+	# In an airlock that's cycling they stand and wait.
+	var waiting: bool = _station.airlock_busy()
+	var wanted: Vector2 = Vector2.ZERO if waiting else _wanted_move().rotated(-frame["angle"]) * data.walk_speed
 	_walking = _walking.move_toward(wanted, data.walk_acceleration * delta)
 	# One way at a time, so a wall stops only the part of the move going into it.
 	var along_x := Vector2(_walking.x * delta, 0.0)
@@ -732,23 +743,41 @@ func _tick_inside(delta: float) -> void:
 
 	var spot: Dictionary = _station.spot_near(_local, data.use_reach)
 	var port: int = _station.port_near_inside(_local, data.use_reach)
-	if not spot.is_empty():
-		_set_action("USE TERMINAL", _station_box(_station.spot_point(spot), TERMINAL_BOX))
+	if waiting:
+		_set_action("")
+	elif not spot.is_empty():
+		if spot["kind"] == StationProp.POWER:
+			_set_action("SWITCH POWER", _station_box(_station.spot_point(spot), TERMINAL_BOX))
+		else:
+			_set_action("USE TERMINAL", _station_box(_station.spot_point(spot), TERMINAL_BOX))
 	elif port >= 0 and port == _station.docked_port:
 		_set_action("BOARD SHIP", _ship.cockpit_corners)
-	elif port >= 0:
+	elif port >= 0 and _station.port_exits(port):
 		_set_action("EXIT STATION", _station_box(_station.port_inner(port), PORT_BOX))
 	else:
 		_set_action("")
 	if _action != "" and _interact_pressed():
 		match _action:
+			"SWITCH POWER":
+				_station.set_powered(not _station.is_powered())
 			"USE TERMINAL":
 				# The docking room's terminal sells fuel and repairs; any other is the gig board.
 				terminal_used.emit({"kind": "service", "at": {"kind": "station"}} if spot.get("kind", "") == "service" else {"kind": "station", "index": 0})
 			"BOARD SHIP":
 				_board_ship()
 			"EXIT STATION":
-				_leave_station(port, frame)
+				# An airlock cycles first, and the pilot goes out when it's done.
+				if _station.port_kind(port) == StationView.AIRLOCK:
+					_station.start_airlock_cycle(port, true)
+					_set_action("")
+				else:
+					_leave_station(port, frame)
+
+
+# The airlock's cycle ended: going out, the pilot steps out through its outer door.
+func _on_airlock_cycled(port: int, going_out: bool) -> void:
+	if going_out and mode == INSIDE:
+		_leave_station(port, _station.frame_at(state.time))
 
 
 func _place_inside(frame: Dictionary) -> void:

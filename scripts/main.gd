@@ -151,7 +151,7 @@ func _ready() -> void:
 	_hangar = Hangar.new(ship_list)
 	services.hangar = _hangar
 	# A traded ship's hatch sits somewhere else, so the station takes it onto the port again.
-	services.redock = func() -> void: $Station.restore_state({"docked_port": $Station.docked_port})
+	services.redock = func() -> void: $Station.restore_state({"docked_port": $Station.docked_port_name()})
 	$Hud/SafeArea/FlightHud.connect_services(services)
 	agency.message_raised.connect($Hud/SafeArea/CommsLine.on_agency_message)
 	warp.message_raised.connect($Hud/SafeArea/CommsLine._on_ship_warning_raised)
@@ -174,8 +174,9 @@ func _ready() -> void:
 	$Hud/SafeArea/FlightHud.med_bay_done.connect(_wake_up)
 	$Hud/SafeArea/FlightHud.settings_changed.connect(func() -> void: _sound.apply_settings())
 	$Hud/SafeArea/FlightHud.lights_requested.connect(func() -> void:
-		$Station.set_powered(not $Station.is_powered())
-		$Hud/SafeArea/FlightHud.show_powered($Station.is_powered()))
+		$Station.set_powered(not $Station.is_powered()))
+	# The breaker panel switches it too, so the menu follows the station.
+	$Station.powered_changed.connect(func(on: bool) -> void: $Hud/SafeArea/FlightHud.show_powered(on))
 	if opening:
 		_open_title(home, has_save)
 	else:
@@ -373,8 +374,9 @@ func _wake_up() -> void:
 	$Ship.engine_on = false
 	$Ship.throttle = 0.0
 	$Hud/SafeArea/FlightHud.show_throttle(0.0)
+	# The station's home port, and the pilot waking beside its med bed if it has one.
 	if not $Ship.docked:
-		$Station.restore_state({"docked_port": 0})
+		$Station.restore_home()
 	$Pilot.wake_in_station($Station.docked_port)
 	_death = {}
 	if _saves != null:
