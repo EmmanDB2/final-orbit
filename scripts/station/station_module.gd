@@ -22,6 +22,10 @@ extends Resource
 @export var floors: Array[Rect2i] = []
 @export var ports: Array[StationPort] = []
 @export var props: Array[PropPlacement] = []
+## The port you walk into the room by, and the long axis of its ceiling strips ("east_west" or
+## "north_south"), at right angles to the line you walk in on.
+@export var main_port: String = ""
+@export_enum("east_west", "north_south") var light_axis: String = ""
 ## Lights set on the module itself, apart from the ones its props carry.
 @export var fixtures: Array[LightFixture] = []
 ## Window rectangles on the roof layer. They glow warm while the station's powered.

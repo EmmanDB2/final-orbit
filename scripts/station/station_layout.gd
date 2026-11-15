@@ -36,7 +36,8 @@ var roof_image: Image
 ## ends on, to sort it against the pilot), and its "module".
 var props: Array[Dictionary] = []
 ## Every light put in the data, each with its "point" on the picture, its "reach" in picture pixels,
-## the "room" (module) it's in, and its "tint", "circuit", and "brightness".
+## the "room" (module) it's in, its "tint", "circuit", "brightness", and "on_emergency", and for a ceiling
+## strip its unit "axis" and "half_length" in picture pixels (a zero axis for a point).
 var fixtures: Array[Dictionary] = []
 ## Windows as rectangles on the picture.
 var windows: Array[Rect2i] = []
@@ -250,6 +251,75 @@ static func _turned_face(face: Vector2, turns: int) -> Vector2i:
 	return f
 
 
+## What's wrong with a station of modules' lighting, one sentence each, or nothing if it's right. Every
+## room has a main port (one a person walks in by) and its light axis is at right angles to the way in;
+## its ceiling strips all run along that axis and sit on one tidy grid, equally spaced and centered in
+## the room, with rows along the axis; and at least one fixture glows red with the power out.
+static func lighting_problems(design: StationDesign) -> PackedStringArray:
+	var problems := PackedStringArray()
+	for module: StationModule in design.modules:
+		var port: StationPort = module.port_named(module.main_port)
+		if port == null or port.kind == StationPort.CAPPED:
+			problems.append("%s has no main port" % module.display_name)
+		else:
+			var wanted: String = "east_west" if port.face.y != 0 else "north_south"
+			if module.light_axis != wanted:
+				problems.append("%s's light axis %s isn't at right angles to its way in" % [module.display_name, module.light_axis])
+		var emergency: bool = false
+		var strips: Array[LightFixture] = []
+		for fixture: LightFixture in module.fixtures:
+			emergency = emergency or fixture.on_emergency
+			if fixture.strip:
+				strips.append(fixture)
+		for placement: PropPlacement in module.props:
+			if placement.prop != null and placement.prop.light != null and placement.prop.light.on_emergency:
+				emergency = true
+		if not emergency:
+			problems.append("%s has no fixture that glows red with the power out" % module.display_name)
+		if strips.is_empty():
+			continue
+		# The room's own floor, not its doorways.
+		var room := Rect2()
+		var first: bool = true
+		for rect: Rect2i in module.floors:
+			if rect.get_area() >= SMALLEST_LIT_FLOOR:
+				room = Rect2(rect) if first else room.merge(Rect2(rect))
+				first = false
+		var along_x: bool = module.light_axis == "east_west"
+		var along_values: Array[float] = []
+		var across_values: Array[float] = []
+		for fixture: LightFixture in strips:
+			var along: float = fixture.point.x if along_x else fixture.point.y
+			var across: float = fixture.point.y if along_x else fixture.point.x
+			if not _has_value(along_values, along):
+				along_values.append(along)
+			if not _has_value(across_values, across):
+				across_values.append(across)
+		along_values.sort()
+		across_values.sort()
+		if along_values.size() * across_values.size() != strips.size():
+			problems.append("%s's strips aren't on a grid" % module.display_name)
+			continue
+		for values: Array[float] in [along_values, across_values]:
+			for i in range(1, values.size() - 1):
+				if absf((values[i] - values[i - 1]) - (values[i + 1] - values[i])) > 1.0:
+					problems.append("%s's strips aren't equally spaced" % module.display_name)
+					break
+		var middle: Vector2 = room.get_center()
+		var along_middle: float = (along_values[0] + along_values[-1]) / 2.0
+		var across_middle: float = (across_values[0] + across_values[-1]) / 2.0
+		if absf(along_middle - (middle.x if along_x else middle.y)) > 1.5 or absf(across_middle - (middle.y if along_x else middle.x)) > 1.5:
+			problems.append("%s's strips aren't centered in the room" % module.display_name)
+	return problems
+
+
+static func _has_value(values: Array[float], wanted: float) -> bool:
+	for value: float in values:
+		if absf(value - wanted) < 0.5:
+			return true
+	return false
+
+
 # The port with this name, or nothing. Only for a station of modules.
 func port_named(wanted: String) -> Dictionary:
 	for port: Dictionary in ports:
@@ -268,6 +338,8 @@ const RING_DEPTH: int = 24
 const RING_OVERLAP: int = 4
 const CAPPED_ACROSS: int = 48
 const CAPPED_DEPTH: int = 12
+## How long a ceiling strip is, in metres, before its reach rounds it.
+const STRIP_LENGTH_METRES: float = 2.4
 ## How far a free collar's walkable part goes, from the shell toward its door in the middle.
 const COLLAR_WALK: int = 20
 ## How far in from a free collar's shell the pilot stands at its door, in pixels.
@@ -397,8 +469,15 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 				"kind": light.kind,
 				"port": light.port_name,
 			})
+		# A module's strips run along its light axis, turned as the module is.
+		var axis := Vector2.ZERO
+		match module.light_axis:
+			"east_west":
+				axis = Vector2(_turned_face(Vector2.RIGHT, entry["turns"]).abs())
+			"north_south":
+				axis = Vector2(_turned_face(Vector2.DOWN, entry["turns"]).abs())
 		for fixture: LightFixture in module.fixtures:
-			layout._add_fixture(design, fixture, Vector2(at) + Vector2(_turned_point(fixture.point, entry["size"], entry["turns"])) + Vector2(0.5, 0.5), i)
+			layout._add_fixture(design, fixture, Vector2(at) + Vector2(_turned_point(fixture.point, entry["size"], entry["turns"])) + Vector2(0.5, 0.5), i, axis)
 
 	# Props: floor and overhead ones are painted into their layer, standing ones kept apart.
 	var blocked: Array[Rect2i] = []
@@ -439,7 +518,7 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 				layout.spots.append({"point": spot, "kind": prop.spot_kind})
 			if prop.light != null:
 				var light_at: Vector2 = Vector2(_turned_point(prop.light.point, picture_size, total) + corner) + Vector2(0.5, 0.5)
-				layout._add_fixture(design, prop.light, light_at, i)
+				layout._add_fixture(design, prop.light, light_at, i, Vector2.ZERO)
 
 	# A station with no fixtures in its data gets automatic lamps over its floors, as the old rooms do.
 	if layout.fixtures.is_empty():
@@ -549,7 +628,7 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 
 
 # One light from the data, with its point already on the picture, kept with its reach in picture pixels.
-func _add_fixture(design: StationDesign, fixture: LightFixture, point: Vector2, module: int) -> void:
+func _add_fixture(design: StationDesign, fixture: LightFixture, point: Vector2, module: int, axis: Vector2 = Vector2.ZERO) -> void:
 	fixtures.append({
 		"point": point,
 		"reach": fixture.reach_metres / Units.METERS_PER_UNIT / design.art_pixel_size,
@@ -557,6 +636,9 @@ func _add_fixture(design: StationDesign, fixture: LightFixture, point: Vector2, 
 		"tint": fixture.tint,
 		"circuit": fixture.circuit,
 		"brightness": fixture.brightness,
+		"on_emergency": fixture.on_emergency,
+		"axis": axis if fixture.strip else Vector2.ZERO,
+		"half_length": STRIP_LENGTH_METRES / Units.METERS_PER_UNIT / design.art_pixel_size / 2.0,
 	})
 
 

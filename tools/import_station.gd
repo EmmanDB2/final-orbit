@@ -26,6 +26,24 @@ const KEEP_FROM_OLD: Array[String] = ["display_name", "chip", "callsign", "power
 ## Props whose spot is theirs whatever the placement says, and the plant that gets a green ramp.
 const SPOT_OF_PROP: Dictionary = {"gig_board": "gig_board", "service_terminal": "service", "breaker_panel": "power"}
 const PLANTS: Array[String] = ["planter"]
+## The ceiling light is unseen (no light_panel sprites): each room gets strips on one grid instead. For
+## each room: the port you walk in by (its strips run at right angles to it), the tint, how many strips
+## along the axis and across it, and which strip, counting along then across, is the failing one (-1 for
+## none). Screens and signs from the JSON stay as point lights; its own mains, failing and red door lamps
+## are replaced.
+const ROOM_LIGHTS: Dictionary = {
+	"concourse": {"main_port": "south", "tint": "white", "along": 2, "across": 2, "failing": -1},
+	"docking_hub": {"main_port": "north", "tint": "white", "along": 2, "across": 2, "failing": 3},
+	"med_bay": {"main_port": "east", "tint": "white", "along": 1, "across": 3, "failing": -1},
+	"crew_hab": {"main_port": "west", "tint": "warm", "along": 1, "across": 3, "failing": -1},
+	"eva_prep": {"main_port": "south", "tint": "white", "along": 1, "across": 3, "failing": -1},
+	"ops": {"main_port": "south", "tint": "white", "along": 2, "across": 1, "failing": 0},
+}
+## Props the data leaves out: ceiling light panels, since the fixtures are unseen.
+const UNSEEN_PROPS: Array[String] = ["light_panel"]
+## The strongest a floor pixel's light has to be at the least, with the power on, for it to be at the top
+## step: with the room's ambient at 0.8, a pool strength of 0.5 takes it to 0.9.
+const BRIGHT_ENOUGH: float = 0.5
 
 
 func _initialize() -> void:
@@ -42,6 +60,9 @@ func _initialize() -> void:
 	for name_to_keep: String in KEEP_FROM_OLD:
 		design.set(name_to_keep, old.get(name_to_keep))
 	design.art_pixel_size = 1.0
+	# Bright with the power on: everything in a room at the top step, near a wall a step down.
+	design.ambient_light = 0.8
+	design.lamp_brightness = 1.0
 	design.home_port = data["home_port"]
 	design.legacy_ports = PackedStringArray(data["legacy_ports"])
 	design.hatch_floor = load(PROP_ART + "hatch_floor.png")
@@ -78,6 +99,8 @@ func _make_props(data: Dictionary) -> Dictionary:
 	var wanted: Dictionary = {}
 	for module: Dictionary in data["modules"]:
 		for placement: Dictionary in module["props"]:
+			if UNSEEN_PROPS.has(placement["id"]):
+				continue
 			wanted[_prop_key(placement)] = placement
 	for key: String in wanted:
 		var placement: Dictionary = wanted[key]
@@ -130,18 +153,24 @@ func _make_module(entry: Dictionary, props: Dictionary) -> StationModule:
 	for door: Dictionary in entry["doors"]:
 		module.doors.append(_make_port({"name": door["name"], "kind": "inner", "point": door["point"], "face": door["face"]}))
 	for placement: Dictionary in entry["props"]:
+		if UNSEEN_PROPS.has(placement["id"]):
+			continue
 		var put := PropPlacement.new()
 		put.prop = props[_prop_key(placement)]
 		put.position = Vector2i(int(placement["position"][0]), int(placement["position"][1]))
 		put.turns = int(placement["turns"])
 		module.props.append(put)
+	# Screens and signs stay point lights that glow whatever the power; the rest is strips on a grid.
 	for fixture_data: Dictionary in entry["fixtures"]:
-		var fixture := LightFixture.new()
-		fixture.point = Vector2(fixture_data["point"][0], fixture_data["point"][1])
-		fixture.reach_metres = fixture_data["reach_m"]
-		fixture.tint = fixture_data["tint"]
-		fixture.circuit = fixture_data["circuit"]
-		module.fixtures.append(fixture)
+		if fixture_data["circuit"] != "always" or fixture_data["tint"] == "red" or id == "eva_prep":
+			continue
+		var screen := LightFixture.new()
+		screen.point = Vector2(fixture_data["point"][0], fixture_data["point"][1])
+		screen.reach_metres = fixture_data["reach_m"]
+		screen.tint = fixture_data["tint"]
+		screen.circuit = "always"
+		module.fixtures.append(screen)
+	_light_room(module, id)
 	for rect: Array in entry["windows"]:
 		module.windows.append(Rect2i(int(rect[0]), int(rect[1]), int(rect[2]), int(rect[3])))
 	for light_data: Dictionary in entry["outside_lights"]:
@@ -151,6 +180,62 @@ func _make_module(entry: Dictionary, props: Dictionary) -> StationModule:
 		light.port_name = light_data["port"]
 		module.outside_lights.append(light)
 	return module
+
+
+# The room's main port and light axis, and its ceiling strips on one grid, centered in its floor, each
+# with the smallest reach that puts every floor pixel at the top step.
+func _light_room(module: StationModule, id: String) -> void:
+	var plan: Dictionary = ROOM_LIGHTS[id]
+	module.main_port = plan["main_port"]
+	var main: StationPort = module.port_named(module.main_port)
+	module.light_axis = "east_west" if main.face.y != 0 else "north_south"
+	var room := Rect2()
+	var first: bool = true
+	var floors: Array[Rect2i] = []
+	for rect: Rect2i in module.floors:
+		if rect.get_area() >= StationLayout.SMALLEST_LIT_FLOOR:
+			floors.append(rect)
+			room = Rect2(rect) if first else room.merge(Rect2(rect))
+			first = false
+	var along_x: bool = module.light_axis == "east_west"
+	var along_count: int = plan["along"]
+	var across_count: int = plan["across"]
+	var points: Array[Vector2] = []
+	for a in range(across_count):
+		for b in range(along_count):
+			var along_at: float = (room.position.x if along_x else room.position.y) + (room.size.x if along_x else room.size.y) * (b + 0.5) / along_count
+			var across_at: float = (room.position.y if along_x else room.position.x) + (room.size.y if along_x else room.size.x) * (a + 0.5) / across_count
+			points.append(Vector2(along_at, across_at) if along_x else Vector2(across_at, along_at))
+	var axis: Vector2 = Vector2.RIGHT if along_x else Vector2.DOWN
+	var half: float = StationLayout.STRIP_LENGTH_METRES / Units.METERS_PER_UNIT / 2.0
+	var reach_metres: float = 2.0
+	while reach_metres < 12.0 and not _bright_everywhere(floors, points, axis, half, reach_metres / Units.METERS_PER_UNIT):
+		reach_metres += 0.5
+	for i in range(points.size()):
+		var strip := LightFixture.new()
+		strip.point = points[i]
+		strip.reach_metres = reach_metres
+		strip.tint = plan["tint"]
+		strip.circuit = "failing" if i == plan["failing"] else "mains"
+		strip.strip = true
+		# Every other strip glows red with the power out, and always the first.
+		strip.on_emergency = i % 2 == 0
+		module.fixtures.append(strip)
+
+
+# Whether every pixel of these floors gets at least the pool strength that makes it top-step bright.
+func _bright_everywhere(floors: Array[Rect2i], points: Array[Vector2], axis: Vector2, half: float, reach: float) -> bool:
+	for rect: Rect2i in floors:
+		for y in range(rect.position.y, rect.end.y):
+			for x in range(rect.position.x, rect.end.x):
+				var dark: float = 1.0
+				for point: Vector2 in points:
+					var share: float = StationLight.pool_share(Vector2(x + 0.5, y + 0.5), point + Vector2(0.5, 0.5), axis, half, reach)
+					if share > 0.0:
+						dark *= 1.0 - share * share * (3.0 - 2.0 * share)
+				if 1.0 - dark < BRIGHT_ENOUGH:
+					return false
+	return true
 
 
 func _make_port(port_data: Dictionary) -> StationPort:

@@ -350,7 +350,7 @@ func _lamps_now() -> Array:
 		# Only for what shows until the fixtures' maps are ready.
 		for fixture: Dictionary in layout.fixtures:
 			var circuit: String = fixture["circuit"]
-			if circuit == LightFixture.ALWAYS or (_powered and circuit != LightFixture.EMERGENCY):
+			if circuit == LightFixture.ALWAYS or _powered:
 				lit.append({"point": fixture["point"], "reach": fixture["reach"], "room": fixture["room"], "brightness": fixture["brightness"], "kind": StationLight.STEADY})
 		return lit
 	for i in range(layout.lamps.size()):

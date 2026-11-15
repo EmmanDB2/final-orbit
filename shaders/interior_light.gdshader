@@ -114,7 +114,8 @@ void fragment() {
 	// The planned way: how much of the light is warm and how much is red.
 	float warm_amount = 0.0;
 	float red_amount = 0.0;
-	float white_amount = ambient;
+	// The light that isn't tinted, not counting the light everywhere, so a bright room's still warm where a warm lamp is.
+	float white_amount = 0.0;
 	if (planned && baked) {
 		vec4 amounts = texture(circuit_light, map_uv) * circuit_live;
 		vec4 warm_of = texture(warm_share, map_uv);
@@ -122,7 +123,7 @@ void fragment() {
 		float all_amount = amounts.r + amounts.g + amounts.b + amounts.a;
 		warm_amount = dot(amounts, warm_of);
 		red_amount = dot(amounts, red_of);
-		white_amount = max(all_amount - warm_amount - red_amount, 0.0) + ambient;
+		white_amount = max(all_amount - warm_amount - red_amount, 0.0);
 		light = 1.0 - (1.0 - ambient) * (1.0 - amounts.r) * (1.0 - amounts.g) * (1.0 - amounts.b) * (1.0 - amounts.a);
 	} else if (baked) {
 		vec3 maps = texture(light_map, map_uv).rgb;
@@ -137,23 +138,31 @@ void fragment() {
 		white_amount += beam;
 	}
 	vec4 art = texture(TEXTURE, UV);
-	vec4 lit = palette_lit(art, light);
 	float shade = dot(art.rgb, vec3(0.299, 0.587, 0.114));
+	// The planned way: whichever of warm and red is more than half the light tints the pixel.
+	bool warm_tint = false;
+	bool red_tint = false;
 	if (planned && baked) {
-		// Whichever of warm and red is more than half the light takes the pixel onto its ramp, with a
-		// clean edge. Outlines and the darkest colors stay dark, and glowing colors keep their own.
 		float total_amount = white_amount + warm_amount + red_amount;
+		red_tint = red_amount > warm_amount && red_amount > 0.5 * total_amount && red_amount > 0.12;
+		warm_tint = !red_tint && warm_amount > 0.5 * total_amount && warm_amount > 0.12;
+	}
+	vec4 source = art;
+	if (warm_tint) {
+		source.rgb = warm_swap(art.rgb);
+	}
+	vec4 lit = palette_lit(source, light);
+	if (planned && baked) {
+		// Red light takes what it lights onto the palette's reds, with a clean edge. Outlines and the
+		// darkest colors stay dark, and glowing colors keep their own. Warm light has only changed the
+		// two lightest hull colors, above.
 		if (plant && art.a > 0.0 && is_plant_green(art.rgb)) {
 			lit.rgb = plant_lit(light);
-		} else if (art.a > 0.0 && shade > 0.12 && palette_glow[palette_index(art.rgb)] < 0.5) {
-			if (red_amount > warm_amount && red_amount > 0.5 * total_amount && red_amount > 0.12) {
-				if (red_amount * (0.6 + shade) > 0.4) {
-					lit.rgb = alarm_bright;
-				} else {
-					lit.rgb = alarm_dim;
-				}
-			} else if (warm_amount > 0.5 * total_amount && warm_amount > 0.12) {
-				lit.rgb = warm_lit(shade, light);
+		} else if (red_tint && art.a > 0.0 && shade > 0.12 && palette_glow[palette_index(art.rgb)] < 0.5) {
+			if (red_amount * (0.6 + shade) > 0.4) {
+				lit.rgb = alarm_bright;
+			} else {
+				lit.rgb = alarm_dim;
 			}
 		}
 	} else {

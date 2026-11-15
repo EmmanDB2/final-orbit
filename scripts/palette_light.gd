@@ -15,8 +15,9 @@ const RAMPS: Array = [
 	[&"agency_blue_light", &"agency_blue", &"agency_blue_dark", &"hull_dark", &"hull_darkest"],
 	[&"glass_light", &"glass_dark", &"hull_dark", &"hull_darkest"],
 ]
-## Warm light's ramp, lightest first, and a plant's leaves' ramp.
-const WARM_RAMP: Array = [&"thrust_white", &"gold_light", &"gold", &"gold_dark", &"gold_darkest"]
+## What warm light turns the two lightest hull colors to, and a plant's leaves' ramp.
+const WARM_FROM: Array = [&"hull_lightest", &"hull_lighter"]
+const WARM_TO: Array = [&"gold_light", &"gold"]
 const PLANT_RAMP: Array = [&"telemetry_green", &"glass_dark", &"hull_dark"]
 ## Lights, screens, and flames: they glow, so they never darken.
 const GLOWING: Array = [&"telemetry_cyan", &"telemetry_green", &"telemetry_amber", &"thrust_white", &"thrust_yellow", &"thrust_red"]
@@ -112,7 +113,8 @@ static func fill(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("palette_colors", colors)
 	material.set_shader_parameter("palette_down", down)
 	material.set_shader_parameter("palette_glow", glow)
-	material.set_shader_parameter("warm_ramp", _ramp_colors(palette, WARM_RAMP))
+	material.set_shader_parameter("warm_from", _ramp_colors(palette, WARM_FROM))
+	material.set_shader_parameter("warm_to", _ramp_colors(palette, WARM_TO))
 	material.set_shader_parameter("plant_ramp", _ramp_colors(palette, PLANT_RAMP))
 
 

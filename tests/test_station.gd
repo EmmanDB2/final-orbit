@@ -15,6 +15,7 @@ func _initialize() -> void:
 	_test_hatch_doors()
 	_test_planned_lighting()
 	_test_kapteyn_3()
+	_test_lighting_layout()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -242,9 +243,10 @@ func _synthetic_station() -> StationDesign:
 	hub.props = [_place(desk, Vector2i(20, 20)), _place(decal, Vector2i(60, 60)), _place(lamp, Vector2i(40, 40))]
 	var red_light := LightFixture.new()
 	red_light.point = Vector2(90.0, 50.0)
-	red_light.tint = "red"
-	red_light.circuit = "emergency"
+	red_light.on_emergency = true
 	hub.fixtures = [red_light]
+	hub.main_port = "dock_s"
+	hub.light_axis = "east_west"
 	var window := Rect2i(10, 10, 20, 4)
 	hub.windows = [window]
 	var strobe := OutsideLight.new()
@@ -269,6 +271,13 @@ func _synthetic_station() -> StationDesign:
 	side.walls_texture = _frame(canvas, 8, [Rect2i(0, 34, 8, 32), Rect2i(34, 0, 32, 8)])
 	side.roof_texture = hub.roof_texture
 	side.floors = [floor_rect, Rect2i(0, 34, 8, 32), Rect2i(34, 0, 32, 8)]
+	side.main_port = "west"
+	side.light_axis = "north_south"
+	var side_lamp := LightFixture.new()
+	side_lamp.point = Vector2(50.0, 80.0)
+	side_lamp.reach_metres = 1.0
+	side_lamp.on_emergency = true
+	side.fixtures = [side_lamp]
 	side.ports = [_port("west", Vector2i(0, 50), Vector2i(-1, 0), "inner"), _port("airlock", Vector2i(50, 0), Vector2i(0, -1), "airlock")]
 	var bed: StationProp = _prop("bed", Vector2i(20, 10), "standing", Rect2i(0, 0, 20, 10))
 	bed.spot_kind = "wake"
@@ -347,13 +356,13 @@ func _test_modular_station() -> void:
 	_check("a hatch is in no room", in_room, 0.0, 0.0)
 	_flag("a module's floor is in its room", layout.room_areas[0]["image"].get_pixelv(Vector2i(50, 50)).a > 0.0)
 	# Fixtures: the prop's light and the module's, reach turned from metres.
-	_check("two fixtures", layout.fixtures.size(), 2.0, 0.0)
+	_check("three fixtures", layout.fixtures.size(), 3.0, 0.0)
 	var reaches: Array = []
 	for fixture: Dictionary in layout.fixtures:
 		reaches.append(fixture["reach"])
 	_flag("a 2 m reach is 40 pixels at 5 cm a pixel", reaches.has(40.0))
 	_flag("a prop's light lands on its picture", layout.fixtures.any(func(f: Dictionary) -> bool: return f["point"] == Vector2(hub_at) + Vector2(43.5, 43.5)))
-	_flag("the module's red one is emergency", layout.fixtures.any(func(f: Dictionary) -> bool: return f["circuit"] == "emergency" and f["tint"] == "red"))
+	_flag("the module's emergency fixture is on_emergency", layout.fixtures.any(func(f: Dictionary) -> bool: return f["on_emergency"]))
 	_check("one window", layout.windows.size(), 1.0, 0.0)
 	_check("and its outside lights", layout.outside_lights.size(), 5.0, 0.0)
 	# Everything that can be walked to: from the hub's middle to the side room, the dock and the airlock.
@@ -434,6 +443,7 @@ func _test_planned_lighting() -> void:
 	warm_lamp.point = Vector2(50.0, 50.0)
 	warm_lamp.reach_metres = 2.5
 	warm_lamp.tint = "warm"
+	warm_lamp.on_emergency = true
 	var flicker := LightFixture.new()
 	flicker.point = Vector2(15.0, 90.0)
 	flicker.reach_metres = 1.5
@@ -476,10 +486,15 @@ func _test_planned_lighting() -> void:
 	# The emergency lamp, the first fixture, by the east door: red, and only without the power.
 	var emergency_on: Dictionary = StationLight.evaluate(maps, hub_at.x + 90, hub_at.y + 50, Vector4(1.0, 1.0, 0.0, 1.0), ambient)
 	var emergency_off: Dictionary = StationLight.evaluate(maps, hub_at.x + 90, hub_at.y + 50, Vector4(0.0, 0.0, 1.0, 1.0), ambient)
-	_flag("an emergency fixture is dark while powered", emergency_on["tint"] != "red")
+	_flag("an on_emergency fixture is an ordinary light while powered", emergency_on["tint"] != "red" and emergency_on["light"] > 0.9)
 	_flag("and red with the power off", emergency_off["tint"] == "red" and emergency_off["light"] > ambient + 0.2)
 	var pulsing: Dictionary = StationLight.evaluate(maps, hub_at.x + 90, hub_at.y + 50, Vector4(0.0, 0.0, 0.4, 1.0), ambient)
 	_flag("and pulses with its live factor", pulsing["light"] < emergency_off["light"])
+	# The red pool is at the fixture's own spot, 0.6 of its reach: its 20 px reach is 12 px of red.
+	var edge: Dictionary = StationLight.evaluate(maps, hub_at.x + 90 - 14, hub_at.y + 50, Vector4(0.0, 0.0, 1.0, 1.0), ambient)
+	var near: Dictionary = StationLight.evaluate(maps, hub_at.x + 90 - 6, hub_at.y + 50, Vector4(0.0, 0.0, 1.0, 1.0), ambient)
+	_flag("the emergency pool is 0.6 of the fixture's reach", near["tint"] == "red" and edge["light"] < ambient + 0.001)
+	_flag("a fixture that isn't on_emergency stays dark with the power out", StationLight.evaluate(maps, hub_at.x + 88, hub_at.y + 75, off, ambient)["light"] < ambient + 0.001)
 	# With no fixtures at all, a modular station gets automatic lamps instead.
 	var bare: StationDesign = _synthetic_station()
 	for module: StationModule in bare.modules:
@@ -566,3 +581,50 @@ func _test_kapteyn_3() -> void:
 		if hatch["kind"] == "inner" and seen[middle.y * size.x + middle.x] == 0:
 			cut_off += 1
 	_check("every joint's hatch is reached", cut_off, 0.0, 0.0)
+
+
+# Strips are stadiums, and every modular station's rooms light up in line.
+func _test_lighting_layout() -> void:
+	# A strip's pool: a stadium along its axis, not a circle.
+	var along := Vector2.RIGHT
+	_check("beside the end of a strip is a round end", StationLight.pool_share(Vector2(50.0 + 24.0 + 10.0, 50.0), Vector2(50.0, 50.0), along, 24.0, 20.0), 0.5, 0.001)
+	_check("off its side is the reach too", StationLight.pool_share(Vector2(50.0, 60.0), Vector2(50.0, 50.0), along, 24.0, 20.0), 0.5, 0.001)
+	_check("along its length is the full pool", StationLight.pool_share(Vector2(60.0, 50.0), Vector2(50.0, 50.0), along, 24.0, 20.0), 1.0, 0.001)
+	_check("a point is a circle", StationLight.pool_share(Vector2(60.0, 50.0), Vector2(50.0, 50.0), Vector2.ZERO, 0.0, 20.0), 0.5, 0.001)
+	# Every room of every modular station: a main port, an axis across it, strips on a grid, a red fixture.
+	for path: String in ["res://data/kapteyn_3.tres"]:
+		var problems: PackedStringArray = StationLayout.lighting_problems(load(path))
+		_check("%s's rooms light up in line" % path, problems.size(), 0.0, 0.0)
+		for problem: String in problems:
+			print("  " + problem)
+	# With the power on, every floor pixel of a room is at the top light step.
+	var kapteyn: StationDesign = load("res://data/kapteyn_3.tres")
+	var layout: StationLayout = StationLayout.build(kapteyn)
+	var maps: Dictionary = StationLight.bake_fixtures(layout.picture_size(), layout.room_areas, layout.fixtures)
+	var width: int = layout.picture_size().x
+	var dim: int = 0
+	for area: Dictionary in layout.room_areas:
+		var shell: Image = area["image"]
+		var at: Vector2i = area["at"]
+		for y in range(shell.get_height()):
+			for x in range(shell.get_width()):
+				var cell: Vector2i = at + Vector2i(x, y)
+				if shell.get_pixel(x, y).a > 0.0 and layout.floors()[cell.y * width + cell.x] == 1:
+					if StationLight.evaluate(maps, cell.x, cell.y, Vector4(1.0, 1.0, 0.0, 1.0), kapteyn.ambient_light)["light"] < 0.89:
+						dim += 1
+	_check("with the power on every room floor pixel is at the top step", dim, 0.0, 0.0)
+	_check("the ambient light is 0.8", kapteyn.ambient_light, 0.8, 0.0001)
+	_check("the synthetic station's rooms do too", StationLayout.lighting_problems(_synthetic_station()).size(), 0.0, 0.0)
+	# The check can fail: a strip off the grid, a wrong axis, and no emergency fixture all show.
+	var bad: StationDesign = _synthetic_station()
+	var hub: StationModule = bad.modules[0]
+	for point: Vector2 in [Vector2(20.0, 30.0), Vector2(70.0, 30.0), Vector2(45.0, 90.0)]:
+		var strip := LightFixture.new()
+		strip.point = point
+		strip.strip = true
+		hub.fixtures.append(strip)
+	hub.light_axis = "north_south"
+	bad.modules[1].fixtures = []
+	var found: PackedStringArray = StationLayout.lighting_problems(bad)
+	_flag("a wrong axis is found", found.size() >= 1 and "%s" % found[0] != "")
+	_flag("a strip off its grid, a wrong axis, and a room with no red fixture are all found", found.size() >= 3)

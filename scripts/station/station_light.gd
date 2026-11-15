@@ -90,19 +90,30 @@ static func circuit_index(circuit: String) -> int:
 	match circuit:
 		LightFixture.FAILING:
 			return CIRCUIT_FAILING
-		LightFixture.EMERGENCY:
-			return CIRCUIT_EMERGENCY
 		LightFixture.ALWAYS:
 			return CIRCUIT_ALWAYS
 	return CIRCUIT_MAINS
 
 
+## How far a fixture's pool reaches a pixel's middle, from 1 at its middle (or along its strip) to 0 at
+## its reach: the pixel's distance to the fixture's point, or, for a strip, to its line segment, which
+## makes the pool a stadium.
+static func pool_share(at: Vector2, center: Vector2, axis: Vector2, half_length: float, reach: float) -> float:
+	var apart: Vector2 = at - center
+	if axis != Vector2.ZERO:
+		apart -= axis * clampf(apart.dot(axis), -half_length, half_length)
+	return 1.0 - apart.length() / reach
+
+
 ## The light of a station's fixtures, worked out once whatever the power does. Three pictures the size
 ## of the station, four channels each, one per circuit in the order above: "light" is how much of the
 ## circuit's light reaches the pixel when it's fully on, "warm" is how much of that is warm, and "red"
-## how much is red, each from 0 to 255. A fixture only lights the room it's in. Each fixture has a
-## "point" and "reach" in picture pixels, a "room" (counting from 0), a "tint", a "circuit", and a
-## "brightness". Each room is its placed "image" and its corner "at".
+## how much is red, each from 0 to 255. The mains, failing, and always channels are the fixtures on
+## those circuits; the emergency channel is the red pools of the fixtures that are on_emergency, 0.6 of
+## their reach. A fixture only lights the room it's in. Each fixture has a "point" and "reach" in
+## picture pixels, a "room" (counting from 0), a "tint", a "circuit", a "brightness", whether it's
+## "on_emergency", and for a ceiling strip its unit "axis" and "half_length" in pixels (zero axis for a
+## point). Each room is its placed "image" and its corner "at".
 static func bake_fixtures(size: Vector2i, rooms: Array, fixtures: Array) -> Dictionary:
 	var count: int = size.x * size.y
 	var room_of := PackedByteArray()
@@ -124,8 +135,17 @@ static func bake_fixtures(size: Vector2i, rooms: Array, fixtures: Array) -> Dict
 	warm.resize(count * 4)
 	red.resize(count * 4)
 	# One circuit at a time: how much of the dark is left, and the light it throws in all, in warm, and
-	# in red, from every fixture that reaches the pixel.
+	# in red, from every pool that reaches the pixel.
 	for circuit in range(4):
+		var pools: Array[Dictionary] = []
+		for fixture: Dictionary in fixtures:
+			if circuit == CIRCUIT_EMERGENCY:
+				if fixture.get("on_emergency", false):
+					pools.append({"fixture": fixture, "reach": fixture["reach"] * LightFixture.EMERGENCY_REACH_SHARE, "tint": LightFixture.RED})
+			elif circuit_index(fixture["circuit"]) == circuit:
+				pools.append({"fixture": fixture, "reach": fixture["reach"], "tint": fixture["tint"]})
+		if pools.is_empty():
+			continue
 		var dark := PackedFloat32Array()
 		var total := PackedFloat32Array()
 		var warm_sum := PackedFloat32Array()
@@ -135,35 +155,34 @@ static func bake_fixtures(size: Vector2i, rooms: Array, fixtures: Array) -> Dict
 		total.resize(count)
 		warm_sum.resize(count)
 		red_sum.resize(count)
-		var any: bool = false
-		for fixture: Dictionary in fixtures:
-			if circuit_index(fixture["circuit"]) != circuit:
-				continue
-			any = true
+		for pool: Dictionary in pools:
+			var fixture: Dictionary = pool["fixture"]
 			var center: Vector2 = fixture["point"]
-			var reach: float = fixture["reach"]
+			var axis: Vector2 = fixture.get("axis", Vector2.ZERO)
+			var half_length: float = fixture.get("half_length", 0.0)
+			var reach: float = pool["reach"]
 			var room: int = fixture["room"] + 1
 			var brightness: float = fixture["brightness"]
-			var low := Vector2i((center - Vector2(reach, reach)).floor()).max(Vector2i.ZERO)
-			var high := Vector2i((center + Vector2(reach, reach)).ceil()).min(size - Vector2i.ONE)
+			var tint: String = pool["tint"]
+			var spread: float = reach + (half_length if axis != Vector2.ZERO else 0.0)
+			var low := Vector2i((center - Vector2(spread, spread)).floor()).max(Vector2i.ZERO)
+			var high := Vector2i((center + Vector2(spread, spread)).ceil()).min(size - Vector2i.ONE)
 			for y in range(low.y, high.y + 1):
 				for x in range(low.x, high.x + 1):
 					var i: int = y * size.x + x
 					if room_of[i] != room:
 						continue
-					var share: float = 1.0 - Vector2(x + 0.5 - center.x, y + 0.5 - center.y).length() / reach
+					var share: float = pool_share(Vector2(x + 0.5, y + 0.5), center, axis, half_length, reach)
 					if share <= 0.0:
 						continue
 					var strength: float = brightness * share * share * (3.0 - 2.0 * share)
 					dark[i] *= 1.0 - strength
 					total[i] += strength
-					match fixture["tint"]:
+					match tint:
 						LightFixture.WARM:
 							warm_sum[i] += strength
 						LightFixture.RED:
 							red_sum[i] += strength
-		if not any:
-			continue
 		for i in range(count):
 			light[i * 4 + circuit] = int(clampf(1.0 - dark[i], 0.0, 1.0) * 255.0)
 			if total[i] > 0.0:
@@ -193,7 +212,7 @@ static func evaluate(maps: Dictionary, x: int, y: int, live: Vector4, ambient: f
 	var warm_amount: float = amounts.x * warm_share.r + amounts.y * warm_share.g + amounts.z * warm_share.b + amounts.w * warm_share.a
 	var red_amount: float = amounts.x * red_share.r + amounts.y * red_share.g + amounts.z * red_share.b + amounts.w * red_share.a
 	var all_amount: float = amounts.x + amounts.y + amounts.z + amounts.w
-	var white_amount: float = maxf(all_amount - warm_amount - red_amount, 0.0) + ambient + extra_white
+	var white_amount: float = maxf(all_amount - warm_amount - red_amount, 0.0) + extra_white
 	var dark: float = (1.0 - ambient) * (1.0 - amounts.x) * (1.0 - amounts.y) * (1.0 - amounts.z) * (1.0 - amounts.w)
 	var total: float = white_amount + warm_amount + red_amount
 	var tint: String = "white"

@@ -1156,3 +1156,12 @@ Files: `scripts/ui/ui_button.gd`, `scripts/ui/flight_menu.gd`, `scripts/ui/fligh
 - re-entrancy: a signal handler that causes the same signal again (clear your state before you emit)
 - reproducing a touch bug by calling the HUD's finger handlers instead of the button's signal
 - removing a feature cleanly: its signal, its connection, its label, and its doc line
+
+## 2026-11-14: Kapteyn-3 polish P2, bright rooms, warm tint, strip fixtures in line, emergency from the same fixtures
+
+Files: `scripts/station/light_fixture.gd`, `scripts/station/station_module.gd`, `scripts/station/station_light.gd`, `scripts/station/station_layout.gd`, `scripts/station/station_view.gd`, `shaders/interior_light.gdshader`, `shaders/palette_light.gdshaderinc`, `scripts/palette_light.gd`, `tools/import_station.gd`, `data/kapteyn_3.tres`, `data/station_props/`, `tests/test_station.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- distance to a line segment (a stadium-shaped pool) with `clampf` on the projection
+- a rule written as a checkable function (`lighting_problems`) and a test that it can fail
+- searching for the smallest value that satisfies a condition over every pixel
+- tint as a small, targeted color swap instead of re-coloring everything
