@@ -12,6 +12,7 @@ func _initialize() -> void:
 	_test_lander()
 	_test_deployed()
 	_test_exposed_when_the_hull_goes()
+	_test_mk2()
 	_test_other_ships()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -157,6 +158,36 @@ func _test_exposed_when_the_hull_goes() -> void:
 		if index == target:
 			took_leg = true
 	_check("and now a hit there takes the leg pixel", 1.0 if took_leg else 0.0, 1.0, 0.0)
+
+
+# The Mk II's legs stow inside its hull too, and stand where they did when they come down.
+func _test_mk2() -> void:
+	var design: ShipDesign = load("res://data/lander_mk2_design.tres")
+	var body: ShipBody = ShipBody.measure(design)
+	var legs: PackedInt32Array = _leg_pixels(body)
+	var outside: int = 0
+	for index in legs:
+		if body._shielded[index] == 0:
+			outside += 1
+	print("Mk II stowed leg pixels outside the hull: %d of %d" % [outside, legs.size()])
+	_check("every stowed Mk II leg pixel is over the hull", outside, 0.0, 0.0)
+	var bare: ShipBody = ShipBody.measure(_without_legs(design))
+	_check("its stowed outline is the same as with no legs", 1.0 if _same_points(body.outline_now(), bare.outline_now()) else 0.0, 1.0, 0.0)
+
+	# The same ship with the flag off, to compare the feet against.
+	var visible: ShipDesign = design.duplicate()
+	var modules: Array[ModuleData] = []
+	for module: ModuleData in design.modules:
+		var copy: ModuleData = module.duplicate()
+		copy.stows_inside_hull = false
+		modules.append(copy)
+	visible.modules = modules
+	var plain: ShipBody = ShipBody.measure(visible)
+	body.set_parts_out(1.0)
+	plain.set_parts_out(1.0)
+	_check("the deployed feet are where they were", body.reach(Vector2.ZERO, Vector2.DOWN), plain.reach(Vector2.ZERO, Vector2.DOWN), 1e-6)
+	_check("and the standing width", body.stance_half_width(), plain.stance_half_width(), 1e-6)
+	_check("and the mass", body.mass, plain.mass, 1e-6)
 
 
 func _test_other_ships() -> void:

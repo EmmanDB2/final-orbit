@@ -134,6 +134,7 @@ travel = Vector2i(-22, 16)
 folds = true
 stroke = 8.0
 soak_speed = 75.0
+stows_inside_hull = true
 
 [sub_resource type="Resource" id="Module_leg_right"]
 script = ExtResource("2_module")
@@ -147,6 +148,7 @@ travel = Vector2i(22, 16)
 folds = true
 stroke = 8.0
 soak_speed = 75.0
+stows_inside_hull = true
 
 [resource]
 script = ExtResource("1_design")

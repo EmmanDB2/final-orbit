@@ -1205,3 +1205,10 @@ Files: `scripts/ship/module_data.gd`, `scripts/ship/ship_body.gd`, `data/lander_
 - a per-pixel "shielded" flag worked out only when something changes (legs move, hull loses pixels), then read by outline, hits, and the picture
 - rebuilding just one layer's outline from a list of its own pixels, so moving the legs doesn't walk every pixel of the ship
 - building a ship with its legs taken off (`duplicate()` and a filtered module list) to compare against
+
+## 2026-11-15: The Lander Mk II's legs stow inside its hull (lander flat import, ticket 3)
+
+Files: `data/lander_mk2_design.tres` (the flag on both legs), `tests/test_stowed_legs.gd`, `docs/LEARNING_LOG.md`
+
+- checking a part's fit by testing every stowed pixel against a mask of the hull's pixels (it already fit, so only the flag was needed)
+- comparing a ship against a copy of itself with one setting off (`duplicate()` on the modules) to show the deployed feet didn't move
