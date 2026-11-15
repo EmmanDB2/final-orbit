@@ -50,6 +50,10 @@ editor's `AGENTS.md` bars reading game files. Opus copies this brief there.
 This session never edits the editor's files itself; Gemini does, from inside the editor's folder, under
 the editor's `AGENTS.md`.
 
+## Detail density (every brief)
+
+\[Locked\], Manny, 2026-11-14: every sprite and texture aims for the detail per metre of the original lander (`art/ship_lander.png`, `art/lander/`) and the original station's outside (`art/station_1/*.png`, drawn at 10 cm a pixel), kept at 5 cm a pixel. That means plating broken into panels of different sizes, seams, rivets, handrails, hatches, vents, trusses, foil patches, small machinery and markings, using about 15 to 18 palette colors per piece, never big flat panels on a regular grid. Copy those reference files into the drop folder's `reference/` and say in the prompt to match them. Flat still means no painted light or shade: the detail is drawn shapes, not shading.
+
 ## What it is
 
 What the asset is, what it's for in the game, and Manny's calls on its look, quoted where his words
