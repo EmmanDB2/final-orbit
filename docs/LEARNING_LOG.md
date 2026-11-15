@@ -1103,3 +1103,12 @@ Files: `scripts/station/station_module.gd`, `scripts/station/station_port.gd`, `
 - layers composed with `Image.blend_rect`, and a walkable mask worked out from them
 - a texture can hand out its own image, so turning it needs a copy
 - building a synthetic test fixture in code instead of loading art
+
+## 2026-11-14: New Kapteyn-3 ticket 2, layered drawing, props, and doors
+
+Files: `scripts/station/station_view.gd`, `scripts/station/hatch_doors.gd`, `scripts/station/station_layout.gd`, `scripts/station/station_module.gd`, `scripts/pilot.gd`, `shaders/interior_light.gdshader`, `tests/test_station.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- `z_index` to sort things between a node's siblings (the pilot sits between the props behind and in front)
+- a per-sprite uniform (`sprite_at`) so a shader looks a shared light map up by station pixel
+- one place that keeps a shared setting in step on many materials
+- easing a door with `move_toward` over a time, and a hold timer before it closes

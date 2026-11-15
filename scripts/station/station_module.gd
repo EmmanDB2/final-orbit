@@ -27,6 +27,10 @@ extends Resource
 ## Window rectangles on the roof layer. They glow warm while the station's powered.
 @export var windows: Array[Rect2i] = []
 @export var outside_lights: Array[OutsideLight] = []
+## Doors inside the module that aren't a joint to another one, such as an airlock's inner door: where
+## the leaves meet (the port's point, in canvas pixels), which way the door runs (its face: the way
+## someone goes through it), and the name of the airlock port it belongs to. The art is in the layers.
+@export var doors: Array[StationPort] = []
 
 
 ## The canvas's size in pixels.

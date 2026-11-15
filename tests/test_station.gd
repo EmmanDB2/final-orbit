@@ -12,6 +12,7 @@ func _initialize() -> void:
 	_test_rooms_fit()
 	_test_walking()
 	_test_modular_station()
+	_test_hatch_doors()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -374,3 +375,36 @@ func _test_modular_station() -> void:
 	_flag("the airlock's door can be walked to", seen[airlock_stand.y * size.x + airlock_stand.x] == 1)
 	# An old-style station still builds the old way.
 	_flag("rooms still build the old way", not StationLayout.build(load("res://data/station_1.tres")).modular)
+
+
+# The hatch doors open over 0.25 s when the pilot's within 32 px, and close 0.6 s after they leave.
+func _test_hatch_doors() -> void:
+	var design: StationDesign = _synthetic_station()
+	var layout: StationLayout = StationLayout.build(design)
+	var parent := Node2D.new()
+	var doors := HatchDoors.new()
+	doors.build(parent, layout.hatches, design, layout.origin, func(_corner: Vector2) -> ShaderMaterial: return ShaderMaterial.new())
+	_check("a door in each hatch", doors.count(), layout.hatches.size(), 0.0)
+	_check("two leaves a door", parent.get_child_count(), layout.hatches.size() * 2, 0.0)
+	var middle: Vector2 = layout.hatches[0]["center"]
+	var nobody := Vector2(-1.0e9, -1.0e9)
+	_check("doors start shut", doors.openness(0), 0.0, 0.0)
+	doors.update(0.125, middle + Vector2(31.0, 0.0), layout.origin)
+	_check("half open after half the slide", doors.openness(0), 0.5, 0.001)
+	doors.update(0.2, middle + Vector2(31.0, 0.0), layout.origin)
+	_check("open within 32 px", doors.openness(0), 1.0, 0.0)
+	doors.update(0.5, middle + Vector2(33.0, 0.0), layout.origin)
+	_check("still open half a second after they step back", doors.openness(0), 1.0, 0.0)
+	doors.update(0.2, nobody, layout.origin)
+	_check("closing after 0.6 s", doors.openness(0), 0.0, 0.999)
+	_flag("closing has begun", doors.openness(0) < 1.0)
+	doors.update(0.5, nobody, layout.origin)
+	_check("shut again", doors.openness(0), 0.0, 0.0)
+	# A hatch the pilot's not near stays shut, and a held door ignores them.
+	_check("a far hatch stays shut", doors.openness(1), 0.0, 0.0)
+	var shut_at: Vector2 = (parent.get_child(2) as Sprite2D).position
+	doors.force(1, HatchDoors.OPEN)
+	doors.update(0.3, nobody, layout.origin)
+	_check("a held-open door opens with nobody there", doors.openness(1), 1.0, 0.0)
+	_flag("and its leaf has slid", (parent.get_child(2) as Sprite2D).position != shut_at)
+	parent.free()

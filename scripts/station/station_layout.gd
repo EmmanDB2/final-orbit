@@ -48,7 +48,7 @@ var outside_lights: Array[Dictionary] = []
 var ports: Array[Dictionary] = []
 ## The unbolted airlock ports, as free_ports lists the dock ports.
 var airlock_ports: Array[Dictionary] = []
-## Each hatch piece placed: its "rect" on the picture, its "turns" (0 if it runs up and down, 1 if
+## Each hatch piece placed, and each door inside a module (which has no piece of its own): its "rect" on the picture, its "turns" (0 if it runs up and down, 1 if
 ## sideways), its "center", its "kind" ("inner", "dock", or "airlock"), its "face" (the way it runs, out
 ## of its first port), and the "ports" it's on, by name.
 var hatches: Array[Dictionary] = []
@@ -367,7 +367,7 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 		_blend_turned(layout.overhead_image, module.overhead_texture, entry["turns"], at)
 		_blend_turned(layout.roof_image, module.roof_texture, entry["turns"], at)
 		for rect: Rect2i in module.floors:
-			var turned_floor: Rect2i = _turned_rect(rect, entry["size"], entry["turns"])
+			var turned_floor: Rect2i = turned_rect(rect, entry["size"], entry["turns"])
 			floors_here.append(Rect2i(turned_floor.position + at, turned_floor.size))
 		# The shell, for which room each pixel is in: where this module has floor or wall.
 		var shell_bytes := PackedByteArray()
@@ -375,13 +375,13 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 		for texture: Texture2D in [module.floor_texture, module.walls_texture]:
 			if texture == null:
 				continue
-			var layer_bytes: PackedByteArray = _turned_image(texture, entry["turns"]).get_data()
+			var layer_bytes: PackedByteArray = turned_image(texture, entry["turns"]).get_data()
 			for p in range(mini(layer_bytes.size(), shell_bytes.size()) / 4):
 				if layer_bytes[p * 4 + 3] > 0:
 					shell_bytes[p * 4 + 3] = 255
 		layout.room_areas.append({"image": Image.create_from_data(entry["turned_size"].x, entry["turned_size"].y, false, Image.FORMAT_RGBA8, shell_bytes), "at": at})
 		for window: Rect2i in module.windows:
-			var turned: Rect2i = _turned_rect(window, entry["size"], entry["turns"])
+			var turned: Rect2i = turned_rect(window, entry["size"], entry["turns"])
 			layout.windows.append(Rect2i(turned.position + at, turned.size))
 		for light: OutsideLight in module.outside_lights:
 			layout.outside_lights.append({
@@ -403,13 +403,13 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 			if prop == null or prop.texture == null:
 				continue
 			var picture_size := Vector2i(prop.texture.get_size())
-			var in_prop: Rect2i = _turned_rect(prop.footprint, picture_size, placement.turns) if prop.footprint.size != Vector2i.ZERO else Rect2i()
+			var in_prop: Rect2i = turned_rect(prop.footprint, picture_size, placement.turns) if prop.footprint.size != Vector2i.ZERO else Rect2i()
 			var prop_turned_size: Vector2i = picture_size if placement.turns % 2 == 0 else Vector2i(picture_size.y, picture_size.x)
 			# Where its picture's top left falls on the module's canvas, then on the picture.
 			var in_module: Rect2i = Rect2i(placement.position - in_prop.position, prop_turned_size)
-			var on_picture: Rect2i = _turned_rect(in_module, entry["size"], entry["turns"])
+			var on_picture: Rect2i = turned_rect(in_module, entry["size"], entry["turns"])
 			var total: int = (placement.turns + entry["turns"]) % 4
-			var image: Image = _turned_image(prop.texture, total)
+			var image: Image = turned_image(prop.texture, total)
 			var corner: Vector2i = on_picture.position + at
 			match prop.layer:
 				StationProp.FLOOR:
@@ -419,7 +419,7 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 				_:
 					var foot: Rect2i = Rect2i()
 					if prop.footprint.size != Vector2i.ZERO:
-						var in_final: Rect2i = _turned_rect(prop.footprint, picture_size, total)
+						var in_final: Rect2i = turned_rect(prop.footprint, picture_size, total)
 						foot = Rect2i(in_final.position + corner, in_final.size)
 						blocked.append(foot)
 					layout.props.append({
@@ -442,7 +442,7 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 		_blend_turned(layout.walls_image, design.hatch_walls, turns, rect.position)
 		_blend_turned(layout.overhead_image, design.hatch_overhead, turns, rect.position)
 		_blend_turned(layout.roof_image, design.hatch_roof, turns, rect.position)
-		var passage_turned: Rect2i = _turned_rect(design.hatch_passage, Vector2i(HATCH_ACROSS, HATCH_LENGTH), turns)
+		var passage_turned: Rect2i = turned_rect(design.hatch_passage, Vector2i(HATCH_ACROSS, HATCH_LENGTH), turns)
 		var passage := Rect2i(passage_turned.position + rect.position, passage_turned.size)
 		var face: Vector2i = piece["face"]
 		var entry := {
@@ -465,6 +465,18 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 			passage = passage.intersection(half)
 		passages.append(passage)
 		layout.hatches.append(entry)
+	# Doors inside a module, which have no piece of their own: just leaves in a doorway in the art.
+	for i in range(count):
+		var entry: Dictionary = placed[i]
+		for door: StationPort in design.modules[i].doors:
+			var where: Vector2i = entry["at"] + shift + _turned_point(Vector2(door.point), entry["size"], entry["turns"])
+			var way: Vector2i = _turned_face(Vector2(door.face), entry["turns"])
+			var door_turns: int = 0 if way.x == 0 else 1
+			var half := Vector2i(HATCH_ACROSS, HATCH_LENGTH) / 2 if door_turns == 0 else Vector2i(HATCH_LENGTH, HATCH_ACROSS) / 2
+			layout.hatches.append({
+				"rect": Rect2i(where - half, half * 2), "turns": door_turns, "center": Vector2(where),
+				"kind": "door", "face": way, "ports": [door.port_name],
+			})
 	for ring: Dictionary in rings:
 		var rect := Rect2i(ring["rect"].position + shift, ring["rect"].size)
 		_blend_turned(layout.roof_image, design.docking_ring_roof, ring["turns"], rect.position)
@@ -579,7 +591,7 @@ static func _plate_piece(point: Vector2i, face: Vector2i) -> Dictionary:
 
 
 # A texture as an RGBA8 picture turned that many quarter turns clockwise.
-static func _turned_image(texture: Texture2D, turns: int) -> Image:
+static func turned_image(texture: Texture2D, turns: int) -> Image:
 	# A copy, since a texture made from a picture may hand out the picture itself, and turning it
 	# would turn it for everyone.
 	var picture: Image = texture.get_image().duplicate()
@@ -598,12 +610,12 @@ static func _turned_image(texture: Texture2D, turns: int) -> Image:
 static func _blend_turned(layer: Image, texture: Texture2D, turns: int, at: Vector2i) -> void:
 	if texture == null:
 		return
-	var picture: Image = _turned_image(texture, turns)
+	var picture: Image = turned_image(texture, turns)
 	layer.blend_rect(picture, Rect2i(Vector2i.ZERO, picture.get_size()), at)
 
 
 # Where a rectangle of a picture goes when the picture turns that many quarter turns clockwise.
-static func _turned_rect(rect: Rect2i, size: Vector2i, turns: int) -> Rect2i:
+static func turned_rect(rect: Rect2i, size: Vector2i, turns: int) -> Rect2i:
 	if rect.size == Vector2i.ZERO:
 		return rect
 	var a: Vector2i = _turned_point(Vector2(rect.position), size, turns)

@@ -727,6 +727,8 @@ func _tick_inside(delta: float) -> void:
 	if _walking.length() > 5.0:
 		_local_facing = rotate_toward(_local_facing, atan2(_walking.x, -_walking.y), data.turn_speed * delta)
 	_place_inside(frame)
+	# So the station can draw props in front of or behind them, and open its doors for them.
+	_station.set_pilot_inside(_local, true)
 
 	var spot: Dictionary = _station.spot_near(_local, data.use_reach)
 	var port: int = _station.port_near_inside(_local, data.use_reach)
@@ -1191,6 +1193,10 @@ func _set_mode(new_mode: String) -> void:
 	if helmet_lamp and mode != INSIDE:
 		helmet_lamp = false
 		_station.light_helmet(Vector2.ZERO, 0.0, false)
+	# Inside a station they're drawn between the props behind them and in front of them.
+	z_index = StationView.Z_PILOT if new_mode == INSIDE else 0
+	if old_mode == INSIDE and new_mode != INSIDE:
+		_station.set_pilot_inside(Vector2.ZERO, false)
 	_has_drag = false
 	_jump_held = false
 	_jetting = false

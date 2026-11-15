@@ -2,7 +2,9 @@
 // fades toward its edge, on top of a little light everywhere, and the art steps down the palette
 // where the light's low (see palette_light.gdshaderinc). Walls stop the lamps' light: that's worked
 // out once into a light map (scripts/station/station_light.gd), and until it's ready the lamps light
-// straight through. Lamps are in the picture's own pixels. From DESIGN.md, "Lighting".
+// straight through. Lamps are in the picture's own pixels. Each piece of art that uses this, a layer
+// or a prop, says where its top left corner is on the station's picture and how big that picture is, so
+// all of them look the light up by station pixel. From DESIGN.md, "Lighting".
 shader_type canvas_item;
 
 #include "res://shaders/palette_light.gdshaderinc"
@@ -15,6 +17,10 @@ uniform vec4 lamps[MOST_LAMPS];
 uniform int lamp_count = 0;
 // The light everywhere, with no lamp near, from 0 to 1.
 uniform float ambient = 0.3;
+// Where this art's top left corner is on the station's picture, in its pixels, and how big the
+// picture is. A whole layer is at (0, 0) and the picture's size.
+uniform vec2 sprite_at = vec2(0.0);
+uniform vec2 map_size = vec2(1.0);
 // The lamps' light, walls and all, once it's worked out: red for steady lamps and the light
 // everywhere, green for failing lamps, and blue for emergency lamps.
 uniform sampler2D light_map : filter_nearest;
@@ -80,7 +86,8 @@ float helmet_light(vec2 pixel, vec2 texel) {
 }
 
 void fragment() {
-	vec2 pixel = floor(UV / TEXTURE_PIXEL_SIZE) + 0.5;
+	vec2 pixel = floor(UV / TEXTURE_PIXEL_SIZE) + sprite_at + 0.5;
+	vec2 map_uv = pixel / map_size;
 	float light = ambient;
 	for (int i = 0; i < MOST_LAMPS; i++) {
 		if (baked || i >= lamp_count) {
@@ -94,13 +101,13 @@ void fragment() {
 	// The light that isn't the emergency lamps', which keeps its color.
 	float white = light;
 	if (baked) {
-		vec3 maps = texture(light_map, UV).rgb;
+		vec3 maps = texture(light_map, map_uv).rgb;
 		alarm = maps.b * pulse;
 		white = 1.0 - (1.0 - maps.r) * (1.0 - maps.g * flicker);
 		light = 1.0 - (1.0 - white) * (1.0 - alarm);
 	}
 	if (helmet_on) {
-		float beam = helmet_light(pixel, TEXTURE_PIXEL_SIZE);
+		float beam = helmet_light(pixel, 1.0 / map_size);
 		light = 1.0 - (1.0 - light) * (1.0 - beam);
 		white = 1.0 - (1.0 - white) * (1.0 - beam);
 	}

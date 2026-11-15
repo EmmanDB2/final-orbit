@@ -1,6 +1,10 @@
 # station_view.gd: a station where its rails put it, at true scale, turning with its orbit so its
 # bottom always faces the body below. Farther out it's a marker dot. Its pixels are solid, and a ship
-# that brings its hatch slowly and straight onto a free port docks there.
+# that brings its hatch slowly and straight onto a free port docks there. Inside, a station of modules
+# is drawn in layers: the floor and walls under everything, then the pilot, standing props, and hatch
+# doors sorted by how far down their feet or bases are (a prop's base lower than the pilot's feet
+# draws over them, higher draws under), then the overhead pipes and lintels, then the roof, which
+# fades off. A station of old rooms has just the one inside picture.
 # From DESIGN.md, "Universe generation" (stations are hubs), "Core loop" (a run ends docked), and
 # "Camera, zoom, and landing".
 class_name StationView
@@ -39,6 +43,14 @@ const INTERIOR_LAMPS: int = 64
 const EMERGENCY_PULSE_SECONDS: float = 2.4
 ## How long the roof takes to come off, in seconds.
 @export var roof_seconds: float = 0.3
+## How far below the pilot's middle their feet are for sorting against props, in world units.
+@export var pilot_feet: float = 6.0
+## Which layer of depth each kind of thing is drawn at inside, in order: the pilot sits between the
+## props that are behind them and the props in front.
+const Z_BEHIND: int = 1
+const Z_PILOT: int = 2
+const Z_FRONT: int = 3
+const Z_OVERHEAD: int = 4
 
 var layout: StationLayout
 ## Which free port the ship's docked at, or -1.
@@ -50,6 +62,17 @@ var _design: StationDesign
 var _index: int = 0
 var _sprite := Sprite2D.new()
 var _inside_sprite := Sprite2D.new()
+# A station of modules: everything inside hangs off one node that's scaled to the zoom.
+var _modular: bool = false
+var _inside := Node2D.new()
+var _stands: Array[Dictionary] = []
+var _doors: HatchDoors
+# Where the pilot is on the station's picture while they're inside, and whether they are.
+var _pilot_at := Vector2.ZERO
+var _pilot_inside: bool = false
+# Every material the insides are drawn with, and the values their shared settings have now.
+var _lit_materials: Array[ShaderMaterial] = []
+var _light_params: Dictionary = {}
 # The insides' light map, worked out on a worker thread, and that work while it's under way.
 var _light_task: int = -1
 var _baked_light: Image
@@ -95,31 +118,92 @@ func start_station(gravity_model: GravityModel, state: ShipState, design: Statio
 	for port: Dictionary in layout.free_ports:
 		var face := Vector2(port["face"])
 		var surface: Vector2 = Vector2(port["point"]) + Vector2(0.5, 0.5) + face * 0.5
-		_ports.append({"at": (surface - Vector2(layout.origin)) * design.art_pixel_size, "face": face})
+		var entry: Dictionary = {"at": (surface - Vector2(layout.origin)) * design.art_pixel_size, "face": face}
+		if port.has("inner"):
+			# A station of modules says where the pilot stands by the port's door.
+			entry["inner"] = (Vector2(port["inner"]) - Vector2(layout.origin)) * design.art_pixel_size
+		_ports.append(entry)
 	_sprite.texture = ImageTexture.create_from_image(layout.image)
 	# Its outside is lit by the star once its curvature's worked out, off to the side, as it's big.
 	var outside: Image = layout.image
 	_hull_task = WorkerThreadPool.add_task(func() -> void: _hull_material = HullLight.material_for(outside))
 	_sprite.centered = false
 	_sprite.offset = -Vector2(layout.origin)
-	_inside_sprite.texture = ImageTexture.create_from_image(layout.interior_image)
 	_powered = design.powered
-	_light_inside()
-	_inside_sprite.centered = false
-	_inside_sprite.offset = -Vector2(layout.origin)
-	_inside_sprite.visible = false
+	_modular = layout.modular
 	# Under the roof, which fades off it.
-	add_child(_inside_sprite)
+	if _modular:
+		_build_modular_inside()
+	else:
+		_inside_sprite.texture = ImageTexture.create_from_image(layout.interior_image)
+		_inside_sprite.material = _new_lit_material(Vector2.ZERO)
+		_inside_sprite.centered = false
+		_inside_sprite.offset = -Vector2(layout.origin)
+		_inside_sprite.visible = false
+		add_child(_inside_sprite)
+	_light_inside()
 	add_child(_sprite)
+
+
+# The layers of a station of modules, as children of one node that's scaled to the zoom, so each one's
+# position is its pixel on the station's picture less the origin. The floor goes first, then the doors'
+# leaves, which slide under the walls, then the walls, then the props that stand, and the overhead layer last.
+func _build_modular_inside() -> void:
+	_inside.visible = false
+	add_child(_inside)
+	_inside.add_child(_layer_sprite(layout.floor_image, 0))
+	_doors = HatchDoors.new()
+	_doors.build(_inside, layout.hatches, _design, layout.origin, _new_lit_material)
+	_inside.add_child(_layer_sprite(layout.walls_image, 0))
+	for stand: Dictionary in layout.props:
+		var sprite := Sprite2D.new()
+		sprite.texture = ImageTexture.create_from_image(stand["image"])
+		sprite.centered = false
+		sprite.position = Vector2(stand["at"] - layout.origin)
+		sprite.z_index = Z_BEHIND
+		sprite.material = _new_lit_material(Vector2(stand["at"]))
+		_inside.add_child(sprite)
+		_stands.append({"sprite": sprite, "foot": stand["foot"]})
+	_inside.add_child(_layer_sprite(layout.overhead_image, Z_OVERHEAD))
+
+
+# A layer of the whole station's picture as a sprite, lit.
+func _layer_sprite(image: Image, depth: int) -> Sprite2D:
+	var sprite := Sprite2D.new()
+	sprite.texture = ImageTexture.create_from_image(image)
+	sprite.centered = false
+	sprite.offset = -Vector2(layout.origin)
+	sprite.z_index = depth
+	sprite.material = _new_lit_material(Vector2.ZERO)
+	return sprite
+
+
+# A material the insides are drawn with, for art whose top left corner is here on the station's picture.
+# Every one has the same palette and the same lamps, which _set_light_param keeps in step.
+func _new_lit_material(corner: Vector2) -> ShaderMaterial:
+	var material: ShaderMaterial = PaletteLight.material_for(preload("res://shaders/interior_light.gdshader"))
+	for param: String in _light_params:
+		material.set_shader_parameter(param, _light_params[param])
+	material.set_shader_parameter("sprite_at", corner)
+	_lit_materials.append(material)
+	return material
+
+
+# Sets one of the insides' shared settings on every material that draws them, if it's changed.
+func _set_light_param(param: String, value: Variant) -> void:
+	if _light_params.has(param) and _light_params[param] == value:
+		return
+	_light_params[param] = value
+	for material: ShaderMaterial in _lit_materials:
+		material.set_shader_parameter(param, value)
 
 
 # The insides lit by the station's lamps. With the power off, only its emergency lamps pulse and its
 # failing ones sputter.
 func _light_inside() -> void:
-	var material: ShaderMaterial = PaletteLight.material_for(preload("res://shaders/interior_light.gdshader"))
 	var palette: AgencyPalette = UiStyle.palette()
-	material.set_shader_parameter("alarm_bright", palette.agency_red)
-	material.set_shader_parameter("alarm_dim", palette.agency_orange_dark)
+	_set_light_param("alarm_bright", palette.agency_red)
+	_set_light_param("alarm_dim", palette.agency_orange_dark)
 	var lit: Array = _lamps_now()
 	# Until the light map's ready, the steady lamps light straight through.
 	var lamps := PackedVector4Array()
@@ -128,12 +212,14 @@ func _light_inside() -> void:
 			lamps.append(Vector4(lamp["point"].x, lamp["point"].y, lamp["reach"], lamp["brightness"]))
 	var count: int = mini(lamps.size(), INTERIOR_LAMPS)
 	lamps.resize(INTERIOR_LAMPS)
-	material.set_shader_parameter("lamps", lamps)
-	material.set_shader_parameter("lamp_count", count)
+	_set_light_param("lamps", lamps)
+	_set_light_param("lamp_count", count)
+	_set_light_param("baked", false)
 	var ambient: float = _design.ambient_light if _powered else _design.dark_ambient
-	material.set_shader_parameter("ambient", ambient)
-	material.set_shader_parameter("floor_mask", ImageTexture.create_from_image(StationLight.floor_mask(layout.picture_size(), layout.floors())))
-	_inside_sprite.material = material
+	_set_light_param("ambient", ambient)
+	_set_light_param("map_size", Vector2(layout.picture_size()))
+	if not _light_params.has("floor_mask"):
+		_set_light_param("floor_mask", ImageTexture.create_from_image(StationLight.floor_mask(layout.picture_size(), layout.floors())))
 	# Walls stopping the lamps' light takes a while to work out, so it's done off to the side.
 	_wait_for_light()
 	_baked_light = null
@@ -146,6 +232,8 @@ func _light_inside() -> void:
 # failing ones, and the rest dark.
 func _lamps_now() -> Array:
 	var lit: Array = []
+	if _modular:
+		return _fixtures_now()
 	for i in range(layout.lamps.size()):
 		var lamp: Dictionary = layout.lamps[i].duplicate()
 		if _powered:
@@ -160,6 +248,31 @@ func _lamps_now() -> Array:
 			lamp["brightness"] = _design.lamp_brightness
 		else:
 			continue
+		lit.append(lamp)
+	return lit
+
+
+# A station of modules' fixtures as the power has them: mains and always on, and with the power off the
+# emergency ones pulsing and the failing ones sputtering. (Planned lighting by circuit and tint is the
+# next ticket's; until then every fixture is a white lamp.)
+func _fixtures_now() -> Array:
+	var lit: Array = []
+	for fixture: Dictionary in layout.fixtures:
+		var lamp: Dictionary = {"point": fixture["point"], "reach": fixture["reach"], "room": fixture["room"], "brightness": fixture["brightness"] * _design.lamp_brightness}
+		match fixture["circuit"]:
+			LightFixture.ALWAYS:
+				lamp["kind"] = StationLight.STEADY
+			LightFixture.MAINS:
+				if not _powered:
+					continue
+				lamp["kind"] = StationLight.STEADY
+			LightFixture.FAILING:
+				lamp["kind"] = StationLight.STEADY if _powered else StationLight.FAILING
+			LightFixture.EMERGENCY:
+				if _powered:
+					continue
+				lamp["kind"] = StationLight.EMERGENCY
+				lamp["brightness"] = fixture["brightness"] * _design.emergency_brightness
 		lit.append(lamp)
 	return lit
 
@@ -181,9 +294,9 @@ func _pick_up_light() -> void:
 	if _light_task < 0 or not WorkerThreadPool.is_task_completed(_light_task):
 		return
 	_wait_for_light()
-	if _baked_light != null and _inside_sprite.material != null:
-		_inside_sprite.material.set_shader_parameter("light_map", ImageTexture.create_from_image(_baked_light))
-		_inside_sprite.material.set_shader_parameter("baked", true)
+	if _baked_light != null and not _lit_materials.is_empty():
+		_set_light_param("light_map", ImageTexture.create_from_image(_baked_light))
+		_set_light_param("baked", true)
 
 
 func _wait_for_light() -> void:
@@ -216,16 +329,20 @@ func _light_outside() -> void:
 
 # Emergency lamps pulse slowly, and failing ones sputter: mostly dark, with bursts of light.
 func _change_lights(delta: float) -> void:
-	var material: ShaderMaterial = _inside_sprite.material
-	if material == null or not _inside_sprite.visible:
+	if _lit_materials.is_empty() or not _insides_visible():
 		return
 	_light_time += delta
-	material.set_shader_parameter("pulse", 0.675 + 0.325 * sin(_light_time * TAU / EMERGENCY_PULSE_SECONDS))
+	_set_light_param("pulse", 0.675 + 0.325 * sin(_light_time * TAU / EMERGENCY_PULSE_SECONDS))
 	_sputter_left -= delta
 	if _sputter_left <= 0.0:
 		_sputter_on = not _sputter_on
 		_sputter_left = randf_range(0.04, 0.25) if _sputter_on else randf_range(0.05, 1.6)
-	material.set_shader_parameter("flicker", 1.0 if _sputter_on else 0.0)
+	_set_light_param("flicker", 1.0 if _sputter_on else 0.0)
+
+
+# Whether the insides are showing at all.
+func _insides_visible() -> bool:
+	return _inside.visible if _modular else _inside_sprite.visible
 
 
 ## How much light the lamps leave at a point in the station's frame, from 0 to 1, with failing lamps
@@ -243,13 +360,29 @@ func light_at(local: Vector2) -> float:
 ## Shines the pilot's helmet lamp from a point in the station's frame, facing this way in it, or puts
 ## it out.
 func light_helmet(local: Vector2, facing: float, on: bool) -> void:
-	var material: ShaderMaterial = _inside_sprite.material
-	if material == null:
+	if _lit_materials.is_empty():
 		return
-	material.set_shader_parameter("helmet_on", on)
+	_set_light_param("helmet_on", on)
 	if on:
-		material.set_shader_parameter("helmet_at", local / _design.art_pixel_size + Vector2(layout.origin))
-		material.set_shader_parameter("helmet_facing", Vector2(sin(facing), -cos(facing)))
+		_set_light_param("helmet_at", local / _design.art_pixel_size + Vector2(layout.origin))
+		_set_light_param("helmet_facing", Vector2(sin(facing), -cos(facing)))
+
+
+## Tells the station where the pilot is in its frame while they're inside, so the props they're behind
+## or in front of are drawn that way, and the hatch doors open for them. Call it with inside false when
+## they're not in the station.
+func set_pilot_inside(local: Vector2, inside: bool) -> void:
+	_pilot_inside = inside
+	_pilot_at = local / _design.art_pixel_size + Vector2(layout.origin)
+	var feet: float = _pilot_at.y + pilot_feet / _design.art_pixel_size
+	for stand: Dictionary in _stands:
+		var sprite: Sprite2D = stand["sprite"]
+		sprite.z_index = Z_FRONT if inside and stand["foot"] > feet else Z_BEHIND
+
+
+## The station's hatch doors, if it has them.
+func hatch_doors() -> HatchDoors:
+	return _doors
 
 
 ## How many game pixels wide one pixel of the station's art is drawn.
@@ -272,11 +405,14 @@ func _process(delta: float) -> void:
 	_pick_up_light()
 	_change_lights(TimeWarp.real(delta))
 	_light_outside()
+	if _doors != null:
+		_doors.update(TimeWarp.real(delta), _pilot_at if _pilot_inside else Vector2(-1.0e9, -1.0e9), layout.origin)
 	var wanted: float = 1.0 if _roof_off else 0.0
 	if _roof_gone == wanted:
 		return
 	_roof_gone = move_toward(_roof_gone, wanted, TimeWarp.real(delta) / roof_seconds)
-	_inside_sprite.visible = _roof_gone > 0.0 and not _show_dot
+	_inside_sprite.visible = _roof_gone > 0.0 and not _show_dot and not _modular
+	_inside.visible = _roof_gone > 0.0 and not _show_dot and _modular
 	_sprite.modulate.a = 1.0 - _roof_gone
 
 
@@ -304,6 +440,8 @@ func port_face(port: int) -> Vector2:
 
 ## Where the inner door of a free port is, in the station's frame.
 func port_inner(port: int) -> Vector2:
+	if _ports[port].has("inner"):
+		return _ports[port]["inner"]
 	return _ports[port]["at"] - _ports[port]["face"] * port_door_depth
 
 
@@ -636,7 +774,9 @@ func _on_view_changed(center_x: float, center_y: float, pixels_per_unit: float) 
 	_sprite.visible = not show_dot
 	_sprite.scale = Vector2.ONE * _design.art_pixel_size * pixels_per_unit
 	_inside_sprite.scale = _sprite.scale
-	_inside_sprite.visible = _roof_gone > 0.0 and not show_dot
+	_inside.scale = _sprite.scale
+	_inside_sprite.visible = _roof_gone > 0.0 and not show_dot and not _modular
+	_inside.visible = _roof_gone > 0.0 and not show_dot and _modular
 	if show_dot != _show_dot:
 		_show_dot = show_dot
 		queue_redraw()
