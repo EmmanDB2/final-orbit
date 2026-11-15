@@ -14,6 +14,7 @@ func _initialize() -> void:
 	_test_modular_station()
 	_test_hatch_doors()
 	_test_planned_lighting()
+	_test_kapteyn_3()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -329,7 +330,7 @@ func _test_modular_station() -> void:
 			_check("the gig board's spot is the middle of its footprint", float((spot["point"] - hub_at).x * 1000 + (spot["point"] - hub_at).y), 26023.0, 0.0)
 	# The dock port: its collar's walkable half, and where its ring ends.
 	var dock: Dictionary = layout.free_ports[0]
-	_check("the docking point is past the ring", float(dock["point"].y - dock["shell_point"].y), 64.0, 0.0)
+	_check("the docking point is past the ring", float(dock["point"].y - dock["shell_point"].y), 60.0, 0.0)
 	_check("the pilot's spot by the door is inside the collar", float(Vector2(dock["inner"]).y - dock["shell_point"].y), 6.5, 0.0)
 	_flag("and can be stood on", layout.is_walkable(dock["inner"]))
 	_flag("the collar's outer half can't be", not layout.is_walkable(Vector2(dock["shell_point"]) + Vector2(0.5, 30.0)))
@@ -488,3 +489,80 @@ func _test_planned_lighting() -> void:
 	var plain: StationLayout = StationLayout.build(bare)
 	_check("no fixtures: none baked", plain.fixtures.size(), 0.0, 0.0)
 	_flag("no fixtures: automatic lamps instead", plain.lamps.size() > 0)
+
+
+# The game's Kapteyn-3: checks the station, not the pixels, so round 2's art drops in.
+func _test_kapteyn_3() -> void:
+	var design: StationDesign = load("res://data/kapteyn_3.tres")
+	var layout: StationLayout = StationLayout.build(design)
+	var old: StationDesign = load("res://data/station_1.tres")
+	_check("Kapteyn-3 has 6 modules", design.modules.size(), 6.0, 0.0)
+	_check("3 free docking ports", layout.free_ports.size(), 3.0, 0.0)
+	_check("and 1 airlock", layout.airlock_ports.size(), 1.0, 0.0)
+	_flag("it keeps its name, callsign, and orbit", design.display_name == old.display_name and design.callsign == "KAPTEYN-3" and design.orbit_altitude == old.orbit_altitude and is_equal_approx(design.orbit_start_angle, old.orbit_start_angle))
+	_check("5 cm a pixel", design.art_pixel_size, 1.0, 0.0)
+	var kinds: Array = []
+	for spot: Dictionary in layout.spots:
+		kinds.append(spot["kind"])
+	for wanted: String in ["gig_board", "service", "wake", "power"]:
+		_flag("it has a %s spot" % wanted, kinds.has(wanted))
+	# Every standing prop's footprint is on floor, and every port on the art.
+	var floor_alpha: PackedByteArray = layout.floor_image.get_data()
+	var width: int = layout.floor_image.get_width()
+	var off_floor: int = 0
+	for stand: Dictionary in layout.props:
+		var foot: Rect2i = stand["footprint"]
+		for y in range(foot.position.y, foot.end.y):
+			for x in range(foot.position.x, foot.end.x):
+				if floor_alpha[(y * width + x) * 4 + 3] == 0:
+					off_floor += 1
+	_check("every prop footprint is on floor", off_floor, 0.0, 0.0)
+	var off_art: int = 0
+	for port: Dictionary in layout.ports:
+		var at: Vector2i = port["shell_point"]
+		if layout.walls_image.get_pixelv(at).a == 0.0 and layout.floor_image.get_pixelv(at).a == 0.0 and layout.roof_image.get_pixelv(at).a == 0.0:
+			off_art += 1
+	_check("every port is on the art", off_art, 0.0, 0.0)
+	var names := {}
+	for port: Dictionary in layout.ports:
+		names[port["name"] + str(port["module"])] = true
+	_check("ports are named and kept", names.size(), layout.ports.size(), 0.0)
+	_flag("its home port and legacy ports are the south collar and the old numbers", design.home_port == "dock_s" and design.legacy_ports == PackedStringArray(["dock_s", "dock_e", "dock_w", "dock_s"]))
+	# The pilot, at their walking size, can reach every door, terminal and the bed.
+	var size: Vector2i = layout.picture_size()
+	var reach: float = 6.0
+	var fits := func(cell: Vector2i) -> bool:
+		for i in range(8):
+			if not layout.is_walkable(Vector2(cell) + Vector2(0.5, 0.5) + Vector2.UP.rotated(i * TAU / 8.0) * reach):
+				return false
+		return layout.is_walkable(Vector2(cell) + Vector2(0.5, 0.5))
+	var start := Vector2i(layout.origin)
+	var seen := PackedByteArray()
+	seen.resize(size.x * size.y)
+	var stack: Array[Vector2i] = [start]
+	_flag("the concourse's middle can be stood on", fits.call(start))
+	seen[start.y * size.x + start.x] = 1
+	while not stack.is_empty():
+		var cell: Vector2i = stack.pop_back()
+		for way: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var next: Vector2i = cell + way
+			if next.x >= 0 and next.y >= 0 and next.x < size.x and next.y < size.y and seen[next.y * size.x + next.x] == 0 and fits.call(next):
+				seen[next.y * size.x + next.x] = 1
+				stack.append(next)
+	for port: Dictionary in layout.free_ports + layout.airlock_ports:
+		var inner := Vector2i(port["inner"])
+		_flag("%s's door can be walked to" % port["name"], seen[inner.y * size.x + inner.x] == 1)
+	for spot: Dictionary in layout.spots:
+		var near: int = 0
+		for dy in range(-24, 25):
+			for dx in range(-24, 25):
+				var cell: Vector2i = spot["point"] + Vector2i(dx, dy)
+				if cell.x >= 0 and cell.y >= 0 and cell.x < size.x and cell.y < size.y and seen[cell.y * size.x + cell.x] == 1 and Vector2(dx, dy).length() <= 24.0:
+					near += 1
+		_flag("the %s spot can be walked up to" % spot["kind"], near > 0)
+	var cut_off: int = 0
+	for hatch: Dictionary in layout.hatches:
+		var middle := Vector2i(hatch["center"])
+		if hatch["kind"] == "inner" and seen[middle.y * size.x + middle.x] == 0:
+			cut_off += 1
+	_check("every joint's hatch is reached", cut_off, 0.0, 0.0)

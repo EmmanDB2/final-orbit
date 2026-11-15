@@ -1,0 +1,1057 @@
+[gd_resource type="Resource" script_class="StationDesign" format=3]
+; STAND-IN: drawn from Gemini's round 1 concept (art/*/standin/), to be replaced by round 2. Made by tools/import_station.gd.
+
+[ext_resource type="Texture2D" path="res://art/station_props/standin/capped_plate.png" id="1_eygy0"]
+[ext_resource type="Texture2D" path="res://art/station_props/standin/docking_ring_roof.png" id="2_xnd62"]
+[ext_resource type="Texture2D" path="res://art/station_props/standin/hatch_door_left.png" id="3_28pfa"]
+[ext_resource type="Texture2D" path="res://art/station_props/standin/hatch_door_right.png" id="4_jvk8v"]
+[ext_resource type="Texture2D" path="res://art/station_props/standin/hatch_floor.png" id="5_s56ym"]
+[ext_resource type="Texture2D" path="res://art/station_props/standin/hatch_overhead.png" id="6_6aigs"]
+[ext_resource type="Texture2D" path="res://art/station_props/standin/hatch_roof.png" id="7_nwjbw"]
+[ext_resource type="Texture2D" path="res://art/station_props/standin/hatch_walls.png" id="8_1ggc0"]
+[ext_resource type="Script" path="res://scripts/station/station_module.gd" id="9_pvitq"]
+[ext_resource type="Script" path="res://scripts/station/station_port.gd" id="10_ncv5y"]
+[ext_resource type="Script" path="res://scripts/station/light_fixture.gd" id="11_6r0ab"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/concourse_floor.png" id="12_rtywq"]
+[ext_resource type="Script" path="res://scripts/station/outside_light.gd" id="13_da0g4"]
+[ext_resource type="Script" path="res://scripts/station/prop_placement.gd" id="14_5c5xp"]
+[ext_resource type="Resource" path="res://data/station_props/lane_arrow.tres" id="15_w6nee"]
+[ext_resource type="Resource" path="res://data/station_props/grate.tres" id="16_tj24q"]
+[ext_resource type="Resource" path="res://data/station_props/gig_board.tres" id="17_mldrd"]
+[ext_resource type="Resource" path="res://data/station_props/directory_sign.tres" id="18_754rs"]
+[ext_resource type="Resource" path="res://data/station_props/bench.tres" id="19_yo7mq"]
+[ext_resource type="Resource" path="res://data/station_props/planter.tres" id="20_bhhe1"]
+[ext_resource type="Resource" path="res://data/station_props/light_panel.tres" id="21_mb5h1"]
+[ext_resource type="Resource" path="res://data/station_props/beam.tres" id="22_78gfm"]
+[ext_resource type="Resource" path="res://data/station_props/cable_tray.tres" id="23_vaaqr"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/concourse_roof.png" id="24_7qfkl"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/concourse_walls.png" id="25_0j6uc"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/docking_hub_floor.png" id="26_t07rb"]
+[ext_resource type="Resource" path="res://data/station_props/hazard_stripe.tres" id="27_lh2ll"]
+[ext_resource type="Resource" path="res://data/station_props/cable_run.tres" id="28_pkrwq"]
+[ext_resource type="Resource" path="res://data/station_props/service_terminal.tres" id="29_wkw4a"]
+[ext_resource type="Resource" path="res://data/station_props/cargo_cage.tres" id="30_67a57"]
+[ext_resource type="Resource" path="res://data/station_props/crate.tres" id="31_qxnxu"]
+[ext_resource type="Resource" path="res://data/station_props/crate_small.tres" id="32_4x614"]
+[ext_resource type="Resource" path="res://data/station_props/pipe_run.tres" id="33_3tsqf"]
+[ext_resource type="Resource" path="res://data/station_props/pipe_bend.tres" id="34_lbsjs"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/docking_hub_roof.png" id="35_0gf84"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/docking_hub_walls.png" id="36_iaj31"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/med_bay_floor.png" id="37_xdcmn"]
+[ext_resource type="Resource" path="res://data/station_props/med_bed.tres" id="38_0pyco"]
+[ext_resource type="Resource" path="res://data/station_props/med_bed_wake.tres" id="39_k8b8o"]
+[ext_resource type="Resource" path="res://data/station_props/med_cabinet.tres" id="40_bnhg5"]
+[ext_resource type="Resource" path="res://data/station_props/scanner_arch.tres" id="41_vxn36"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/med_bay_roof.png" id="42_dhf2w"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/med_bay_walls.png" id="43_ucs6j"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/crew_hab_floor.png" id="44_mfge3"]
+[ext_resource type="Resource" path="res://data/station_props/bunk.tres" id="45_teugd"]
+[ext_resource type="Resource" path="res://data/station_props/galley_counter.tres" id="46_nmbsy"]
+[ext_resource type="Resource" path="res://data/station_props/table.tres" id="47_yboff"]
+[ext_resource type="Resource" path="res://data/station_props/locker.tres" id="48_ilny8"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/crew_hab_roof.png" id="49_vonf0"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/crew_hab_walls.png" id="50_lqei7"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/eva_prep_floor.png" id="51_olesj"]
+[ext_resource type="Resource" path="res://data/station_props/suit_rack.tres" id="52_1lppn"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/eva_prep_roof.png" id="53_datob"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/eva_prep_walls.png" id="54_53rtu"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/ops_floor.png" id="55_b5y7b"]
+[ext_resource type="Resource" path="res://data/station_props/console.tres" id="56_hlusx"]
+[ext_resource type="Resource" path="res://data/station_props/comms_rack.tres" id="57_1hujr"]
+[ext_resource type="Resource" path="res://data/station_props/breaker_panel.tres" id="58_vfx2q"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/ops_roof.png" id="59_5i43d"]
+[ext_resource type="Texture2D" path="res://art/kapteyn_3/standin/ops_walls.png" id="60_uein5"]
+[ext_resource type="Script" path="res://scripts/station/station_room.gd" id="61_wo5e4"]
+[ext_resource type="Script" path="res://scripts/station/station_design.gd" id="62_355la"]
+
+[sub_resource type="Resource" id="Resource_trv4s"]
+script = ExtResource("11_6r0ab")
+point = Vector2(64, 37)
+reach_metres = 4.0
+
+[sub_resource type="Resource" id="Resource_opijy"]
+script = ExtResource("11_6r0ab")
+point = Vector2(192, 37)
+reach_metres = 4.0
+
+[sub_resource type="Resource" id="Resource_ipmll"]
+script = ExtResource("11_6r0ab")
+point = Vector2(64, 145)
+reach_metres = 4.0
+
+[sub_resource type="Resource" id="Resource_r1p28"]
+script = ExtResource("11_6r0ab")
+point = Vector2(192, 145)
+reach_metres = 4.0
+
+[sub_resource type="Resource" id="Resource_ee3pl"]
+script = ExtResource("11_6r0ab")
+point = Vector2(56, 18)
+reach_metres = 1.5
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_itgi6"]
+script = ExtResource("11_6r0ab")
+point = Vector2(176, 13)
+reach_metres = 1.0
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_x8a7j"]
+script = ExtResource("11_6r0ab")
+point = Vector2(108, 10)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_mgoeo"]
+script = ExtResource("11_6r0ab")
+point = Vector2(108, 166)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_otwxh"]
+script = ExtResource("11_6r0ab")
+point = Vector2(10, 68)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_um64t"]
+script = ExtResource("11_6r0ab")
+point = Vector2(246, 68)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_6l5oe"]
+script = ExtResource("10_ncv5y")
+port_name = "north"
+point = Vector2i(128, 0)
+face = Vector2i(0, -1)
+
+[sub_resource type="Resource" id="Resource_huw6w"]
+script = ExtResource("10_ncv5y")
+port_name = "south"
+point = Vector2i(128, 175)
+
+[sub_resource type="Resource" id="Resource_bkrjk"]
+script = ExtResource("10_ncv5y")
+port_name = "west"
+point = Vector2i(0, 88)
+face = Vector2i(-1, 0)
+
+[sub_resource type="Resource" id="Resource_mkd3k"]
+script = ExtResource("10_ncv5y")
+port_name = "east"
+point = Vector2i(255, 88)
+face = Vector2i(1, 0)
+
+[sub_resource type="Resource" id="Resource_xe2mc"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("15_w6nee")
+position = Vector2i(123, 22)
+
+[sub_resource type="Resource" id="Resource_4vhc2"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("15_w6nee")
+position = Vector2i(123, 140)
+turns = 2
+
+[sub_resource type="Resource" id="Resource_4dmtc"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("15_w6nee")
+position = Vector2i(22, 83)
+turns = 3
+
+[sub_resource type="Resource" id="Resource_vqb78"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("15_w6nee")
+position = Vector2i(220, 83)
+turns = 1
+
+[sub_resource type="Resource" id="Resource_cwr3o"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("16_tj24q")
+position = Vector2i(58, 78)
+
+[sub_resource type="Resource" id="Resource_xw0ut"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("16_tj24q")
+position = Vector2i(178, 78)
+
+[sub_resource type="Resource" id="Resource_2n622"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("17_mldrd")
+position = Vector2i(32, 10)
+
+[sub_resource type="Resource" id="Resource_cy0h3"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("18_754rs")
+position = Vector2i(164, 10)
+
+[sub_resource type="Resource" id="Resource_v05m2"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("19_yo7mq")
+position = Vector2i(32, 46)
+
+[sub_resource type="Resource" id="Resource_srec5"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("19_yo7mq")
+position = Vector2i(32, 124)
+
+[sub_resource type="Resource" id="Resource_glwls"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("19_yo7mq")
+position = Vector2i(192, 46)
+
+[sub_resource type="Resource" id="Resource_xivup"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("19_yo7mq")
+position = Vector2i(192, 124)
+
+[sub_resource type="Resource" id="Resource_873d7"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("20_bhhe1")
+position = Vector2i(12, 20)
+
+[sub_resource type="Resource" id="Resource_11adf"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("20_bhhe1")
+position = Vector2i(232, 20)
+
+[sub_resource type="Resource" id="Resource_cx7bi"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("20_bhhe1")
+position = Vector2i(12, 146)
+
+[sub_resource type="Resource" id="Resource_owyau"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("20_bhhe1")
+position = Vector2i(232, 146)
+
+[sub_resource type="Resource" id="Resource_tvy05"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(52, 34)
+
+[sub_resource type="Resource" id="Resource_pt8eh"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(180, 34)
+
+[sub_resource type="Resource" id="Resource_csvd7"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(52, 142)
+
+[sub_resource type="Resource" id="Resource_cunj1"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(180, 142)
+
+[sub_resource type="Resource" id="Resource_6usl7"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("22_78gfm")
+position = Vector2i(84, 12)
+turns = 1
+
+[sub_resource type="Resource" id="Resource_nyjui"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("22_78gfm")
+position = Vector2i(166, 12)
+turns = 1
+
+[sub_resource type="Resource" id="Resource_8olh2"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("23_vaaqr")
+position = Vector2i(84, 120)
+turns = 1
+
+[sub_resource type="Resource" id="Resource_qa0hb"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("23_vaaqr")
+position = Vector2i(164, 120)
+turns = 1
+
+[sub_resource type="Resource" id="Resource_c68yi"]
+script = ExtResource("9_pvitq")
+display_name = "Concourse"
+canvas_size = Vector2i(256, 176)
+floor_texture = ExtResource("12_rtywq")
+walls_texture = ExtResource("25_0j6uc")
+roof_texture = ExtResource("24_7qfkl")
+floors = Array[Rect2i]([Rect2i(8, 8, 240, 160), Rect2i(112, 0, 32, 8), Rect2i(112, 168, 32, 8), Rect2i(0, 72, 8, 32), Rect2i(248, 72, 8, 32)])
+ports = Array[ExtResource("10_ncv5y")]([SubResource("Resource_6l5oe"), SubResource("Resource_huw6w"), SubResource("Resource_bkrjk"), SubResource("Resource_mkd3k")])
+props = Array[ExtResource("14_5c5xp")]([SubResource("Resource_xe2mc"), SubResource("Resource_4vhc2"), SubResource("Resource_4dmtc"), SubResource("Resource_vqb78"), SubResource("Resource_cwr3o"), SubResource("Resource_xw0ut"), SubResource("Resource_2n622"), SubResource("Resource_cy0h3"), SubResource("Resource_v05m2"), SubResource("Resource_srec5"), SubResource("Resource_glwls"), SubResource("Resource_xivup"), SubResource("Resource_873d7"), SubResource("Resource_11adf"), SubResource("Resource_cx7bi"), SubResource("Resource_owyau"), SubResource("Resource_tvy05"), SubResource("Resource_pt8eh"), SubResource("Resource_csvd7"), SubResource("Resource_cunj1"), SubResource("Resource_6usl7"), SubResource("Resource_nyjui"), SubResource("Resource_8olh2"), SubResource("Resource_qa0hb")])
+fixtures = Array[ExtResource("11_6r0ab")]([SubResource("Resource_trv4s"), SubResource("Resource_opijy"), SubResource("Resource_ipmll"), SubResource("Resource_r1p28"), SubResource("Resource_ee3pl"), SubResource("Resource_itgi6"), SubResource("Resource_x8a7j"), SubResource("Resource_mgoeo"), SubResource("Resource_otwxh"), SubResource("Resource_um64t")])
+windows = Array[Rect2i]([Rect2i(44, 56, 36, 64), Rect2i(176, 56, 36, 64)])
+
+[sub_resource type="Resource" id="Resource_giv03"]
+script = ExtResource("11_6r0ab")
+point = Vector2(21, 68)
+reach_metres = 3.5
+
+[sub_resource type="Resource" id="Resource_2arju"]
+script = ExtResource("11_6r0ab")
+point = Vector2(195, 68)
+reach_metres = 3.5
+
+[sub_resource type="Resource" id="Resource_fqs27"]
+script = ExtResource("11_6r0ab")
+point = Vector2(108, 113)
+reach_metres = 3.5
+circuit = "failing"
+
+[sub_resource type="Resource" id="Resource_b5l6p"]
+script = ExtResource("11_6r0ab")
+point = Vector2(48, 18)
+reach_metres = 1.5
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_02aqm"]
+script = ExtResource("11_6r0ab")
+point = Vector2(88, 10)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_b1w18"]
+script = ExtResource("11_6r0ab")
+point = Vector2(10, 48)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_cpr7n"]
+script = ExtResource("11_6r0ab")
+point = Vector2(206, 48)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_wckvw"]
+script = ExtResource("11_6r0ab")
+point = Vector2(88, 126)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_cmvva"]
+script = ExtResource("13_da0g4")
+point = Vector2(85, 185)
+kind = "approach"
+port_name = "dock_s"
+
+[sub_resource type="Resource" id="Resource_wr1q5"]
+script = ExtResource("13_da0g4")
+point = Vector2(129, 185)
+kind = "approach"
+port_name = "dock_s"
+
+[sub_resource type="Resource" id="Resource_bq0jq"]
+script = ExtResource("13_da0g4")
+point = Vector2(107, 189)
+kind = "flood"
+port_name = "dock_s"
+
+[sub_resource type="Resource" id="Resource_1mxwt"]
+script = ExtResource("13_da0g4")
+point = Vector2(-51, 45)
+kind = "approach"
+port_name = "dock_w"
+
+[sub_resource type="Resource" id="Resource_wxjyb"]
+script = ExtResource("13_da0g4")
+point = Vector2(-51, 89)
+kind = "approach"
+port_name = "dock_w"
+
+[sub_resource type="Resource" id="Resource_dbikx"]
+script = ExtResource("13_da0g4")
+point = Vector2(-55, 67)
+kind = "flood"
+port_name = "dock_w"
+
+[sub_resource type="Resource" id="Resource_pyuxv"]
+script = ExtResource("13_da0g4")
+point = Vector2(265, 45)
+kind = "approach"
+port_name = "dock_e"
+
+[sub_resource type="Resource" id="Resource_7v17d"]
+script = ExtResource("13_da0g4")
+point = Vector2(265, 89)
+kind = "approach"
+port_name = "dock_e"
+
+[sub_resource type="Resource" id="Resource_ninlo"]
+script = ExtResource("13_da0g4")
+point = Vector2(269, 67)
+kind = "flood"
+port_name = "dock_e"
+
+[sub_resource type="Resource" id="Resource_tmglv"]
+script = ExtResource("10_ncv5y")
+port_name = "north"
+point = Vector2i(108, 0)
+face = Vector2i(0, -1)
+
+[sub_resource type="Resource" id="Resource_7o8ew"]
+script = ExtResource("10_ncv5y")
+port_name = "dock_w"
+point = Vector2i(0, 68)
+face = Vector2i(-1, 0)
+kind = "dock"
+
+[sub_resource type="Resource" id="Resource_ug8lv"]
+script = ExtResource("10_ncv5y")
+port_name = "dock_e"
+point = Vector2i(215, 68)
+face = Vector2i(1, 0)
+kind = "dock"
+
+[sub_resource type="Resource" id="Resource_nksr3"]
+script = ExtResource("10_ncv5y")
+port_name = "dock_s"
+point = Vector2i(108, 135)
+kind = "dock"
+
+[sub_resource type="Resource" id="Resource_d2hn5"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("27_lh2ll")
+position = Vector2i(88, 120)
+
+[sub_resource type="Resource" id="Resource_2krpc"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("27_lh2ll")
+position = Vector2i(10, 48)
+turns = 1
+
+[sub_resource type="Resource" id="Resource_plf6s"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("27_lh2ll")
+position = Vector2i(200, 48)
+turns = 1
+
+[sub_resource type="Resource" id="Resource_67f4b"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("16_tj24q")
+position = Vector2i(52, 58)
+
+[sub_resource type="Resource" id="Resource_1aiqm"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("16_tj24q")
+position = Vector2i(144, 58)
+
+[sub_resource type="Resource" id="Resource_n567b"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("28_pkrwq")
+position = Vector2i(40, 28)
+
+[sub_resource type="Resource" id="Resource_vw4m8"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("29_wkw4a")
+position = Vector2i(32, 10)
+
+[sub_resource type="Resource" id="Resource_sbde0"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("30_67a57")
+position = Vector2i(152, 14)
+
+[sub_resource type="Resource" id="Resource_nmjnl"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("31_qxnxu")
+position = Vector2i(22, 96)
+
+[sub_resource type="Resource" id="Resource_qgyx3"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("31_qxnxu")
+position = Vector2i(42, 96)
+
+[sub_resource type="Resource" id="Resource_w7wda"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("32_4x614")
+position = Vector2i(62, 102)
+
+[sub_resource type="Resource" id="Resource_1f0lm"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("32_4x614")
+position = Vector2i(174, 102)
+
+[sub_resource type="Resource" id="Resource_apgr0"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(18, 56)
+turns = 1
+
+[sub_resource type="Resource" id="Resource_013vt"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(192, 56)
+turns = 1
+
+[sub_resource type="Resource" id="Resource_jwgdt"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(96, 110)
+
+[sub_resource type="Resource" id="Resource_ayvc0"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("33_3tsqf")
+position = Vector2i(10, 12)
+
+[sub_resource type="Resource" id="Resource_f4vya"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("34_lbsjs")
+position = Vector2i(50, 12)
+turns = 1
+
+[sub_resource type="Resource" id="Resource_6yc1p"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("33_3tsqf")
+position = Vector2i(142, 118)
+
+[sub_resource type="Resource" id="Resource_kluhe"]
+script = ExtResource("9_pvitq")
+display_name = "Docking hub"
+bolts_to_module = 0
+bolts_to_port = "south"
+own_port = "north"
+canvas_size = Vector2i(216, 136)
+floor_texture = ExtResource("26_t07rb")
+walls_texture = ExtResource("36_iaj31")
+roof_texture = ExtResource("35_0gf84")
+floors = Array[Rect2i]([Rect2i(8, 8, 200, 120), Rect2i(92, 0, 32, 8), Rect2i(0, 52, 8, 32), Rect2i(208, 52, 8, 32), Rect2i(92, 128, 32, 8)])
+ports = Array[ExtResource("10_ncv5y")]([SubResource("Resource_tmglv"), SubResource("Resource_7o8ew"), SubResource("Resource_ug8lv"), SubResource("Resource_nksr3")])
+props = Array[ExtResource("14_5c5xp")]([SubResource("Resource_d2hn5"), SubResource("Resource_2krpc"), SubResource("Resource_plf6s"), SubResource("Resource_67f4b"), SubResource("Resource_1aiqm"), SubResource("Resource_n567b"), SubResource("Resource_vw4m8"), SubResource("Resource_sbde0"), SubResource("Resource_nmjnl"), SubResource("Resource_qgyx3"), SubResource("Resource_w7wda"), SubResource("Resource_1f0lm"), SubResource("Resource_apgr0"), SubResource("Resource_013vt"), SubResource("Resource_jwgdt"), SubResource("Resource_ayvc0"), SubResource("Resource_f4vya"), SubResource("Resource_6yc1p")])
+fixtures = Array[ExtResource("11_6r0ab")]([SubResource("Resource_giv03"), SubResource("Resource_2arju"), SubResource("Resource_fqs27"), SubResource("Resource_b5l6p"), SubResource("Resource_02aqm"), SubResource("Resource_b1w18"), SubResource("Resource_cpr7n"), SubResource("Resource_wckvw")])
+outside_lights = Array[ExtResource("13_da0g4")]([SubResource("Resource_cmvva"), SubResource("Resource_wr1q5"), SubResource("Resource_bq0jq"), SubResource("Resource_1mxwt"), SubResource("Resource_wxjyb"), SubResource("Resource_dbikx"), SubResource("Resource_pyuxv"), SubResource("Resource_7v17d"), SubResource("Resource_ninlo")])
+
+[sub_resource type="Resource" id="Resource_lcnhb"]
+script = ExtResource("11_6r0ab")
+point = Vector2(42, 53)
+reach_metres = 3.5
+
+[sub_resource type="Resource" id="Resource_lgp03"]
+script = ExtResource("11_6r0ab")
+point = Vector2(96, 65)
+reach_metres = 3.5
+
+[sub_resource type="Resource" id="Resource_pm7ig"]
+script = ExtResource("11_6r0ab")
+point = Vector2(94, 16)
+reach_metres = 1.5
+tint = "warm"
+
+[sub_resource type="Resource" id="Resource_y2m2v"]
+script = ExtResource("11_6r0ab")
+point = Vector2(168, 38)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_1ec3k"]
+script = ExtResource("13_da0g4")
+point = Vector2(4, 58)
+
+[sub_resource type="Resource" id="Resource_1jm0c"]
+script = ExtResource("10_ncv5y")
+port_name = "east"
+point = Vector2i(177, 58)
+face = Vector2i(1, 0)
+
+[sub_resource type="Resource" id="Resource_onq5n"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("16_tj24q")
+position = Vector2i(142, 12)
+
+[sub_resource type="Resource" id="Resource_ttygc"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("38_0pyco")
+position = Vector2i(20, 18)
+
+[sub_resource type="Resource" id="Resource_y7n7i"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("39_k8b8o")
+position = Vector2i(74, 76)
+
+[sub_resource type="Resource" id="Resource_0pq3q"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("40_bnhg5")
+position = Vector2i(82, 10)
+
+[sub_resource type="Resource" id="Resource_cwsrh"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("41_vxn36")
+position = Vector2i(38, 16)
+
+[sub_resource type="Resource" id="Resource_7p1lf"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(30, 50)
+
+[sub_resource type="Resource" id="Resource_h23d1"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(84, 62)
+
+[sub_resource type="Resource" id="Resource_pkmiw"]
+script = ExtResource("9_pvitq")
+display_name = "Med bay"
+bolts_to_module = 0
+bolts_to_port = "west"
+own_port = "east"
+canvas_size = Vector2i(178, 116)
+floor_texture = ExtResource("37_xdcmn")
+walls_texture = ExtResource("43_ucs6j")
+roof_texture = ExtResource("42_dhf2w")
+floors = Array[Rect2i]([Rect2i(10, 8, 160, 100), Rect2i(170, 42, 8, 32)])
+ports = Array[ExtResource("10_ncv5y")]([SubResource("Resource_1jm0c")])
+props = Array[ExtResource("14_5c5xp")]([SubResource("Resource_onq5n"), SubResource("Resource_ttygc"), SubResource("Resource_y7n7i"), SubResource("Resource_0pq3q"), SubResource("Resource_cwsrh"), SubResource("Resource_7p1lf"), SubResource("Resource_h23d1")])
+fixtures = Array[ExtResource("11_6r0ab")]([SubResource("Resource_lcnhb"), SubResource("Resource_lgp03"), SubResource("Resource_pm7ig"), SubResource("Resource_y2m2v")])
+windows = Array[Rect2i]([Rect2i(58, 40, 56, 36)])
+outside_lights = Array[ExtResource("13_da0g4")]([SubResource("Resource_1ec3k")])
+
+[sub_resource type="Resource" id="Resource_nbimm"]
+script = ExtResource("11_6r0ab")
+point = Vector2(38, 43)
+tint = "warm"
+
+[sub_resource type="Resource" id="Resource_xy8kx"]
+script = ExtResource("11_6r0ab")
+point = Vector2(88, 43)
+tint = "warm"
+
+[sub_resource type="Resource" id="Resource_ic7kg"]
+script = ExtResource("11_6r0ab")
+point = Vector2(140, 55)
+tint = "warm"
+
+[sub_resource type="Resource" id="Resource_eanot"]
+script = ExtResource("11_6r0ab")
+point = Vector2(124, 20)
+reach_metres = 1.0
+tint = "warm"
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_3m74x"]
+script = ExtResource("11_6r0ab")
+point = Vector2(124, 82)
+reach_metres = 1.0
+tint = "warm"
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_tb3yj"]
+script = ExtResource("11_6r0ab")
+point = Vector2(10, 38)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_hoy7u"]
+script = ExtResource("11_6r0ab")
+point = Vector2(68, 10)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_jay38"]
+script = ExtResource("13_da0g4")
+point = Vector2(174, 58)
+kind = "nav_green"
+
+[sub_resource type="Resource" id="Resource_hutbk"]
+script = ExtResource("10_ncv5y")
+port_name = "west"
+point = Vector2i(0, 58)
+face = Vector2i(-1, 0)
+
+[sub_resource type="Resource" id="Resource_h15ee"]
+script = ExtResource("10_ncv5y")
+port_name = "north"
+point = Vector2i(88, 0)
+face = Vector2i(0, -1)
+
+[sub_resource type="Resource" id="Resource_f0vxo"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("16_tj24q")
+position = Vector2i(14, 82)
+
+[sub_resource type="Resource" id="Resource_3heln"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("45_teugd")
+position = Vector2i(120, 14)
+
+[sub_resource type="Resource" id="Resource_2ceev"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("45_teugd")
+position = Vector2i(120, 76)
+
+[sub_resource type="Resource" id="Resource_ry6rk"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("46_nmbsy")
+position = Vector2i(14, 10)
+
+[sub_resource type="Resource" id="Resource_o6wgn"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("47_yboff")
+position = Vector2i(34, 58)
+
+[sub_resource type="Resource" id="Resource_wmn4w"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("48_ilny8")
+position = Vector2i(74, 92)
+
+[sub_resource type="Resource" id="Resource_x63cr"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("48_ilny8")
+position = Vector2i(88, 92)
+
+[sub_resource type="Resource" id="Resource_mxnws"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("48_ilny8")
+position = Vector2i(102, 92)
+
+[sub_resource type="Resource" id="Resource_qt11u"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(26, 40)
+
+[sub_resource type="Resource" id="Resource_iakqd"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(76, 40)
+
+[sub_resource type="Resource" id="Resource_7g67b"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(128, 52)
+
+[sub_resource type="Resource" id="Resource_7lvt1"]
+script = ExtResource("9_pvitq")
+display_name = "Crew hab"
+bolts_to_module = 0
+bolts_to_port = "east"
+own_port = "west"
+canvas_size = Vector2i(178, 116)
+floor_texture = ExtResource("44_mfge3")
+walls_texture = ExtResource("50_lqei7")
+roof_texture = ExtResource("49_vonf0")
+floors = Array[Rect2i]([Rect2i(8, 8, 160, 100), Rect2i(0, 42, 8, 32), Rect2i(72, 0, 32, 8)])
+ports = Array[ExtResource("10_ncv5y")]([SubResource("Resource_hutbk"), SubResource("Resource_h15ee")])
+props = Array[ExtResource("14_5c5xp")]([SubResource("Resource_f0vxo"), SubResource("Resource_3heln"), SubResource("Resource_2ceev"), SubResource("Resource_ry6rk"), SubResource("Resource_o6wgn"), SubResource("Resource_wmn4w"), SubResource("Resource_x63cr"), SubResource("Resource_mxnws"), SubResource("Resource_qt11u"), SubResource("Resource_iakqd"), SubResource("Resource_7g67b")])
+fixtures = Array[ExtResource("11_6r0ab")]([SubResource("Resource_nbimm"), SubResource("Resource_xy8kx"), SubResource("Resource_ic7kg"), SubResource("Resource_eanot"), SubResource("Resource_3m74x"), SubResource("Resource_tb3yj"), SubResource("Resource_hoy7u")])
+windows = Array[Rect2i]([Rect2i(64, 40, 56, 36)])
+outside_lights = Array[ExtResource("13_da0g4")]([SubResource("Resource_jay38")])
+
+[sub_resource type="Resource" id="Resource_uhrls"]
+script = ExtResource("10_ncv5y")
+port_name = "airlock"
+point = Vector2i(68, 72)
+face = Vector2i(0, -1)
+
+[sub_resource type="Resource" id="Resource_w0nxd"]
+script = ExtResource("11_6r0ab")
+point = Vector2(26, 153)
+reach_metres = 3.5
+
+[sub_resource type="Resource" id="Resource_vdt5k"]
+script = ExtResource("11_6r0ab")
+point = Vector2(110, 153)
+reach_metres = 3.5
+
+[sub_resource type="Resource" id="Resource_wu5wt"]
+script = ExtResource("11_6r0ab")
+point = Vector2(48, 72)
+reach_metres = 1.0
+tint = "red"
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_rxv1d"]
+script = ExtResource("11_6r0ab")
+point = Vector2(86, 72)
+reach_metres = 1.0
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_8r8d7"]
+script = ExtResource("11_6r0ab")
+point = Vector2(48, 4)
+reach_metres = 1.0
+tint = "red"
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_ol8sn"]
+script = ExtResource("11_6r0ab")
+point = Vector2(86, 4)
+reach_metres = 1.0
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_kn7r1"]
+script = ExtResource("11_6r0ab")
+point = Vector2(48, 174)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_j4hps"]
+script = ExtResource("11_6r0ab")
+point = Vector2(48, 78)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_60t2h"]
+script = ExtResource("10_ncv5y")
+port_name = "south"
+point = Vector2i(68, 183)
+
+[sub_resource type="Resource" id="Resource_bbwd3"]
+script = ExtResource("10_ncv5y")
+port_name = "airlock"
+point = Vector2i(68, 0)
+face = Vector2i(0, -1)
+kind = "airlock"
+
+[sub_resource type="Resource" id="Resource_v7n3p"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("16_tj24q")
+position = Vector2i(58, 28)
+
+[sub_resource type="Resource" id="Resource_60iay"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("27_lh2ll")
+position = Vector2i(48, 78)
+
+[sub_resource type="Resource" id="Resource_de0qc"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("52_1lppn")
+position = Vector2i(12, 80)
+
+[sub_resource type="Resource" id="Resource_14wd5"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("52_1lppn")
+position = Vector2i(104, 80)
+
+[sub_resource type="Resource" id="Resource_mai6g"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("48_ilny8")
+position = Vector2i(12, 108)
+
+[sub_resource type="Resource" id="Resource_2xlti"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("48_ilny8")
+position = Vector2i(12, 124)
+
+[sub_resource type="Resource" id="Resource_hk361"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("48_ilny8")
+position = Vector2i(112, 108)
+
+[sub_resource type="Resource" id="Resource_gn14u"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("48_ilny8")
+position = Vector2i(112, 124)
+
+[sub_resource type="Resource" id="Resource_xx506"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("19_yo7mq")
+position = Vector2i(52, 126)
+
+[sub_resource type="Resource" id="Resource_at4sw"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(14, 150)
+
+[sub_resource type="Resource" id="Resource_e0xvd"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(98, 150)
+
+[sub_resource type="Resource" id="Resource_k5yxl"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("33_3tsqf")
+position = Vector2i(12, 164)
+
+[sub_resource type="Resource" id="Resource_0bqmg"]
+script = ExtResource("9_pvitq")
+display_name = "EVA prep"
+bolts_to_module = 3
+bolts_to_port = "north"
+own_port = "south"
+canvas_size = Vector2i(136, 184)
+floor_texture = ExtResource("51_olesj")
+walls_texture = ExtResource("54_53rtu")
+roof_texture = ExtResource("53_datob")
+floors = Array[Rect2i]([Rect2i(8, 76, 120, 100), Rect2i(38, 8, 60, 60), Rect2i(52, 68, 32, 8), Rect2i(52, 0, 32, 8), Rect2i(52, 176, 32, 8)])
+ports = Array[ExtResource("10_ncv5y")]([SubResource("Resource_60t2h"), SubResource("Resource_bbwd3")])
+props = Array[ExtResource("14_5c5xp")]([SubResource("Resource_v7n3p"), SubResource("Resource_60iay"), SubResource("Resource_de0qc"), SubResource("Resource_14wd5"), SubResource("Resource_mai6g"), SubResource("Resource_2xlti"), SubResource("Resource_hk361"), SubResource("Resource_gn14u"), SubResource("Resource_xx506"), SubResource("Resource_at4sw"), SubResource("Resource_e0xvd"), SubResource("Resource_k5yxl")])
+fixtures = Array[ExtResource("11_6r0ab")]([SubResource("Resource_w0nxd"), SubResource("Resource_vdt5k"), SubResource("Resource_wu5wt"), SubResource("Resource_rxv1d"), SubResource("Resource_8r8d7"), SubResource("Resource_ol8sn"), SubResource("Resource_kn7r1"), SubResource("Resource_j4hps")])
+doors = Array[ExtResource("10_ncv5y")]([SubResource("Resource_uhrls")])
+
+[sub_resource type="Resource" id="Resource_2ebu6"]
+script = ExtResource("11_6r0ab")
+point = Vector2(84, 272)
+
+[sub_resource type="Resource" id="Resource_gebud"]
+script = ExtResource("11_6r0ab")
+point = Vector2(188, 272)
+
+[sub_resource type="Resource" id="Resource_5kwy0"]
+script = ExtResource("11_6r0ab")
+point = Vector2(76, 212)
+reach_metres = 1.5
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_74uif"]
+script = ExtResource("11_6r0ab")
+point = Vector2(136, 212)
+reach_metres = 1.5
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_ksuu6"]
+script = ExtResource("11_6r0ab")
+point = Vector2(196, 212)
+reach_metres = 1.5
+circuit = "always"
+
+[sub_resource type="Resource" id="Resource_4wr1e"]
+script = ExtResource("11_6r0ab")
+point = Vector2(48, 193)
+reach_metres = 2.5
+circuit = "failing"
+
+[sub_resource type="Resource" id="Resource_vr01h"]
+script = ExtResource("11_6r0ab")
+point = Vector2(116, 303)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_x3ung"]
+script = ExtResource("11_6r0ab")
+point = Vector2(38, 245)
+reach_metres = 2.5
+tint = "red"
+circuit = "emergency"
+
+[sub_resource type="Resource" id="Resource_wn7n8"]
+script = ExtResource("13_da0g4")
+point = Vector2(136, 3)
+kind = "strobe"
+
+[sub_resource type="Resource" id="Resource_ulu8q"]
+script = ExtResource("10_ncv5y")
+port_name = "south"
+point = Vector2i(136, 312)
+
+[sub_resource type="Resource" id="Resource_ur4pm"]
+script = ExtResource("10_ncv5y")
+port_name = "capped_west"
+point = Vector2i(28, 245)
+face = Vector2i(-1, 0)
+kind = "capped"
+
+[sub_resource type="Resource" id="Resource_0cl6u"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("28_pkrwq")
+position = Vector2i(76, 233)
+
+[sub_resource type="Resource" id="Resource_ux1li"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("28_pkrwq")
+position = Vector2i(136, 233)
+
+[sub_resource type="Resource" id="Resource_me13u"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("16_tj24q")
+position = Vector2i(42, 273)
+
+[sub_resource type="Resource" id="Resource_ugw3u"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("56_hlusx")
+position = Vector2i(60, 207)
+
+[sub_resource type="Resource" id="Resource_qxyao"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("56_hlusx")
+position = Vector2i(120, 207)
+
+[sub_resource type="Resource" id="Resource_jwjho"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("56_hlusx")
+position = Vector2i(180, 207)
+
+[sub_resource type="Resource" id="Resource_xiyku"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("57_1hujr")
+position = Vector2i(216, 193)
+
+[sub_resource type="Resource" id="Resource_sgnx4"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("57_1hujr")
+position = Vector2i(216, 225)
+
+[sub_resource type="Resource" id="Resource_uynaa"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("57_1hujr")
+position = Vector2i(216, 257)
+
+[sub_resource type="Resource" id="Resource_n0k2y"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("58_vfx2q")
+position = Vector2i(38, 187)
+
+[sub_resource type="Resource" id="Resource_gjoac"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(72, 269)
+
+[sub_resource type="Resource" id="Resource_yb1wq"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("21_mb5h1")
+position = Vector2i(176, 269)
+
+[sub_resource type="Resource" id="Resource_4k1i5"]
+script = ExtResource("14_5c5xp")
+prop = ExtResource("23_vaaqr")
+position = Vector2i(172, 287)
+
+[sub_resource type="Resource" id="Resource_1ib7e"]
+script = ExtResource("9_pvitq")
+display_name = "Ops"
+bolts_to_module = 0
+bolts_to_port = "north"
+own_port = "south"
+canvas_size = Vector2i(272, 313)
+floor_texture = ExtResource("55_b5y7b")
+walls_texture = ExtResource("60_uein5")
+roof_texture = ExtResource("59_5i43d")
+floors = Array[Rect2i]([Rect2i(36, 185, 200, 120), Rect2i(120, 305, 32, 8)])
+ports = Array[ExtResource("10_ncv5y")]([SubResource("Resource_ulu8q"), SubResource("Resource_ur4pm")])
+props = Array[ExtResource("14_5c5xp")]([SubResource("Resource_0cl6u"), SubResource("Resource_ux1li"), SubResource("Resource_me13u"), SubResource("Resource_ugw3u"), SubResource("Resource_qxyao"), SubResource("Resource_jwjho"), SubResource("Resource_xiyku"), SubResource("Resource_sgnx4"), SubResource("Resource_uynaa"), SubResource("Resource_n0k2y"), SubResource("Resource_gjoac"), SubResource("Resource_yb1wq"), SubResource("Resource_4k1i5")])
+fixtures = Array[ExtResource("11_6r0ab")]([SubResource("Resource_2ebu6"), SubResource("Resource_gebud"), SubResource("Resource_5kwy0"), SubResource("Resource_74uif"), SubResource("Resource_ksuu6"), SubResource("Resource_4wr1e"), SubResource("Resource_vr01h"), SubResource("Resource_x3ung")])
+windows = Array[Rect2i]([Rect2i(68, 181, 136, 14)])
+outside_lights = Array[ExtResource("13_da0g4")]([SubResource("Resource_wn7n8")])
+
+[resource]
+script = ExtResource("62_355la")
+display_name = "Kapteyn-3"
+callsign = "KAPTEYN-3"
+art_pixel_size = 1.0
+modules = Array[ExtResource("9_pvitq")]([SubResource("Resource_c68yi"), SubResource("Resource_kluhe"), SubResource("Resource_pkmiw"), SubResource("Resource_7lvt1"), SubResource("Resource_0bqmg"), SubResource("Resource_1ib7e")])
+home_port = "dock_s"
+legacy_ports = PackedStringArray("dock_s", "dock_e", "dock_w", "dock_s")
+hatch_floor = ExtResource("5_s56ym")
+hatch_walls = ExtResource("8_1ggc0")
+hatch_overhead = ExtResource("6_6aigs")
+hatch_roof = ExtResource("7_nwjbw")
+hatch_door_left = ExtResource("3_28pfa")
+hatch_door_right = ExtResource("4_jvk8v")
+door_left_closed = Vector2i(6, 17)
+door_left_open = Vector2i(-7, 17)
+door_right_closed = Vector2i(24, 17)
+door_right_open = Vector2i(37, 17)
+docking_ring_roof = ExtResource("2_xnd62")
+capped_plate = ExtResource("1_eygy0")
+orbit_start_angle = -1.556352

@@ -66,6 +66,9 @@ const FAILING_EVERY_SECONDS := Vector2(4.0, 10.0)
 const FAILING_OUT_SECONDS := Vector2(0.05, 0.15)
 ## How long the roof takes to come off, in seconds.
 @export var roof_seconds: float = 0.3
+## How wide the pilot is across the shoulders as a radius when walking inside, in the station's art
+## pixels: a station drawn at their own scale lets them through gaps their real width fits.
+const PILOT_HALF_WIDTH_PIXELS: float = 6.0
 ## How far below the pilot's middle their feet are for sorting against props, in world units.
 @export var pilot_feet: float = 6.0
 ## Which layer of depth each kind of thing is drawn at inside, in order: the pilot sits between the
@@ -678,6 +681,12 @@ func spot_near(local: Vector2, spot_reach: float) -> Dictionary:
 			best_away = away
 			best = spot
 	return best
+
+
+## How big the pilot is for walking about inside, in world units: their own radius, but never wider
+## than six of the station's pixels, so a station drawn at 5 cm a pixel doesn't make them 1.2 m wide.
+func walk_radius(body_radius: float) -> float:
+	return minf(body_radius, PILOT_HALF_WIDTH_PIXELS * _design.art_pixel_size)
 
 
 ## Where the pilot wakes up after the med bay: standing beside the bed with the "wake" spot, facing down,

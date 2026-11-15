@@ -14,7 +14,7 @@
 [ext_resource type="Script" path="res://scripts/ui/target_markers.gd" id="29_markers"]
 [ext_resource type="Script" path="res://scripts/pilot.gd" id="30_pilot"]
 [ext_resource type="Resource" path="res://data/pilot.tres" id="31_pilot_data"]
-[ext_resource type="Resource" path="res://data/station_1.tres" id="28_station_data"]
+[ext_resource type="Resource" path="res://data/kapteyn_3.tres" id="28_station_data"]
 [ext_resource type="Resource" path="res://data/home_star.tres" id="7_star"]
 [ext_resource type="Script" uid="uid://drw8htpqo2g5a" path="res://scripts/main.gd" id="8_main"]
 [ext_resource type="Resource" path="res://data/home_planet.tres" id="9_planet"]

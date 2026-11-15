@@ -264,6 +264,8 @@ const HATCH_ACROSS: int = 48
 const HATCH_LENGTH: int = 40
 const RING_ACROSS: int = 64
 const RING_DEPTH: int = 24
+## How much of a docking ring overlaps the end of its collar, in pixels.
+const RING_OVERLAP: int = 4
 const CAPPED_ACROSS: int = 48
 const CAPPED_DEPTH: int = 12
 ## How far a free collar's walkable part goes, from the shell toward its door in the middle.
@@ -350,7 +352,7 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 	for entry: Dictionary in placed:
 		low = low.min(entry["at"])
 		high = high.max(entry["at"] + entry["turned_size"])
-	for piece: Dictionary in pieces + rings:
+	for piece: Dictionary in pieces + rings + plates:
 		low = low.min(piece["rect"].position)
 		high = high.max(piece["rect"].end)
 	var shift: Vector2i = -low
@@ -515,7 +517,7 @@ static func _build_modules(design: StationDesign) -> StationLayout:
 		var record: Dictionary = piece["free"]
 		var port: Dictionary = layout.port_named(record["name"])
 		var face: Vector2i = record["face"]
-		var collar_end: Vector2i = record["point"] + shift + face * (HATCH_LENGTH if record["kind"] == StationPort.AIRLOCK else HATCH_LENGTH + RING_DEPTH)
+		var collar_end: Vector2i = record["point"] + shift + face * (HATCH_LENGTH if record["kind"] == StationPort.AIRLOCK else HATCH_LENGTH + RING_DEPTH - RING_OVERLAP)
 		port["point"] = collar_end
 		port["inner"] = Vector2(record["point"] + shift) + Vector2(face) * float(COLLAR_STAND) + Vector2(0.5, 0.5)
 		if record["kind"] == StationPort.DOCK:
@@ -573,37 +575,38 @@ static func _hatch_piece(point: Vector2i, face: Vector2i, kind: String, names: A
 	return {"rect": rect, "turns": 0 if face.x == 0 else 1, "kind": kind, "face": face, "ports": names}
 
 
-# A docking ring's place beyond a collar. Its picture is drawn for a collar facing down.
+# A docking ring's place beyond a collar, overlapping its end a little. Its picture is drawn for a
+# collar facing down.
 static func _ring_piece(point: Vector2i, face: Vector2i) -> Dictionary:
-	var out: int = HATCH_LENGTH + 1
+	var out: int = HATCH_LENGTH + 1 - RING_OVERLAP
 	var rect: Rect2i
 	var turns: int
 	if face.y > 0:
 		rect = Rect2i(point.x - RING_ACROSS / 2, point.y + out, RING_ACROSS, RING_DEPTH)
 		turns = 0
 	elif face.y < 0:
-		rect = Rect2i(point.x - RING_ACROSS / 2, point.y - HATCH_LENGTH - RING_DEPTH, RING_ACROSS, RING_DEPTH)
+		rect = Rect2i(point.x - RING_ACROSS / 2, point.y - HATCH_LENGTH - RING_DEPTH + RING_OVERLAP, RING_ACROSS, RING_DEPTH)
 		turns = 2
 	elif face.x > 0:
 		rect = Rect2i(point.x + out, point.y - RING_ACROSS / 2, RING_DEPTH, RING_ACROSS)
 		turns = 3
 	else:
-		rect = Rect2i(point.x - HATCH_LENGTH - RING_DEPTH, point.y - RING_ACROSS / 2, RING_DEPTH, RING_ACROSS)
+		rect = Rect2i(point.x - HATCH_LENGTH - RING_DEPTH + RING_OVERLAP, point.y - RING_ACROSS / 2, RING_DEPTH, RING_ACROSS)
 		turns = 1
 	return {"rect": rect, "turns": turns}
 
 
-# A capped port's plate, with its outer edge on the port's outer pixel and the rest inside the shell.
+# A capped port's plate, just outside the port's outer pixel, running across it.
 static func _plate_piece(point: Vector2i, face: Vector2i) -> Dictionary:
 	var rect: Rect2i
 	if face.y > 0:
-		rect = Rect2i(point.x - CAPPED_ACROSS / 2, point.y - CAPPED_DEPTH + 1, CAPPED_ACROSS, CAPPED_DEPTH)
+		rect = Rect2i(point.x - CAPPED_ACROSS / 2, point.y + 1, CAPPED_ACROSS, CAPPED_DEPTH)
 	elif face.y < 0:
-		rect = Rect2i(point.x - CAPPED_ACROSS / 2, point.y, CAPPED_ACROSS, CAPPED_DEPTH)
+		rect = Rect2i(point.x - CAPPED_ACROSS / 2, point.y - CAPPED_DEPTH, CAPPED_ACROSS, CAPPED_DEPTH)
 	elif face.x > 0:
-		rect = Rect2i(point.x - CAPPED_DEPTH + 1, point.y - CAPPED_ACROSS / 2, CAPPED_DEPTH, CAPPED_ACROSS)
+		rect = Rect2i(point.x + 1, point.y - CAPPED_ACROSS / 2, CAPPED_DEPTH, CAPPED_ACROSS)
 	else:
-		rect = Rect2i(point.x, point.y - CAPPED_ACROSS / 2, CAPPED_DEPTH, CAPPED_ACROSS)
+		rect = Rect2i(point.x - CAPPED_DEPTH, point.y - CAPPED_ACROSS / 2, CAPPED_DEPTH, CAPPED_ACROSS)
 	return {"rect": rect, "turns": 0 if face.x == 0 else 1}
 
 

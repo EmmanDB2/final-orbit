@@ -1139,3 +1139,12 @@ Files: `scripts/station/outside_glow.gd`, `scripts/station/station_view.gd`, `sh
 - an array uniform of point lights (`vec4[]` plus a count) added to a shader without changing what it did before
 - deriving a light's state from other systems' state (docked, lined up) instead of storing it
 - `fmod` of a running time for a repeating flash
+
+## 2026-11-14: New Kapteyn-3 ticket 6a, stand-in art from the round 1 concept
+
+Files: `tools/export_kapteyn_standin.py`, `tools/import_station.gd`, `art/kapteyn_3/standin/`, `art/station_props/standin/`, `data/kapteyn_3.tres`, `data/station_props/`, `scenes/main.tscn` (one line), `scripts/station/station_layout.gd`, `scripts/station/station_view.gd`, `scripts/pilot.gd`, `tests/test_station.gd`, `docs/DESIGN.md`, `docs/LEARNING_LOG.md`
+
+- reusing another tool's drawing functions from a script, so no pixel is made by hand
+- a data importer that writes `.tres` resources from JSON with `ResourceSaver`
+- staging one line of a shared file by writing the index entry directly (`hash-object` and `update-index`)
+- testing a station by its structure (counts, reachability by flood fill) instead of its pixels

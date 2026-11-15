@@ -1,0 +1,2238 @@
+{
+ "standin": true,
+ "modules": [
+  {
+   "id": "concourse",
+   "display_name": "Concourse",
+   "canvas": [
+    256,
+    176
+   ],
+   "ports": [
+    {
+     "name": "north",
+     "kind": "inner",
+     "point": [
+      128,
+      0
+     ],
+     "face": [
+      0,
+      -1
+     ]
+    },
+    {
+     "name": "south",
+     "kind": "inner",
+     "point": [
+      128,
+      175
+     ],
+     "face": [
+      0,
+      1
+     ]
+    },
+    {
+     "name": "west",
+     "kind": "inner",
+     "point": [
+      0,
+      88
+     ],
+     "face": [
+      -1,
+      0
+     ]
+    },
+    {
+     "name": "east",
+     "kind": "inner",
+     "point": [
+      255,
+      88
+     ],
+     "face": [
+      1,
+      0
+     ]
+    }
+   ],
+   "floors": [
+    [
+     8,
+     8,
+     240,
+     160
+    ],
+    [
+     112,
+     0,
+     32,
+     8
+    ],
+    [
+     112,
+     168,
+     32,
+     8
+    ],
+    [
+     0,
+     72,
+     8,
+     32
+    ],
+    [
+     248,
+     72,
+     8,
+     32
+    ]
+   ],
+   "props": [
+    {
+     "id": "lane_arrow",
+     "layer": "floor",
+     "position": [
+      123,
+      22
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "lane_arrow",
+     "layer": "floor",
+     "position": [
+      123,
+      140
+     ],
+     "turns": 2,
+     "spot": ""
+    },
+    {
+     "id": "lane_arrow",
+     "layer": "floor",
+     "position": [
+      22,
+      83
+     ],
+     "turns": 3,
+     "spot": ""
+    },
+    {
+     "id": "lane_arrow",
+     "layer": "floor",
+     "position": [
+      220,
+      83
+     ],
+     "turns": 1,
+     "spot": ""
+    },
+    {
+     "id": "grate",
+     "layer": "floor",
+     "position": [
+      58,
+      78
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "grate",
+     "layer": "floor",
+     "position": [
+      178,
+      78
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "gig_board",
+     "layer": "standing",
+     "position": [
+      32,
+      10
+     ],
+     "turns": 0,
+     "spot": "gig_board"
+    },
+    {
+     "id": "directory_sign",
+     "layer": "standing",
+     "position": [
+      164,
+      10
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "bench",
+     "layer": "standing",
+     "position": [
+      32,
+      46
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "bench",
+     "layer": "standing",
+     "position": [
+      32,
+      124
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "bench",
+     "layer": "standing",
+     "position": [
+      192,
+      46
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "bench",
+     "layer": "standing",
+     "position": [
+      192,
+      124
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "planter",
+     "layer": "standing",
+     "position": [
+      12,
+      20
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "planter",
+     "layer": "standing",
+     "position": [
+      232,
+      20
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "planter",
+     "layer": "standing",
+     "position": [
+      12,
+      146
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "planter",
+     "layer": "standing",
+     "position": [
+      232,
+      146
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      52,
+      34
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      180,
+      34
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      52,
+      142
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      180,
+      142
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "beam",
+     "layer": "overhead",
+     "position": [
+      84,
+      12
+     ],
+     "turns": 1,
+     "spot": ""
+    },
+    {
+     "id": "beam",
+     "layer": "overhead",
+     "position": [
+      166,
+      12
+     ],
+     "turns": 1,
+     "spot": ""
+    },
+    {
+     "id": "cable_tray",
+     "layer": "overhead",
+     "position": [
+      84,
+      120
+     ],
+     "turns": 1,
+     "spot": ""
+    },
+    {
+     "id": "cable_tray",
+     "layer": "overhead",
+     "position": [
+      164,
+      120
+     ],
+     "turns": 1,
+     "spot": ""
+    }
+   ],
+   "fixtures": [
+    {
+     "point": [
+      64,
+      37
+     ],
+     "reach_m": 4.0,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      192,
+      37
+     ],
+     "reach_m": 4.0,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      64,
+      145
+     ],
+     "reach_m": 4.0,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      192,
+      145
+     ],
+     "reach_m": 4.0,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      56,
+      18
+     ],
+     "reach_m": 1.5,
+     "tint": "white",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      176,
+      13
+     ],
+     "reach_m": 1.0,
+     "tint": "white",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      108,
+      10
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    },
+    {
+     "point": [
+      108,
+      166
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    },
+    {
+     "point": [
+      10,
+      68
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    },
+    {
+     "point": [
+      246,
+      68
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    }
+   ],
+   "windows": [
+    [
+     44,
+     56,
+     36,
+     64
+    ],
+    [
+     176,
+     56,
+     36,
+     64
+    ]
+   ],
+   "outside_lights": [],
+   "doors": []
+  },
+  {
+   "id": "docking_hub",
+   "display_name": "Docking hub",
+   "canvas": [
+    216,
+    136
+   ],
+   "ports": [
+    {
+     "name": "north",
+     "kind": "inner",
+     "point": [
+      108,
+      0
+     ],
+     "face": [
+      0,
+      -1
+     ]
+    },
+    {
+     "name": "dock_w",
+     "kind": "dock",
+     "point": [
+      0,
+      68
+     ],
+     "face": [
+      -1,
+      0
+     ]
+    },
+    {
+     "name": "dock_e",
+     "kind": "dock",
+     "point": [
+      215,
+      68
+     ],
+     "face": [
+      1,
+      0
+     ]
+    },
+    {
+     "name": "dock_s",
+     "kind": "dock",
+     "point": [
+      108,
+      135
+     ],
+     "face": [
+      0,
+      1
+     ]
+    }
+   ],
+   "floors": [
+    [
+     8,
+     8,
+     200,
+     120
+    ],
+    [
+     92,
+     0,
+     32,
+     8
+    ],
+    [
+     0,
+     52,
+     8,
+     32
+    ],
+    [
+     208,
+     52,
+     8,
+     32
+    ],
+    [
+     92,
+     128,
+     32,
+     8
+    ]
+   ],
+   "props": [
+    {
+     "id": "hazard_stripe",
+     "layer": "floor",
+     "position": [
+      88,
+      120
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "hazard_stripe",
+     "layer": "floor",
+     "position": [
+      10,
+      48
+     ],
+     "turns": 1,
+     "spot": ""
+    },
+    {
+     "id": "hazard_stripe",
+     "layer": "floor",
+     "position": [
+      200,
+      48
+     ],
+     "turns": 1,
+     "spot": ""
+    },
+    {
+     "id": "grate",
+     "layer": "floor",
+     "position": [
+      52,
+      58
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "grate",
+     "layer": "floor",
+     "position": [
+      144,
+      58
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "cable_run",
+     "layer": "floor",
+     "position": [
+      40,
+      28
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "service_terminal",
+     "layer": "standing",
+     "position": [
+      32,
+      10
+     ],
+     "turns": 0,
+     "spot": "service"
+    },
+    {
+     "id": "cargo_cage",
+     "layer": "standing",
+     "position": [
+      152,
+      14
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "crate",
+     "layer": "standing",
+     "position": [
+      22,
+      96
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "crate",
+     "layer": "standing",
+     "position": [
+      42,
+      96
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "crate_small",
+     "layer": "standing",
+     "position": [
+      62,
+      102
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "crate_small",
+     "layer": "standing",
+     "position": [
+      174,
+      102
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      18,
+      56
+     ],
+     "turns": 1,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      192,
+      56
+     ],
+     "turns": 1,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      96,
+      110
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "pipe_run",
+     "layer": "overhead",
+     "position": [
+      10,
+      12
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "pipe_bend",
+     "layer": "overhead",
+     "position": [
+      50,
+      12
+     ],
+     "turns": 1,
+     "spot": ""
+    },
+    {
+     "id": "pipe_run",
+     "layer": "overhead",
+     "position": [
+      142,
+      118
+     ],
+     "turns": 0,
+     "spot": ""
+    }
+   ],
+   "fixtures": [
+    {
+     "point": [
+      21,
+      68
+     ],
+     "reach_m": 3.5,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      195,
+      68
+     ],
+     "reach_m": 3.5,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      108,
+      113
+     ],
+     "reach_m": 3.5,
+     "tint": "white",
+     "circuit": "failing"
+    },
+    {
+     "point": [
+      48,
+      18
+     ],
+     "reach_m": 1.5,
+     "tint": "white",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      88,
+      10
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    },
+    {
+     "point": [
+      10,
+      48
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    },
+    {
+     "point": [
+      206,
+      48
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    },
+    {
+     "point": [
+      88,
+      126
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    }
+   ],
+   "windows": [],
+   "outside_lights": [
+    {
+     "point": [
+      85,
+      185
+     ],
+     "kind": "approach",
+     "port": "dock_s"
+    },
+    {
+     "point": [
+      129,
+      185
+     ],
+     "kind": "approach",
+     "port": "dock_s"
+    },
+    {
+     "point": [
+      107,
+      189
+     ],
+     "kind": "flood",
+     "port": "dock_s"
+    },
+    {
+     "point": [
+      -51,
+      45
+     ],
+     "kind": "approach",
+     "port": "dock_w"
+    },
+    {
+     "point": [
+      -51,
+      89
+     ],
+     "kind": "approach",
+     "port": "dock_w"
+    },
+    {
+     "point": [
+      -55,
+      67
+     ],
+     "kind": "flood",
+     "port": "dock_w"
+    },
+    {
+     "point": [
+      265,
+      45
+     ],
+     "kind": "approach",
+     "port": "dock_e"
+    },
+    {
+     "point": [
+      265,
+      89
+     ],
+     "kind": "approach",
+     "port": "dock_e"
+    },
+    {
+     "point": [
+      269,
+      67
+     ],
+     "kind": "flood",
+     "port": "dock_e"
+    }
+   ],
+   "doors": [],
+   "bolts_to_module": 0,
+   "bolts_to_port": "south",
+   "own_port": "north"
+  },
+  {
+   "id": "med_bay",
+   "display_name": "Med bay",
+   "canvas": [
+    178,
+    116
+   ],
+   "ports": [
+    {
+     "name": "east",
+     "kind": "inner",
+     "point": [
+      177,
+      58
+     ],
+     "face": [
+      1,
+      0
+     ]
+    }
+   ],
+   "floors": [
+    [
+     10,
+     8,
+     160,
+     100
+    ],
+    [
+     170,
+     42,
+     8,
+     32
+    ]
+   ],
+   "props": [
+    {
+     "id": "grate",
+     "layer": "floor",
+     "position": [
+      142,
+      12
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "med_bed",
+     "layer": "standing",
+     "position": [
+      20,
+      18
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "med_bed",
+     "layer": "standing",
+     "position": [
+      74,
+      76
+     ],
+     "turns": 0,
+     "spot": "wake"
+    },
+    {
+     "id": "med_cabinet",
+     "layer": "standing",
+     "position": [
+      82,
+      10
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "scanner_arch",
+     "layer": "overhead",
+     "position": [
+      38,
+      16
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      30,
+      50
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      84,
+      62
+     ],
+     "turns": 0,
+     "spot": ""
+    }
+   ],
+   "fixtures": [
+    {
+     "point": [
+      42,
+      53
+     ],
+     "reach_m": 3.5,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      96,
+      65
+     ],
+     "reach_m": 3.5,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      94,
+      16
+     ],
+     "reach_m": 1.5,
+     "tint": "warm",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      168,
+      38
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    }
+   ],
+   "windows": [
+    [
+     58,
+     40,
+     56,
+     36
+    ]
+   ],
+   "outside_lights": [
+    {
+     "point": [
+      4,
+      58
+     ],
+     "kind": "nav_red",
+     "port": ""
+    }
+   ],
+   "doors": [],
+   "bolts_to_module": 0,
+   "bolts_to_port": "west",
+   "own_port": "east"
+  },
+  {
+   "id": "crew_hab",
+   "display_name": "Crew hab",
+   "canvas": [
+    178,
+    116
+   ],
+   "ports": [
+    {
+     "name": "west",
+     "kind": "inner",
+     "point": [
+      0,
+      58
+     ],
+     "face": [
+      -1,
+      0
+     ]
+    },
+    {
+     "name": "north",
+     "kind": "inner",
+     "point": [
+      88,
+      0
+     ],
+     "face": [
+      0,
+      -1
+     ]
+    }
+   ],
+   "floors": [
+    [
+     8,
+     8,
+     160,
+     100
+    ],
+    [
+     0,
+     42,
+     8,
+     32
+    ],
+    [
+     72,
+     0,
+     32,
+     8
+    ]
+   ],
+   "props": [
+    {
+     "id": "grate",
+     "layer": "floor",
+     "position": [
+      14,
+      82
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "bunk",
+     "layer": "standing",
+     "position": [
+      120,
+      14
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "bunk",
+     "layer": "standing",
+     "position": [
+      120,
+      76
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "galley_counter",
+     "layer": "standing",
+     "position": [
+      14,
+      10
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "table",
+     "layer": "standing",
+     "position": [
+      34,
+      58
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "locker",
+     "layer": "standing",
+     "position": [
+      74,
+      92
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "locker",
+     "layer": "standing",
+     "position": [
+      88,
+      92
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "locker",
+     "layer": "standing",
+     "position": [
+      102,
+      92
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      26,
+      40
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      76,
+      40
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      128,
+      52
+     ],
+     "turns": 0,
+     "spot": ""
+    }
+   ],
+   "fixtures": [
+    {
+     "point": [
+      38,
+      43
+     ],
+     "reach_m": 3.0,
+     "tint": "warm",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      88,
+      43
+     ],
+     "reach_m": 3.0,
+     "tint": "warm",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      140,
+      55
+     ],
+     "reach_m": 3.0,
+     "tint": "warm",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      124,
+      20
+     ],
+     "reach_m": 1.0,
+     "tint": "warm",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      124,
+      82
+     ],
+     "reach_m": 1.0,
+     "tint": "warm",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      10,
+      38
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    },
+    {
+     "point": [
+      68,
+      10
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    }
+   ],
+   "windows": [
+    [
+     64,
+     40,
+     56,
+     36
+    ]
+   ],
+   "outside_lights": [
+    {
+     "point": [
+      174,
+      58
+     ],
+     "kind": "nav_green",
+     "port": ""
+    }
+   ],
+   "doors": [],
+   "bolts_to_module": 0,
+   "bolts_to_port": "east",
+   "own_port": "west"
+  },
+  {
+   "id": "eva_prep",
+   "display_name": "EVA prep",
+   "canvas": [
+    136,
+    184
+   ],
+   "ports": [
+    {
+     "name": "south",
+     "kind": "inner",
+     "point": [
+      68,
+      183
+     ],
+     "face": [
+      0,
+      1
+     ]
+    },
+    {
+     "name": "airlock",
+     "kind": "airlock",
+     "point": [
+      68,
+      0
+     ],
+     "face": [
+      0,
+      -1
+     ]
+    }
+   ],
+   "floors": [
+    [
+     8,
+     76,
+     120,
+     100
+    ],
+    [
+     38,
+     8,
+     60,
+     60
+    ],
+    [
+     52,
+     68,
+     32,
+     8
+    ],
+    [
+     52,
+     0,
+     32,
+     8
+    ],
+    [
+     52,
+     176,
+     32,
+     8
+    ]
+   ],
+   "props": [
+    {
+     "id": "grate",
+     "layer": "floor",
+     "position": [
+      58,
+      28
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "hazard_stripe",
+     "layer": "floor",
+     "position": [
+      48,
+      78
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "suit_rack",
+     "layer": "standing",
+     "position": [
+      12,
+      80
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "suit_rack",
+     "layer": "standing",
+     "position": [
+      104,
+      80
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "locker",
+     "layer": "standing",
+     "position": [
+      12,
+      108
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "locker",
+     "layer": "standing",
+     "position": [
+      12,
+      124
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "locker",
+     "layer": "standing",
+     "position": [
+      112,
+      108
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "locker",
+     "layer": "standing",
+     "position": [
+      112,
+      124
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "bench",
+     "layer": "standing",
+     "position": [
+      52,
+      126
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      14,
+      150
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      98,
+      150
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "pipe_run",
+     "layer": "overhead",
+     "position": [
+      12,
+      164
+     ],
+     "turns": 0,
+     "spot": ""
+    }
+   ],
+   "fixtures": [
+    {
+     "point": [
+      26,
+      153
+     ],
+     "reach_m": 3.5,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      110,
+      153
+     ],
+     "reach_m": 3.5,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      48,
+      72
+     ],
+     "reach_m": 1.0,
+     "tint": "red",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      86,
+      72
+     ],
+     "reach_m": 1.0,
+     "tint": "white",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      48,
+      4
+     ],
+     "reach_m": 1.0,
+     "tint": "red",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      86,
+      4
+     ],
+     "reach_m": 1.0,
+     "tint": "white",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      48,
+      174
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    },
+    {
+     "point": [
+      48,
+      78
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    }
+   ],
+   "windows": [],
+   "outside_lights": [],
+   "doors": [
+    {
+     "name": "airlock",
+     "point": [
+      68,
+      72
+     ],
+     "face": [
+      0,
+      -1
+     ]
+    }
+   ],
+   "bolts_to_module": 3,
+   "bolts_to_port": "north",
+   "own_port": "south"
+  },
+  {
+   "id": "ops",
+   "display_name": "Ops",
+   "canvas": [
+    272,
+    313
+   ],
+   "ports": [
+    {
+     "name": "south",
+     "kind": "inner",
+     "point": [
+      136,
+      312
+     ],
+     "face": [
+      0,
+      1
+     ]
+    },
+    {
+     "name": "capped_west",
+     "kind": "capped",
+     "point": [
+      28,
+      245
+     ],
+     "face": [
+      -1,
+      0
+     ]
+    }
+   ],
+   "floors": [
+    [
+     36,
+     185,
+     200,
+     120
+    ],
+    [
+     120,
+     305,
+     32,
+     8
+    ]
+   ],
+   "props": [
+    {
+     "id": "cable_run",
+     "layer": "floor",
+     "position": [
+      76,
+      233
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "cable_run",
+     "layer": "floor",
+     "position": [
+      136,
+      233
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "grate",
+     "layer": "floor",
+     "position": [
+      42,
+      273
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "console",
+     "layer": "standing",
+     "position": [
+      60,
+      207
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "console",
+     "layer": "standing",
+     "position": [
+      120,
+      207
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "console",
+     "layer": "standing",
+     "position": [
+      180,
+      207
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "comms_rack",
+     "layer": "standing",
+     "position": [
+      216,
+      193
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "comms_rack",
+     "layer": "standing",
+     "position": [
+      216,
+      225
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "comms_rack",
+     "layer": "standing",
+     "position": [
+      216,
+      257
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "breaker_panel",
+     "layer": "standing",
+     "position": [
+      38,
+      187
+     ],
+     "turns": 0,
+     "spot": "power"
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      72,
+      269
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "light_panel",
+     "layer": "overhead",
+     "position": [
+      176,
+      269
+     ],
+     "turns": 0,
+     "spot": ""
+    },
+    {
+     "id": "cable_tray",
+     "layer": "overhead",
+     "position": [
+      172,
+      287
+     ],
+     "turns": 0,
+     "spot": ""
+    }
+   ],
+   "fixtures": [
+    {
+     "point": [
+      84,
+      272
+     ],
+     "reach_m": 3.0,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      188,
+      272
+     ],
+     "reach_m": 3.0,
+     "tint": "white",
+     "circuit": "mains"
+    },
+    {
+     "point": [
+      76,
+      212
+     ],
+     "reach_m": 1.5,
+     "tint": "white",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      136,
+      212
+     ],
+     "reach_m": 1.5,
+     "tint": "white",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      196,
+      212
+     ],
+     "reach_m": 1.5,
+     "tint": "white",
+     "circuit": "always"
+    },
+    {
+     "point": [
+      48,
+      193
+     ],
+     "reach_m": 2.5,
+     "tint": "white",
+     "circuit": "failing"
+    },
+    {
+     "point": [
+      116,
+      303
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    },
+    {
+     "point": [
+      38,
+      245
+     ],
+     "reach_m": 2.5,
+     "tint": "red",
+     "circuit": "emergency"
+    }
+   ],
+   "windows": [
+    [
+     68,
+     181,
+     136,
+     14
+    ]
+   ],
+   "outside_lights": [
+    {
+     "point": [
+      136,
+      3
+     ],
+     "kind": "strobe",
+     "port": ""
+    }
+   ],
+   "doors": [],
+   "bolts_to_module": 0,
+   "bolts_to_port": "north",
+   "own_port": "south"
+  }
+ ],
+ "props": {
+  "airlock_lamp_green": {
+   "size": [
+    4,
+    4
+   ]
+  },
+  "airlock_lamp_red": {
+   "size": [
+    4,
+    4
+   ]
+  },
+  "beam": {
+   "size": [
+    40,
+    6
+   ],
+   "layer": "overhead"
+  },
+  "bench": {
+   "size": [
+    32,
+    10
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    32,
+    8
+   ],
+   "lip": 2
+  },
+  "breaker_panel": {
+   "size": [
+    20,
+    8
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    20,
+    6
+   ],
+   "lip": 2
+  },
+  "bunk": {
+   "size": [
+    42,
+    22
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    42,
+    20
+   ],
+   "lip": 2
+  },
+  "cable_run": {
+   "size": [
+    40,
+    4
+   ],
+   "layer": "floor"
+  },
+  "cable_tray": {
+   "size": [
+    40,
+    8
+   ],
+   "layer": "overhead"
+  },
+  "capped_plate": {
+   "size": [
+    48,
+    12
+   ]
+  },
+  "cargo_cage": {
+   "size": [
+    40,
+    30
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    40,
+    28
+   ],
+   "lip": 2
+  },
+  "comms_rack": {
+   "size": [
+    16,
+    14
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    16,
+    12
+   ],
+   "lip": 2
+  },
+  "console": {
+   "size": [
+    32,
+    18
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    32,
+    14
+   ],
+   "lip": 4
+  },
+  "crate": {
+   "size": [
+    16,
+    18
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    16,
+    16
+   ],
+   "lip": 2
+  },
+  "crate_small": {
+   "size": [
+    10,
+    12
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    10,
+    10
+   ],
+   "lip": 2
+  },
+  "directory_sign": {
+   "size": [
+    24,
+    6
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    24,
+    4
+   ],
+   "lip": 2
+  },
+  "docking_ring_roof": {
+   "size": [
+    64,
+    24
+   ]
+  },
+  "galley_counter": {
+   "size": [
+    48,
+    16
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    48,
+    14
+   ],
+   "lip": 2
+  },
+  "gig_board": {
+   "size": [
+    48,
+    16
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    48,
+    12
+   ],
+   "lip": 4
+  },
+  "grate": {
+   "size": [
+    20,
+    20
+   ],
+   "layer": "floor"
+  },
+  "hatch_door_left": {
+   "size": [
+    18,
+    6
+   ]
+  },
+  "hatch_door_right": {
+   "size": [
+    18,
+    6
+   ]
+  },
+  "hatch_floor": {
+   "size": [
+    48,
+    40
+   ]
+  },
+  "hatch_overhead": {
+   "size": [
+    48,
+    40
+   ]
+  },
+  "hatch_roof": {
+   "size": [
+    48,
+    40
+   ]
+  },
+  "hatch_walls": {
+   "size": [
+    48,
+    40
+   ]
+  },
+  "hazard_stripe": {
+   "size": [
+    40,
+    6
+   ],
+   "layer": "floor"
+  },
+  "lane_arrow": {
+   "size": [
+    10,
+    14
+   ],
+   "layer": "floor"
+  },
+  "light_panel": {
+   "size": [
+    24,
+    6
+   ],
+   "layer": "overhead"
+  },
+  "locker": {
+   "size": [
+    12,
+    12
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    12,
+    10
+   ],
+   "lip": 2
+  },
+  "med_bed": {
+   "size": [
+    42,
+    22
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    42,
+    20
+   ],
+   "lip": 2
+  },
+  "med_cabinet": {
+   "size": [
+    24,
+    12
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    24,
+    10
+   ],
+   "lip": 2
+  },
+  "pipe_bend": {
+   "size": [
+    12,
+    12
+   ],
+   "layer": "overhead"
+  },
+  "pipe_run": {
+   "size": [
+    40,
+    6
+   ],
+   "layer": "overhead"
+  },
+  "planter": {
+   "size": [
+    12,
+    14
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    12,
+    12
+   ],
+   "lip": 2
+  },
+  "scanner_arch": {
+   "size": [
+    12,
+    26
+   ],
+   "layer": "overhead"
+  },
+  "service_terminal": {
+   "size": [
+    32,
+    16
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    32,
+    12
+   ],
+   "lip": 4
+  },
+  "suit_rack": {
+   "size": [
+    20,
+    14
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    20,
+    12
+   ],
+   "lip": 2
+  },
+  "table": {
+   "size": [
+    28,
+    20
+   ],
+   "layer": "standing",
+   "footprint": [
+    0,
+    0,
+    28,
+    18
+   ],
+   "lip": 2
+  }
+ },
+ "legacy_ports": [
+  "dock_s",
+  "dock_e",
+  "dock_w",
+  "dock_s"
+ ],
+ "home_port": "dock_s"
+}

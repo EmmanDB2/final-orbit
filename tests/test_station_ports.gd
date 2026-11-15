@@ -162,7 +162,7 @@ func _test_waking(main: Node, station: StationView, pilot: Pilot) -> void:
 			bed = spot
 	var bed_at: Vector2 = station.spot_point(bed)
 	_flag("beside the bed", pilot._local.distance_to(bed_at) < 60.0 and pilot._local.distance_to(bed_at) > 1.0)
-	_flag("on floor they can stand on", station.pilot_fits(pilot._local, pilot.data.body_radius))
+	_flag("on floor they can stand on", station.pilot_fits(pilot._local, station.walk_radius(pilot.data.body_radius)))
 	_flag("facing down", absf(angle_difference(pilot._local_facing, PI)) < 0.01)
 	_flag("and the bed isn't something to use", station.spot_near(bed_at, 4.0).is_empty())
 

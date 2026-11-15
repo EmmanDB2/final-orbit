@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StationProp" format=3]
+; STAND-IN: drawn from Gemini's round 1 concept (art/*/standin/), to be replaced by round 2. Made by tools/import_station.gd.
+
+[ext_resource type="Script" path="res://scripts/station/station_prop.gd" id="1_vu6rq"]
+[ext_resource type="Texture2D" path="res://art/station_props/standin/hazard_stripe.png" id="2_edom4"]
+
+[resource]
+script = ExtResource("1_vu6rq")
+id = "hazard_stripe"
+texture = ExtResource("2_edom4")
+layer = "floor"

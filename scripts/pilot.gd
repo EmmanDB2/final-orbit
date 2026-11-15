@@ -483,7 +483,7 @@ func wake_in_station(port: int) -> void:
 		_figure.lift = 0.0
 	carried_kg = 0.0
 	_set_stranded(false)
-	var beside: Dictionary = _station.wake_spot(data.body_radius)
+	var beside: Dictionary = _station.wake_spot(_station.walk_radius(data.body_radius))
 	_enter_station(port)
 	if not beside.is_empty():
 		_local = beside["local"]
@@ -726,12 +726,13 @@ func _tick_inside(delta: float) -> void:
 	_walking = _walking.move_toward(wanted, data.walk_acceleration * delta)
 	# One way at a time, so a wall stops only the part of the move going into it.
 	var along_x := Vector2(_walking.x * delta, 0.0)
-	if _station.pilot_fits(_local + along_x, data.body_radius):
+	var radius: float = _station.walk_radius(data.body_radius)
+	if _station.pilot_fits(_local + along_x, radius):
 		_local += along_x
 	else:
 		_walking.x = 0.0
 	var along_y := Vector2(0.0, _walking.y * delta)
-	if _station.pilot_fits(_local + along_y, data.body_radius):
+	if _station.pilot_fits(_local + along_y, radius):
 		_local += along_y
 	else:
 		_walking.y = 0.0
