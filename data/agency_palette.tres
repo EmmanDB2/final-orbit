@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="AgencyPalette" format=3]
+[gd_resource type="Resource" script_class="AgencyPalette" format=3 uid="uid://5ksg6iqwa6r1"]
 
-[ext_resource type="Script" path="res://scripts/ui/agency_palette.gd" id="1_palette"]
+[ext_resource type="Script" uid="uid://fwiomm441wx1" path="res://scripts/ui/agency_palette.gd" id="1_palette"]
 
 [resource]
 script = ExtResource("1_palette")
@@ -11,21 +11,21 @@ hull_light = Color(0.419608, 0.439216, 0.47451, 1)
 hull_lighter = Color(0.662745, 0.678431, 0.701961, 1)
 hull_lightest = Color(0.909804, 0.894118, 0.854902, 1)
 agency_orange = Color(0.85098, 0.329412, 0.117647, 1)
+agency_orange_dark = Color(0.4784, 0.1804, 0.0706, 1)
 agency_red = Color(0.784314, 0.188235, 0.172549, 1)
 telemetry_cyan = Color(0.498039, 0.890196, 0.839216, 1)
 telemetry_green = Color(0.419608, 0.796078, 0.352941, 1)
 telemetry_amber = Color(0.94902, 0.701961, 0.227451, 1)
-agency_orange_dark = Color(0.4784, 0.1804, 0.0706, 1)
-thrust_white = Color(1.0000, 0.9529, 0.7686, 1)
-thrust_yellow = Color(1.0000, 0.7020, 0.2784, 1)
+thrust_white = Color(1, 0.9529, 0.7686, 1)
+thrust_yellow = Color(1, 0.702, 0.2784, 1)
 thrust_red = Color(0.9098, 0.3137, 0.1216, 1)
-agency_orange_light = Color(0.9490, 0.5412, 0.2275, 1)
+agency_orange_light = Color(0.949, 0.5412, 0.2275, 1)
 agency_blue_dark = Color(0.1059, 0.1804, 0.2902, 1)
-agency_blue = Color(0.1843, 0.3647, 0.5490, 1)
+agency_blue = Color(0.1843, 0.3647, 0.549, 1)
 agency_blue_light = Color(0.4353, 0.6392, 0.7843, 1)
 gold_darkest = Color(0.3529, 0.2431, 0.0706, 1)
 gold_dark = Color(0.6118, 0.4196, 0.1176, 1)
 gold = Color(0.8314, 0.6353, 0.2275, 1)
-gold_light = Color(0.9490, 0.8235, 0.4784, 1)
+gold_light = Color(0.949, 0.8235, 0.4784, 1)
 glass_dark = Color(0.1647, 0.2902, 0.3333, 1)
 glass_light = Color(0.5608, 0.7804, 0.8118, 1)

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StarData" format=3 uid="uid://b8hc3cypm6l7k"]
+
+[ext_resource type="Script" uid="uid://bfjcxqc4f46fb" path="res://scripts/star_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+color = Color(0.62, 0.72, 1, 1)
+falloff_distance = 300000.0
+surface_colors = null
+strata_colors = null
+prop_kinds = null

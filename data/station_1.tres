@@ -1,19 +1,19 @@
-[gd_resource type="Resource" script_class="StationDesign" format=3]
+[gd_resource type="Resource" script_class="StationDesign" format=3 uid="uid://br3aq7nq1i1ul"]
 
-[ext_resource type="Script" path="res://scripts/station/station_design.gd" id="1_design"]
-[ext_resource type="Script" path="res://scripts/station/station_room.gd" id="2_room"]
-[ext_resource type="Texture2D" path="res://art/station_1/hub.png" id="10_hub"]
-[ext_resource type="Texture2D" path="res://art/station_1/comms.png" id="11_comms"]
-[ext_resource type="Texture2D" path="res://art/station_1/crew_hab.png" id="12_crew_hab"]
-[ext_resource type="Texture2D" path="res://art/station_1/suit_room.png" id="13_suit_room"]
-[ext_resource type="Texture2D" path="res://art/station_1/eva_hab.png" id="14_eva_hab"]
-[ext_resource type="Texture2D" path="res://art/station_1/ship_refueling.png" id="15_ship_refueling"]
-[ext_resource type="Texture2D" path="res://art/station_1/hub_interior.png" id="30_hub_inside"]
-[ext_resource type="Texture2D" path="res://art/station_1/comms_interior.png" id="31_comms_inside"]
-[ext_resource type="Texture2D" path="res://art/station_1/crew_hab_interior.png" id="32_crew_hab_inside"]
-[ext_resource type="Texture2D" path="res://art/station_1/suit_room_interior.png" id="33_suit_room_inside"]
-[ext_resource type="Texture2D" path="res://art/station_1/eva_hab_interior.png" id="34_eva_hab_inside"]
-[ext_resource type="Texture2D" path="res://art/station_1/ship_refueling_interior.png" id="35_ship_refueling_inside"]
+[ext_resource type="Script" uid="uid://c1jisysvyo8e3" path="res://scripts/station/station_design.gd" id="1_design"]
+[ext_resource type="Script" uid="uid://csse1v6n6j84m" path="res://scripts/station/station_room.gd" id="2_room"]
+[ext_resource type="Texture2D" uid="uid://dudcu42jjkcnj" path="res://art/station_1/hub.png" id="10_hub"]
+[ext_resource type="Texture2D" uid="uid://dshalmbm6ivsi" path="res://art/station_1/comms.png" id="11_comms"]
+[ext_resource type="Texture2D" uid="uid://cky0o6oiq4ct6" path="res://art/station_1/crew_hab.png" id="12_crew_hab"]
+[ext_resource type="Texture2D" uid="uid://bgon2kqpduhhp" path="res://art/station_1/suit_room.png" id="13_suit_room"]
+[ext_resource type="Texture2D" uid="uid://snl23yi2keo3" path="res://art/station_1/eva_hab.png" id="14_eva_hab"]
+[ext_resource type="Texture2D" uid="uid://ddggmryb8xvj5" path="res://art/station_1/ship_refueling.png" id="15_ship_refueling"]
+[ext_resource type="Texture2D" uid="uid://1ix2f48wbpi8" path="res://art/station_1/hub_interior.png" id="30_hub_inside"]
+[ext_resource type="Texture2D" uid="uid://dhro6epa2ovnh" path="res://art/station_1/comms_interior.png" id="31_comms_inside"]
+[ext_resource type="Texture2D" uid="uid://c0uesg150u6li" path="res://art/station_1/crew_hab_interior.png" id="32_crew_hab_inside"]
+[ext_resource type="Texture2D" uid="uid://bbd4t4tksx4fx" path="res://art/station_1/suit_room_interior.png" id="33_suit_room_inside"]
+[ext_resource type="Texture2D" uid="uid://comj16iy36vwt" path="res://art/station_1/eva_hab_interior.png" id="34_eva_hab_inside"]
+[ext_resource type="Texture2D" uid="uid://dtvr2hy3x0cxk" path="res://art/station_1/ship_refueling_interior.png" id="35_ship_refueling_inside"]
 
 [sub_resource type="Resource" id="Room_0"]
 script = ExtResource("2_room")
@@ -25,9 +25,6 @@ spot_points = PackedVector2Array(145, 60)
 spot_kinds = PackedStringArray("gig_board")
 port_points = PackedVector2Array(106, 2, 106, 217, 5, 109, 208, 109)
 port_faces = PackedVector2Array(0, -1, 0, 1, -1, 0, 1, 0)
-bolts_to_room = -1
-bolts_to_port = 0
-own_port = 0
 
 [sub_resource type="Resource" id="Room_1"]
 script = ExtResource("2_room")
@@ -35,10 +32,11 @@ display_name = "Comms"
 texture = ExtResource("11_comms")
 interior_texture = ExtResource("31_comms_inside")
 walkable = Array[Rect2i]([Rect2i(80, 1, 17, 21), Rect2i(80, 226, 17, 21), Rect2i(74, 21, 27, 206), Rect2i(40, 76, 34, 23), Rect2i(36, 56, 26, 24), Rect2i(69, 84, 10, 16), Rect2i(100, 76, 34, 23), Rect2i(114, 56, 26, 24), Rect2i(97, 84, 10, 16), Rect2i(34, 160, 40, 36), Rect2i(50, 196, 24, 20), Rect2i(69, 156, 10, 18), Rect2i(100, 160, 40, 36), Rect2i(100, 196, 24, 20), Rect2i(97, 156, 10, 18)])
+spot_points = null
+spot_kinds = null
 port_points = PackedVector2Array(88, 1, 88, 246)
 port_faces = PackedVector2Array(0, -1, 0, 1)
 bolts_to_room = 0
-bolts_to_port = 0
 own_port = 1
 
 [sub_resource type="Resource" id="Room_2"]
@@ -47,6 +45,8 @@ display_name = "Crew hab"
 texture = ExtResource("12_crew_hab")
 interior_texture = ExtResource("32_crew_hab_inside")
 walkable = Array[Rect2i]([Rect2i(81, 1, 17, 21), Rect2i(81, 226, 17, 21), Rect2i(76, 21, 27, 206), Rect2i(55, 56, 21, 44), Rect2i(34, 38, 40, 22), Rect2i(70, 60, 10, 16), Rect2i(70, 83, 10, 16), Rect2i(104, 56, 22, 44), Rect2i(104, 44, 40, 14), Rect2i(100, 60, 10, 16), Rect2i(100, 83, 10, 16), Rect2i(44, 160, 32, 38), Rect2i(52, 196, 24, 20), Rect2i(70, 156, 10, 18), Rect2i(104, 160, 32, 38), Rect2i(104, 196, 24, 20), Rect2i(100, 156, 10, 18)])
+spot_points = null
+spot_kinds = null
 port_points = PackedVector2Array(89, 1, 89, 246)
 port_faces = PackedVector2Array(0, -1, 0, 1)
 bolts_to_room = 0
@@ -59,6 +59,8 @@ display_name = "Suit room"
 texture = ExtResource("13_suit_room")
 interior_texture = ExtResource("33_suit_room_inside")
 walkable = Array[Rect2i]([Rect2i(82, 1, 17, 21), Rect2i(82, 226, 17, 21), Rect2i(76, 21, 29, 206), Rect2i(50, 62, 26, 38), Rect2i(70, 84, 10, 16), Rect2i(105, 62, 40, 26), Rect2i(100, 84, 10, 16), Rect2i(58, 108, 18, 34), Rect2i(70, 114, 10, 20), Rect2i(58, 152, 18, 40), Rect2i(70, 156, 10, 18), Rect2i(44, 186, 32, 28), Rect2i(104, 160, 30, 38), Rect2i(104, 196, 24, 20), Rect2i(100, 156, 10, 18)])
+spot_points = null
+spot_kinds = null
 port_points = PackedVector2Array(90, 1, 90, 246)
 port_faces = PackedVector2Array(0, -1, 0, 1)
 bolts_to_room = 0
@@ -71,10 +73,11 @@ display_name = "EVA hab"
 texture = ExtResource("14_eva_hab")
 interior_texture = ExtResource("34_eva_hab_inside")
 walkable = Array[Rect2i]([Rect2i(81, 1, 17, 21), Rect2i(81, 226, 17, 21), Rect2i(76, 21, 27, 206), Rect2i(62, 56, 14, 44), Rect2i(34, 38, 40, 20), Rect2i(70, 60, 10, 16), Rect2i(70, 83, 10, 16), Rect2i(104, 56, 22, 44), Rect2i(104, 44, 38, 14), Rect2i(100, 60, 10, 16), Rect2i(100, 83, 10, 16), Rect2i(44, 160, 32, 38), Rect2i(52, 196, 24, 20), Rect2i(70, 156, 10, 18), Rect2i(104, 160, 32, 38), Rect2i(104, 196, 24, 20), Rect2i(100, 156, 10, 18)])
+spot_points = null
+spot_kinds = null
 port_points = PackedVector2Array(89, 1, 89, 246)
 port_faces = PackedVector2Array(0, -1, 0, 1)
 bolts_to_room = 3
-bolts_to_port = 0
 own_port = 1
 
 [sub_resource type="Resource" id="Room_5"]
@@ -89,13 +92,10 @@ port_points = PackedVector2Array(116, 4, 116, 248)
 port_faces = PackedVector2Array(0, -1, 0, 1)
 bolts_to_room = 0
 bolts_to_port = 1
-own_port = 0
 
 [resource]
 script = ExtResource("1_design")
 display_name = "Kapteyn-3"
 callsign = "KAPTEYN-3"
 rooms = Array[ExtResource("2_room")]([SubResource("Room_0"), SubResource("Room_1"), SubResource("Room_2"), SubResource("Room_3"), SubResource("Room_4"), SubResource("Room_5")])
-art_pixel_size = 2.0
-orbit_altitude = 30000.0
 orbit_start_angle = -1.556352

@@ -4,17 +4,6 @@
 [ext_resource type="Material" path="res://data/starfield.tres" id="2_stars"]
 [ext_resource type="Script" uid="uid://ss85tsat2knn" path="res://scripts/starfield.gd" id="3_stars"]
 [ext_resource type="Script" uid="uid://bkfs6c1r2b1i8" path="res://scripts/star_light.gd" id="6_light"]
-[ext_resource type="Shader" path="res://shaders/star.gdshader" id="21_star_shader"]
-[ext_resource type="Script" path="res://scripts/star_view.gd" id="22_star_view"]
-[ext_resource type="Script" path="res://scripts/debris_field.gd" id="23_debris"]
-[ext_resource type="Script" path="res://scripts/spark_field.gd" id="24_sparks"]
-[ext_resource type="Script" path="res://scripts/surface_props.gd" id="25_props"]
-[ext_resource type="Script" path="res://scripts/ground_effects.gd" id="26_ground"]
-[ext_resource type="Script" path="res://scripts/station/station_view.gd" id="27_station"]
-[ext_resource type="Script" path="res://scripts/ui/target_markers.gd" id="29_markers"]
-[ext_resource type="Script" path="res://scripts/pilot.gd" id="30_pilot"]
-[ext_resource type="Resource" path="res://data/pilot.tres" id="31_pilot_data"]
-[ext_resource type="Resource" path="res://data/kapteyn_3.tres" id="28_station_data"]
 [ext_resource type="Resource" path="res://data/home_star.tres" id="7_star"]
 [ext_resource type="Script" uid="uid://drw8htpqo2g5a" path="res://scripts/main.gd" id="8_main"]
 [ext_resource type="Resource" path="res://data/home_planet.tres" id="9_planet"]
@@ -23,21 +12,138 @@
 [ext_resource type="Shader" uid="uid://cxukt7rvnnhc4" path="res://shaders/planet.gdshader" id="12_shader"]
 [ext_resource type="Script" uid="uid://c2uyi1y81rp83" path="res://scripts/trajectory_preview.gd" id="13_path"]
 [ext_resource type="Resource" path="res://data/moon.tres" id="15_moon"]
-[ext_resource type="Script" uid="uid://boqb0vuipj424" path="res://scripts/ui/flight_hud.gd" id="20_hud"]
-[ext_resource type="Script" uid="uid://bm1ld2bvlu7he" path="res://scripts/ui/turn_guide.gd" id="21_guide"]
+[ext_resource type="Script" uid="uid://dgnu0r1ib3jsn" path="res://scripts/body_guides.gd" id="16_guides"]
+[ext_resource type="Script" uid="uid://q3hnub1kat2q" path="res://scripts/ui/comms_line.gd" id="17_readout"]
 [ext_resource type="Script" uid="uid://co4i4uj4wulek" path="res://scripts/screen_fit.gd" id="18_fit"]
 [ext_resource type="Script" uid="uid://ioh3iggb6omw" path="res://scripts/safe_area.gd" id="19_safe"]
-[ext_resource type="Script" path="res://scripts/ui/comms_line.gd" id="17_readout"]
-[ext_resource type="Script" uid="uid://dgnu0r1ib3jsn" path="res://scripts/body_guides.gd" id="16_guides"]
+[ext_resource type="Script" uid="uid://boqb0vuipj424" path="res://scripts/ui/flight_hud.gd" id="20_hud"]
+[ext_resource type="Script" uid="uid://bm1ld2bvlu7he" path="res://scripts/ui/turn_guide.gd" id="21_guide"]
+[ext_resource type="Shader" uid="uid://by6qekbbvfdjf" path="res://shaders/star.gdshader" id="21_star_shader"]
+[ext_resource type="Script" uid="uid://bq3dv75el3mei" path="res://scripts/star_view.gd" id="22_star_view"]
+[ext_resource type="Script" uid="uid://dycln3p0u42gm" path="res://scripts/debris_field.gd" id="23_debris"]
+[ext_resource type="Script" uid="uid://bfdoudu7ricqf" path="res://scripts/spark_field.gd" id="24_sparks"]
+[ext_resource type="Script" uid="uid://cny0jmyfr6iew" path="res://scripts/surface_props.gd" id="25_props"]
+[ext_resource type="Script" uid="uid://degfdfpf2lqr2" path="res://scripts/ground_effects.gd" id="26_ground"]
+[ext_resource type="Script" uid="uid://c0uqinkvs37y0" path="res://scripts/station/station_view.gd" id="27_station"]
+[ext_resource type="Resource" path="res://data/kapteyn_3.tres" id="28_station_data"]
+[ext_resource type="Script" uid="uid://doet1sm2ewhst" path="res://scripts/ui/target_markers.gd" id="29_markers"]
+[ext_resource type="Script" uid="uid://c14bwvcov11dl" path="res://scripts/pilot.gd" id="30_pilot"]
+[ext_resource type="Resource" path="res://data/pilot.tres" id="31_pilot_data"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_star"]
 shader = ExtResource("21_star_shader")
+shader_parameter/center_px = Vector2(0, 0)
+shader_parameter/radius_px = 20.0
+shader_parameter/glow_px = 30.0
+shader_parameter/star_color = Color(1, 1, 1, 1)
+shader_parameter/patch_px = 4.0
+shader_parameter/boil_rate = 5.0
+shader_parameter/glow_steps = 5.0
+shader_parameter/glow_strength = 0.55
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_planet"]
 shader = ExtResource("12_shader")
+shader_parameter/center_px = Vector2(0, 0)
+shader_parameter/radius_px = 100.0
+shader_parameter/units_per_px = 1.0
+shader_parameter/spin_cos = 1.0
+shader_parameter/spin_sin = 0.0
+shader_parameter/cloud_cos = 1.0
+shader_parameter/cloud_sin = 0.0
+shader_parameter/light_way = Vector2(1, 0)
+shader_parameter/block_px = 1.0
+shader_parameter/detail_units = 1.0
+shader_parameter/on_surface_grid = false
+shader_parameter/screen_middle = Vector2(0, 0)
+shader_parameter/view_from_body = Vector2(0, -1)
+shader_parameter/view_height_px = 0.0
+shader_parameter/view_column_share = 0.0
+shader_parameter/view_column = 0
+shader_parameter/cell_px = 1.0
+shader_parameter/cell_units = 2.0
+shader_parameter/rim_fade = 0.0
+shader_parameter/ridge_fade = 0.0
+shader_parameter/ridge_base_px = 0.0
+shader_parameter/ridge_haze = 0.62
+shader_parameter/air_px = 0.0
+shader_parameter/view_cos = 1.0
+shader_parameter/view_sin = 0.0
+shader_parameter/surface_colors = PackedColorArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/terrain_seed = 1
+shader_parameter/largest_feature = 90000.0
+shader_parameter/sea_level = 0.0
+shader_parameter/ice_cap = 0.0
+shader_parameter/cloud_amount = 0.0
+shader_parameter/cloud_color = Color(1, 1, 1, 1)
+shader_parameter/crater_amount = 0.0
+shader_parameter/air_color = Color(1, 1, 1, 1)
+shader_parameter/air_sunset_color = Color(1, 0.6, 0.4, 1)
+shader_parameter/air_horizon_color = Color(1, 1, 1, 1)
+shader_parameter/star_color = Color(1, 1, 1, 1)
+shader_parameter/detail_largest = 4800.0
+shader_parameter/strata_colors = PackedColorArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/section_starts = 300.0
+shader_parameter/section_full = 32.0
+shader_parameter/section_deepest_px = 1200.0
+shader_parameter/light_steps = 2.0
+shader_parameter/light_lift = 0.55
+shader_parameter/night_share = Vector3(0.3, 0.34, 0.48)
+shader_parameter/air_steps = 6.0
+shader_parameter/air_strength = 0.8
+shader_parameter/sky_dither = 0.4
+shader_parameter/cloud_nearest = 24.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_moon"]
 shader = ExtResource("12_shader")
+shader_parameter/center_px = Vector2(0, 0)
+shader_parameter/radius_px = 100.0
+shader_parameter/units_per_px = 1.0
+shader_parameter/spin_cos = 1.0
+shader_parameter/spin_sin = 0.0
+shader_parameter/cloud_cos = 1.0
+shader_parameter/cloud_sin = 0.0
+shader_parameter/light_way = Vector2(1, 0)
+shader_parameter/block_px = 1.0
+shader_parameter/detail_units = 1.0
+shader_parameter/on_surface_grid = false
+shader_parameter/screen_middle = Vector2(0, 0)
+shader_parameter/view_from_body = Vector2(0, -1)
+shader_parameter/view_height_px = 0.0
+shader_parameter/view_column_share = 0.0
+shader_parameter/view_column = 0
+shader_parameter/cell_px = 1.0
+shader_parameter/cell_units = 2.0
+shader_parameter/rim_fade = 0.0
+shader_parameter/ridge_fade = 0.0
+shader_parameter/ridge_base_px = 0.0
+shader_parameter/ridge_haze = 0.62
+shader_parameter/air_px = 0.0
+shader_parameter/view_cos = 1.0
+shader_parameter/view_sin = 0.0
+shader_parameter/surface_colors = PackedColorArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/terrain_seed = 1
+shader_parameter/largest_feature = 90000.0
+shader_parameter/sea_level = 0.0
+shader_parameter/ice_cap = 0.0
+shader_parameter/cloud_amount = 0.0
+shader_parameter/cloud_color = Color(1, 1, 1, 1)
+shader_parameter/crater_amount = 0.0
+shader_parameter/air_color = Color(1, 1, 1, 1)
+shader_parameter/air_sunset_color = Color(1, 0.6, 0.4, 1)
+shader_parameter/air_horizon_color = Color(1, 1, 1, 1)
+shader_parameter/star_color = Color(1, 1, 1, 1)
+shader_parameter/detail_largest = 4800.0
+shader_parameter/strata_colors = PackedColorArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/section_starts = 300.0
+shader_parameter/section_full = 32.0
+shader_parameter/section_deepest_px = 1200.0
+shader_parameter/light_steps = 2.0
+shader_parameter/light_lift = 0.55
+shader_parameter/night_share = Vector3(0.3, 0.34, 0.48)
+shader_parameter/air_steps = 6.0
+shader_parameter/air_strength = 0.8
+shader_parameter/sky_dither = 0.4
+shader_parameter/cloud_nearest = 24.0
 
 [node name="Main" type="Node2D" unique_id=1515308371]
 script = ExtResource("8_main")
@@ -157,47 +263,47 @@ script = ExtResource("20_hud")
 [node name="CommsLine" type="Node2D" parent="Hud/SafeArea" unique_id=1469035722]
 script = ExtResource("17_readout")
 
+[connection signal="screen_fitted" from="ScreenFit" to="Camera2D" method="_on_screen_fitted"]
+[connection signal="screen_fitted" from="ScreenFit" to="Hud/SafeArea" method="_on_screen_fitted"]
+[connection signal="screen_fitted" from="ScreenFit" to="Hud/SafeArea/FlightHud" method="_on_screen_fitted"]
+[connection signal="star_heat_changed" from="StarLight" to="Ship" method="_on_star_heat_changed"]
+[connection signal="star_light_changed" from="StarLight" to="Background/Starfield" method="_on_star_light_changed"]
+[connection signal="message_raised" from="Station" to="Hud/SafeArea/CommsLine" method="_on_ship_warning_raised"]
+[connection signal="docked_changed" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_docked_changed"]
+[connection signal="engine_changed" from="Ship" to="GroundEffects" method="_on_ship_engine_changed"]
+[connection signal="lifted_off" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_lifted_off"]
+[connection signal="orbit_changed" from="Ship" to="Trajectory" method="_on_ship_orbit_changed"]
+[connection signal="part_detached" from="Ship" to="Debris" method="_on_ship_part_detached"]
+[connection signal="pixels_scattered" from="Ship" to="Sparks" method="_on_ship_pixels_scattered"]
+[connection signal="ship_lost" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_lost"]
+[connection signal="touched_down" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_touched_down"]
+[connection signal="warning_raised" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_warning_raised"]
+[connection signal="world_position_changed" from="Ship" to="StarLight" method="_on_ship_world_position_changed"]
+[connection signal="world_position_changed" from="Ship" to="Trajectory" method="_on_ship_world_position_changed"]
 [connection signal="world_position_changed" from="Ship" to="Camera2D" method="_on_ship_world_position_changed"]
+[connection signal="message_raised" from="Pilot" to="Hud/SafeArea/CommsLine" method="_on_ship_warning_raised"]
+[connection signal="mode_changed" from="Pilot" to="Camera2D" method="_on_pilot_mode_changed"]
 [connection signal="view_changed" from="Camera2D" to="Background/Starfield" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Background/BodyGuides" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Background/Star" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Background/Planet" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Background/Moon" method="_on_view_changed"]
-[connection signal="view_changed" from="Camera2D" to="Background/BodyGuides" method="_on_view_changed"]
-[connection signal="view_changed" from="Camera2D" to="Ship" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Trajectory" method="_on_view_changed"]
-[connection signal="view_changed" from="Camera2D" to="Debris" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="SurfaceProps" method="_on_view_changed"]
-[connection signal="view_changed" from="Camera2D" to="GroundEffects" method="_on_view_changed"]
 [connection signal="view_changed" from="Camera2D" to="Station" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="GroundEffects" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Debris" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Ship" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Pilot" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Sparks" method="_on_view_changed"]
+[connection signal="view_changed" from="Camera2D" to="Hud/SafeArea/TargetMarkers" method="_on_view_changed"]
 [connection signal="view_rolled" from="Camera2D" to="Background/Starfield" method="_on_view_rolled"]
+[connection signal="view_rolled" from="Camera2D" to="Background/BodyGuides" method="_on_view_rolled"]
 [connection signal="view_rolled" from="Camera2D" to="Background/Star" method="_on_view_rolled"]
 [connection signal="view_rolled" from="Camera2D" to="Background/Planet" method="_on_view_rolled"]
 [connection signal="view_rolled" from="Camera2D" to="Background/Moon" method="_on_view_rolled"]
-[connection signal="view_rolled" from="Camera2D" to="Background/BodyGuides" method="_on_view_rolled"]
 [connection signal="view_rolled" from="Camera2D" to="Station" method="_on_view_rolled"]
+[connection signal="view_rolled" from="Camera2D" to="Pilot" method="_on_view_rolled"]
 [connection signal="view_rolled" from="Camera2D" to="Hud/SafeArea/TargetMarkers" method="_on_view_rolled"]
-[connection signal="view_changed" from="Camera2D" to="Hud/SafeArea/TargetMarkers" method="_on_view_changed"]
 [connection signal="clear_area_changed" from="Hud/SafeArea/FlightHud" to="Hud/SafeArea/TargetMarkers" method="_on_clear_area_changed"]
 [connection signal="comms_area_changed" from="Hud/SafeArea/FlightHud" to="Hud/SafeArea/CommsLine" method="_on_comms_area_changed"]
-[connection signal="view_changed" from="Camera2D" to="Pilot" method="_on_view_changed"]
-[connection signal="view_rolled" from="Camera2D" to="Pilot" method="_on_view_rolled"]
-[connection signal="mode_changed" from="Pilot" to="Camera2D" method="_on_pilot_mode_changed"]
-[connection signal="message_raised" from="Pilot" to="Hud/SafeArea/CommsLine" method="_on_ship_warning_raised"]
-[connection signal="engine_changed" from="Ship" to="GroundEffects" method="_on_ship_engine_changed"]
-[connection signal="part_detached" from="Ship" to="Debris" method="_on_ship_part_detached"]
-[connection signal="pixels_scattered" from="Ship" to="Sparks" method="_on_ship_pixels_scattered"]
-[connection signal="view_changed" from="Camera2D" to="Sparks" method="_on_view_changed"]
-[connection signal="warning_raised" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_warning_raised"]
-[connection signal="ship_lost" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_lost"]
-[connection signal="docked_changed" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_docked_changed"]
-[connection signal="message_raised" from="Station" to="Hud/SafeArea/CommsLine" method="_on_ship_warning_raised"]
-[connection signal="orbit_changed" from="Ship" to="Trajectory" method="_on_ship_orbit_changed"]
-[connection signal="world_position_changed" from="Ship" to="Trajectory" method="_on_ship_world_position_changed"]
-[connection signal="screen_fitted" from="ScreenFit" to="Hud/SafeArea" method="_on_screen_fitted"]
-[connection signal="screen_fitted" from="ScreenFit" to="Camera2D" method="_on_screen_fitted"]
-[connection signal="screen_fitted" from="ScreenFit" to="Hud/SafeArea/FlightHud" method="_on_screen_fitted"]
-[connection signal="touched_down" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_touched_down"]
-[connection signal="lifted_off" from="Ship" to="Hud/SafeArea/CommsLine" method="_on_ship_lifted_off"]
-[connection signal="world_position_changed" from="Ship" to="StarLight" method="_on_ship_world_position_changed"]
-[connection signal="star_light_changed" from="StarLight" to="Background/Starfield" method="_on_star_light_changed"]
-[connection signal="star_heat_changed" from="StarLight" to="Ship" method="_on_star_heat_changed"]

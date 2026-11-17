@@ -1,39 +1,40 @@
-[gd_resource type="Resource" script_class="ShipDesign" format=3]
+[gd_resource type="Resource" script_class="ShipDesign" format=3 uid="uid://cbmxbsqg5jcct"]
 
-[ext_resource type="Script" path="res://scripts/ship/ship_design.gd" id="1_design"]
-[ext_resource type="Script" path="res://scripts/ship/module_data.gd" id="2_module"]
+[ext_resource type="Script" uid="uid://dschhtal68h54" path="res://scripts/ship/ship_design.gd" id="1_design"]
+[ext_resource type="Script" uid="uid://du4n0fllblh5x" path="res://scripts/ship/material_data.gd" id="1_gnmld"]
+[ext_resource type="Script" uid="uid://clb3vwq6yvdoa" path="res://scripts/ship/module_data.gd" id="2_module"]
 [ext_resource type="Resource" path="res://data/materials/hull.tres" id="4_hull"]
 [ext_resource type="Resource" path="res://data/materials/structure.tres" id="5_structure"]
 [ext_resource type="Resource" path="res://data/materials/foil.tres" id="6_foil"]
 [ext_resource type="Resource" path="res://data/materials/glass.tres" id="7_glass"]
 [ext_resource type="Resource" path="res://data/materials/paint.tres" id="8_paint"]
-[ext_resource type="Texture2D" path="res://art/lander/cockpit_left_systems.png" id="30_cockpit_left_systems"]
-[ext_resource type="Texture2D" path="res://art/lander/cockpit_left_frame.png" id="31_cockpit_left_frame"]
-[ext_resource type="Texture2D" path="res://art/lander/cockpit_right_systems.png" id="32_cockpit_right_systems"]
-[ext_resource type="Texture2D" path="res://art/lander/cockpit_right_frame.png" id="33_cockpit_right_frame"]
-[ext_resource type="Texture2D" path="res://art/lander/rcs_left_systems.png" id="34_rcs_left_systems"]
-[ext_resource type="Texture2D" path="res://art/lander/rcs_left_frame.png" id="35_rcs_left_frame"]
-[ext_resource type="Texture2D" path="res://art/lander/rcs_right_systems.png" id="36_rcs_right_systems"]
-[ext_resource type="Texture2D" path="res://art/lander/rcs_right_frame.png" id="37_rcs_right_frame"]
-[ext_resource type="Texture2D" path="res://art/lander/tank_left_systems.png" id="38_tank_left_systems"]
-[ext_resource type="Texture2D" path="res://art/lander/tank_left_frame.png" id="39_tank_left_frame"]
-[ext_resource type="Texture2D" path="res://art/lander/tank_right_systems.png" id="40_tank_right_systems"]
-[ext_resource type="Texture2D" path="res://art/lander/tank_right_frame.png" id="41_tank_right_frame"]
-[ext_resource type="Texture2D" path="res://art/lander/engine_left_systems.png" id="42_engine_left_systems"]
-[ext_resource type="Texture2D" path="res://art/lander/engine_left_frame.png" id="43_engine_left_frame"]
-[ext_resource type="Texture2D" path="res://art/lander/engine_right_systems.png" id="44_engine_right_systems"]
-[ext_resource type="Texture2D" path="res://art/lander/engine_right_frame.png" id="45_engine_right_frame"]
 [ext_resource type="Resource" path="res://data/materials/core.tres" id="9_core"]
-[ext_resource type="Texture2D" path="res://art/lander/cockpit_left.png" id="10_cockpit_left"]
-[ext_resource type="Texture2D" path="res://art/lander/cockpit_right.png" id="11_cockpit_right"]
-[ext_resource type="Texture2D" path="res://art/lander/rcs_left.png" id="12_rcs_left"]
-[ext_resource type="Texture2D" path="res://art/lander/rcs_right.png" id="13_rcs_right"]
-[ext_resource type="Texture2D" path="res://art/lander/tank_left.png" id="14_tank_left"]
-[ext_resource type="Texture2D" path="res://art/lander/tank_right.png" id="15_tank_right"]
-[ext_resource type="Texture2D" path="res://art/lander/engine_left.png" id="16_engine_left"]
-[ext_resource type="Texture2D" path="res://art/lander/engine_right.png" id="17_engine_right"]
-[ext_resource type="Texture2D" path="res://art/lander/leg_left.png" id="18_leg_left"]
-[ext_resource type="Texture2D" path="res://art/lander/leg_right.png" id="19_leg_right"]
+[ext_resource type="Texture2D" uid="uid://cmd7f7x1a2h02" path="res://art/lander/cockpit_left.png" id="10_cockpit_left"]
+[ext_resource type="Texture2D" uid="uid://b3aewx68o2hu4" path="res://art/lander/cockpit_right.png" id="11_cockpit_right"]
+[ext_resource type="Texture2D" uid="uid://c4ibd3jgsqd6h" path="res://art/lander/rcs_left.png" id="12_rcs_left"]
+[ext_resource type="Texture2D" uid="uid://brriplx2243ud" path="res://art/lander/rcs_right.png" id="13_rcs_right"]
+[ext_resource type="Texture2D" uid="uid://bhl0q5peko4vn" path="res://art/lander/tank_left.png" id="14_tank_left"]
+[ext_resource type="Texture2D" uid="uid://2tubvdwg8n1i" path="res://art/lander/tank_right.png" id="15_tank_right"]
+[ext_resource type="Texture2D" uid="uid://divws1njkoxq8" path="res://art/lander/engine_left.png" id="16_engine_left"]
+[ext_resource type="Texture2D" uid="uid://c06h81j6s6su" path="res://art/lander/engine_right.png" id="17_engine_right"]
+[ext_resource type="Texture2D" uid="uid://cypqki047iwf2" path="res://art/lander/leg_left.png" id="18_leg_left"]
+[ext_resource type="Texture2D" uid="uid://2svd0sjof8sd" path="res://art/lander/leg_right.png" id="19_leg_right"]
+[ext_resource type="Texture2D" uid="uid://c72n66w8aa2k7" path="res://art/lander/cockpit_left_systems.png" id="30_cockpit_left_systems"]
+[ext_resource type="Texture2D" uid="uid://cvgi1efjadunu" path="res://art/lander/cockpit_left_frame.png" id="31_cockpit_left_frame"]
+[ext_resource type="Texture2D" uid="uid://cot6regrxvktb" path="res://art/lander/cockpit_right_systems.png" id="32_cockpit_right_systems"]
+[ext_resource type="Texture2D" uid="uid://ctxouknplw3ks" path="res://art/lander/cockpit_right_frame.png" id="33_cockpit_right_frame"]
+[ext_resource type="Texture2D" uid="uid://bmpu750nn3swm" path="res://art/lander/rcs_left_systems.png" id="34_rcs_left_systems"]
+[ext_resource type="Texture2D" uid="uid://dfnlayvx0sxbr" path="res://art/lander/rcs_left_frame.png" id="35_rcs_left_frame"]
+[ext_resource type="Texture2D" uid="uid://bmyqb7tt24kwd" path="res://art/lander/rcs_right_systems.png" id="36_rcs_right_systems"]
+[ext_resource type="Texture2D" uid="uid://du1hcab2yq1da" path="res://art/lander/rcs_right_frame.png" id="37_rcs_right_frame"]
+[ext_resource type="Texture2D" uid="uid://c1ptcbo3fuk5h" path="res://art/lander/tank_left_systems.png" id="38_tank_left_systems"]
+[ext_resource type="Texture2D" uid="uid://cenhct41aymel" path="res://art/lander/tank_left_frame.png" id="39_tank_left_frame"]
+[ext_resource type="Texture2D" uid="uid://wcxtxtnrbw3r" path="res://art/lander/tank_right_systems.png" id="40_tank_right_systems"]
+[ext_resource type="Texture2D" uid="uid://bhfw4s8exossk" path="res://art/lander/tank_right_frame.png" id="41_tank_right_frame"]
+[ext_resource type="Texture2D" uid="uid://cen2crnbvipe7" path="res://art/lander/engine_left_systems.png" id="42_engine_left_systems"]
+[ext_resource type="Texture2D" uid="uid://bvduuood47lvw" path="res://art/lander/engine_left_frame.png" id="43_engine_left_frame"]
+[ext_resource type="Texture2D" uid="uid://b87a0bpjuuhjj" path="res://art/lander/engine_right_systems.png" id="44_engine_right_systems"]
+[ext_resource type="Texture2D" uid="uid://beo5gfca1qnb8" path="res://art/lander/engine_right_frame.png" id="45_engine_right_frame"]
 
 [sub_resource type="Resource" id="Module_0_0"]
 script = ExtResource("2_module")
@@ -42,7 +43,6 @@ kind = "cockpit"
 texture = ExtResource("10_cockpit_left")
 systems_texture = ExtResource("30_cockpit_left_systems")
 frame_texture = ExtResource("31_cockpit_left_frame")
-cell = Vector2i(0, 0)
 
 [sub_resource type="Resource" id="Module_0_1"]
 script = ExtResource("2_module")
@@ -149,17 +149,16 @@ stows_inside_hull = true
 script = ExtResource("1_design")
 display_name = "Lander"
 chip = "YOUR SHIP"
+modules = Array[ExtResource("2_module")]([SubResource("Module_0_0"), SubResource("Module_0_1"), SubResource("Module_1_0"), SubResource("Module_1_1"), SubResource("Module_2_0"), SubResource("Module_2_1"), SubResource("Module_3_0"), SubResource("Module_3_1"), SubResource("Module_leg_0"), SubResource("Module_leg_1")])
+materials = Array[ExtResource("1_gnmld")]([ExtResource("4_hull"), ExtResource("5_structure"), ExtResource("6_foil"), ExtResource("7_glass"), ExtResource("8_paint"), ExtResource("9_core")])
+engine_force = 17847305.0
 hatch_point = Vector2(-1.5, -106)
 eva_exit = Vector2(62, -60)
 cockpit_point = Vector2(-1.5, -70)
-cell_size = 64
-modules = Array[Object]([SubResource("Module_0_0"), SubResource("Module_0_1"), SubResource("Module_1_0"), SubResource("Module_1_1"), SubResource("Module_2_0"), SubResource("Module_2_1"), SubResource("Module_3_0"), SubResource("Module_3_1"), SubResource("Module_leg_0"), SubResource("Module_leg_1")])
-materials = Array[Object]([ExtResource("4_hull"), ExtResource("5_structure"), ExtResource("6_foil"), ExtResource("7_glass"), ExtResource("8_paint"), ExtResource("9_core")])
+rcs_torque = 173796437.0
+exhaust_velocity = 15000.0
+rcs_translate_force = 1784730.0
 skin_thickness = 0.4
 systems_thickness = 0.2
 frame_thickness = 0.225
-engine_force = 17847305.0
-rcs_torque = 173796437.0
-exhaust_velocity = 15000.0
 rcs_fuel_rate = 20.0
-rcs_translate_force = 1784730.0
