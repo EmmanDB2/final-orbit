@@ -34,3 +34,8 @@ native/src/*.o
 
 # macOS
 .DS_Store
+
+# Local AI notes (kept on this machine, not published)
+CLAUDE.md
+docs/LEARNING_LOG.md
+.claude/
