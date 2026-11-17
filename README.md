@@ -2,21 +2,21 @@
 
 # Final Orbit
 
-A 2D pixel-art space sandbox for foldable Android phones, built in Godot. You fly cargo and data jobs for a space agency through a star system with real orbital mechanics, in ships that are built from pixels and physically break apart.
+A pixel-art space game for foldable phones. You fly missions for a space agency through a star system with real orbital physics, in ships that break apart when they crash.
 
-**Status:** in active development (Tier 1 of the [design plan](docs/DESIGN.md)).
+**Status:** in active development.
 
 ## Highlights
 
-- **Real orbital mechanics.** Gravity, orbits and momentum run on a custom physics core written in C++. It uses patched conics today, behind an interface built so full n-body physics can replace it later.
-- **Ships made of pixels.** Every part has mass, and losing pixels in a crash changes how the ship flies.
-- **Made for the Galaxy Z Fold.** The game moves between the folded and unfolded screens without restarting or losing progress.
-- **Landing prediction, atmospheric entry and a space station** to fly between.
-- **Automated tests** for gravity, landing prediction, aerodynamics, the station and the job system.
+- **Real orbital physics,** running on a custom physics engine written in C++.
+- **Ships made of pixels.** Every piece has weight, and damage changes how the ship flies.
+- **Built for foldable phones.** Fold or unfold mid-flight without losing your place.
+- **Landings, atmospheric entry and a space station** to fly between.
+- **Backed by automated tests.**
 
 ## Built with
 
-Godot 4.7 · GDScript · C++ (GDExtension) · shaders
+Godot · GDScript · C++
 
 ## Run it
 
